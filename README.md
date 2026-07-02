@@ -4,13 +4,16 @@ Browserbasierter Strategie-MMO-Prototyp im OGame-Stil mit Stargate-inspirierter 
 
 ## Status dieser Version
 
-Diese erste Version legt die technische Grundstruktur an:
+Version 0.0.2 erweitert die technische Grundstruktur um Gebäudeausbau:
 
 - ASP.NET Core MVC/Razor Webanwendung
 - getrennte Projekte für Web, Core, Data und Tests
 - SQLite-Anbindung über Entity Framework Core
 - Basismodelle für Planeten, Basissektoren, Ressourcen, Gebäude und Fraktionen
-- Economy-Service für einfache Kosten-, Bauzeit- und Produktionsformeln
+- Economy-Service für einfache Produktionsformeln
+- Gebäudekatalog mit Kosten- und Bauzeitformeln
+- serverseitige Bauwarteschlange mit Ressourcenabzug und automatischem Abschluss
+- Gebäudeübersicht mit Ausbauaktionen, Baukosten, Bauzeit und laufendem Timer
 - dunkle tabellarische Startseite mit freigegebenen Welten und einer Startbasis
 
 ## Lore-Leitplanken
@@ -60,8 +63,7 @@ dotnet test StargateGalacticCommand.sln
 ## Offene TODOs
 
 - Spieler- und Authentifizierungsmodell ergänzen.
-- Bauaufträge und Zeitfortschritt serverseitig modellieren.
-- Ressourcenproduktion persistent berechnen.
+- Parallelbau und erweiterte Warteschlangenlogik modellieren.
 - Gate-Missionen strikt von Hyperraum-Flotten trennen.
 - Erste Migrationen ergänzen, sobald das Datenmodell stabiler ist.
 - Balancing-Werte für Kosten und Produktion mit Spieldesign-Zielen abgleichen.

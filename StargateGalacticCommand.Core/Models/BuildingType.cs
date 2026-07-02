@@ -9,6 +9,8 @@ namespace StargateGalacticCommand.Core.Models
         EnergyGenerator = 5,
         ResearchLab = 6,
         GateControlRoom = 7,
-        SensorStation = 8
+        SensorStation = 8,
+        DefenseRing = 9,
+        HangarLandingZone = 10
     }
 }
