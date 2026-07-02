@@ -25,6 +25,9 @@ namespace StargateGalacticCommand.Web
             services.AddDbContext<GameDbContext>(options =>
                 options.UseSqlite(Configuration.GetConnectionString("DefaultConnection")));
             services.AddScoped<EconomyService>();
+            services.AddScoped<BuildingCatalogService>();
+            services.AddScoped<ResourceService>();
+            services.AddScoped<BuildQueueService>();
             services.AddScoped<PasswordService>();
             services.AddScoped<RegistrationService>();
         }
