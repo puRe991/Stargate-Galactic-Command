@@ -1,0 +1,36 @@
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio Version 16
+VisualStudioVersion = 16.0.28729.10
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "StargateGalacticCommand.Core", "StargateGalacticCommand.Core\StargateGalacticCommand.Core.csproj", "{0B2F3D84-82E2-4571-B8AF-0E6B4F8D7E01}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "StargateGalacticCommand.Data", "StargateGalacticCommand.Data\StargateGalacticCommand.Data.csproj", "{1C1976CA-BD71-4C11-8E8B-2CF913B7B68C}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "StargateGalacticCommand.Web", "StargateGalacticCommand.Web\StargateGalacticCommand.Web.csproj", "{A5C3B563-C140-48D1-B951-0C4C3063210D}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "StargateGalacticCommand.Tests", "StargateGalacticCommand.Tests\StargateGalacticCommand.Tests.csproj", "{A6762192-CFC7-4A67-A7D8-382984077D07}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{0B2F3D84-82E2-4571-B8AF-0E6B4F8D7E01}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{0B2F3D84-82E2-4571-B8AF-0E6B4F8D7E01}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{0B2F3D84-82E2-4571-B8AF-0E6B4F8D7E01}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{0B2F3D84-82E2-4571-B8AF-0E6B4F8D7E01}.Release|Any CPU.Build.0 = Release|Any CPU
+		{1C1976CA-BD71-4C11-8E8B-2CF913B7B68C}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{1C1976CA-BD71-4C11-8E8B-2CF913B7B68C}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{1C1976CA-BD71-4C11-8E8B-2CF913B7B68C}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{1C1976CA-BD71-4C11-8E8B-2CF913B7B68C}.Release|Any CPU.Build.0 = Release|Any CPU
+		{A5C3B563-C140-48D1-B951-0C4C3063210D}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{A5C3B563-C140-48D1-B951-0C4C3063210D}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{A5C3B563-C140-48D1-B951-0C4C3063210D}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{A5C3B563-C140-48D1-B951-0C4C3063210D}.Release|Any CPU.Build.0 = Release|Any CPU
+		{A6762192-CFC7-4A67-A7D8-382984077D07}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{A6762192-CFC7-4A67-A7D8-382984077D07}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{A6762192-CFC7-4A67-A7D8-382984077D07}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{A6762192-CFC7-4A67-A7D8-382984077D07}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+EndGlobal

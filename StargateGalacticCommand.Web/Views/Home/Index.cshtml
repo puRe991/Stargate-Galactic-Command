@@ -1,0 +1,53 @@
+@model HomeIndexViewModel
+@{
+    ViewData["Title"] = "Übersicht";
+}
+
+<section class="hero">
+    <h1>Geheime Einsatzübersicht</h1>
+    <p>Verwalte getarnte Basissektoren auf freigegebenen Welten. Stargates dienen für Teams und leichte Ausrüstung; Großschiffe bleiben Hyperraum-Operationen.</p>
+</section>
+
+<section class="panel">
+    <h2>Freigegebene Planeten</h2>
+    <table>
+        <thead>
+            <tr><th>Name</th><th>Gate-Adresse</th><th>Status</th></tr>
+        </thead>
+        <tbody>
+        @foreach (var planet in Model.OpenPlanets)
+        {
+            <tr>
+                <td>@planet.Name</td>
+                <td>@planet.GateAddress</td>
+                <td>Spielersektoren erlaubt</td>
+            </tr>
+        }
+        </tbody>
+    </table>
+    <p class="note">@Model.RestrictedWorldCount zentrale Canon-Orte sind gesperrt und nicht als normale Spielerplaneten verfügbar.</p>
+</section>
+
+<section class="panel">
+    <h2>Startbasis</h2>
+    <table>
+        <thead>
+            <tr><th>Basis</th><th>Planet</th><th>Fraktion</th><th>Naquadah</th><th>Trinium</th><th>Deuterium</th><th>Vorräte</th><th>Gebäude</th></tr>
+        </thead>
+        <tbody>
+        @foreach (var sector in Model.BaseSectors)
+        {
+            <tr>
+                <td>@sector.Name</td>
+                <td>@sector.Planet.Name</td>
+                <td>@sector.Faction</td>
+                <td>@sector.Resources.Naquadah</td>
+                <td>@sector.Resources.Trinium</td>
+                <td>@sector.Resources.Deuterium</td>
+                <td>@sector.Resources.Supplies</td>
+                <td>@sector.Buildings.Count</td>
+            </tr>
+        }
+        </tbody>
+    </table>
+</section>
