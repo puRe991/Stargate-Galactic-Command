@@ -8,62 +8,32 @@ namespace StargateGalacticCommand.Tests
     public class EconomyServiceTests
     {
         [Fact]
-        public void CalculateBuildingCost_LevelOne_ReturnsBaseCost()
+        public void CreateStartingResources_ReturnsVersion001StartValues()
         {
-            EconomyService service = new EconomyService();
-
-            BuildCost cost = service.CalculateBuildingCost(BuildingType.NaquadahMine, 1);
-
-            Assert.Equal(60, cost.Naquadah);
-            Assert.Equal(20, cost.Trinium);
-            Assert.Equal(0, cost.Deuterium);
-            Assert.Equal(20, cost.Supplies);
-            Assert.Equal(35, cost.Seconds);
+            var stock = new EconomyService().CreateStartingResources();
+            Assert.Equal(500, stock.Naquadah); Assert.Equal(500, stock.Trinium); Assert.Equal(750, stock.Supplies);
+            Assert.Equal(100, stock.Energy); Assert.Equal(50, stock.Personnel); Assert.Equal(0, stock.Intel);
         }
 
         [Fact]
-        public void CalculateBuildingCost_HigherLevel_IncreasesCostAndTime()
+        public void ApplyOfflineProduction_AddsResourcesForElapsedTime()
         {
-            EconomyService service = new EconomyService();
-
-            BuildCost levelOne = service.CalculateBuildingCost(BuildingType.ResearchLab, 1);
-            BuildCost levelFive = service.CalculateBuildingCost(BuildingType.ResearchLab, 5);
-
-            Assert.True(levelFive.Naquadah > levelOne.Naquadah);
-            Assert.True(levelFive.Trinium > levelOne.Trinium);
-            Assert.True(levelFive.Seconds > levelOne.Seconds);
-        }
-
-        [Theory]
-        [InlineData(0)]
-        [InlineData(101)]
-        public void CalculateBuildingCost_InvalidTargetLevel_Throws(int targetLevel)
-        {
-            EconomyService service = new EconomyService();
-
-            Assert.Throws<ArgumentOutOfRangeException>(() => service.CalculateBuildingCost(BuildingType.CommandBunker, targetLevel));
+            var service = new EconomyService();
+            var start = new DateTime(2026, 1, 1, 0, 0, 0, DateTimeKind.Utc);
+            var playerBase = new PlayerBase { Resources = service.CreateStartingResources(), BuildingLevels = new BuildingLevels { CommandCenter = 1, NaquadahRefinery = 2, TriniumMine = 1, SupplyDepot = 1, EnergyGenerator = 1 }, LastResourceUpdateUtc = start };
+            service.ApplyOfflineProduction(playerBase, start.AddHours(2));
+            Assert.Equal(620, playerBase.Resources.Naquadah); Assert.Equal(550, playerBase.Resources.Trinium); Assert.Equal(820, playerBase.Resources.Supplies);
+            Assert.Equal(140, playerBase.Resources.Energy); Assert.Equal(54, playerBase.Resources.Personnel);
         }
 
         [Fact]
-        public void CalculateHourlyProduction_NonProductionBuilding_ReturnsZero()
+        public void ApplyOfflineProduction_DoesNotChangeResourcesWhenNoTimeElapsed()
         {
-            EconomyService service = new EconomyService();
-
-            int production = service.CalculateHourlyProduction(BuildingType.GateRoom, 5);
-
-            Assert.Equal(0, production);
-        }
-
-        [Fact]
-        public void CalculateHourlyProduction_ProductionBuilding_IncreasesWithLevel()
-        {
-            EconomyService service = new EconomyService();
-
-            int levelOne = service.CalculateHourlyProduction(BuildingType.TriniumExtractor, 1);
-            int levelSix = service.CalculateHourlyProduction(BuildingType.TriniumExtractor, 6);
-
-            Assert.True(levelOne > 0);
-            Assert.True(levelSix > levelOne);
+            var service = new EconomyService();
+            var now = DateTime.UtcNow;
+            var playerBase = new PlayerBase { Resources = service.CreateStartingResources(), BuildingLevels = new BuildingLevels { NaquadahRefinery = 10 }, LastResourceUpdateUtc = now };
+            service.ApplyOfflineProduction(playerBase, now.AddMinutes(-1));
+            Assert.Equal(500, playerBase.Resources.Naquadah);
         }
     }
 }
