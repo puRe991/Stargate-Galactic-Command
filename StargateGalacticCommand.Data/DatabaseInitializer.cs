@@ -11,6 +11,7 @@ namespace StargateGalacticCommand.Data
             context.Database.EnsureCreated();
             SeedFactions(context);
             SeedStartPlanet(context);
+            EnsureResearchLevels(context);
             context.SaveChanges();
         }
         private static void SeedFactions(GameDbContext context)
@@ -21,6 +22,13 @@ namespace StargateGalacticCommand.Data
                 new Faction { Id = 2, Name = "Freie Jaffa", ShortName = "Jaffa" },
                 new Faction { Id = 3, Name = "Tok’ra", ShortName = "Tok’ra" },
                 new Faction { Id = 4, Name = "Lucian Alliance", ShortName = "Lucian" });
+        }
+        private static void EnsureResearchLevels(GameDbContext context)
+        {
+            foreach (var user in context.Users.Where(u => u.ResearchLevels == null).ToList())
+            {
+                context.ResearchLevels.Add(new ResearchLevels { UserId = user.Id });
+            }
         }
         private static void SeedStartPlanet(GameDbContext context)
         {

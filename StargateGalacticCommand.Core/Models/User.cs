@@ -15,6 +15,8 @@ namespace StargateGalacticCommand.Core.Models
         public DateTime CreatedAtUtc { get; set; }
         public ICollection<PlayerBase> Bases { get; set; }
         public ICollection<Report> Reports { get; set; }
-        public User() { Bases = new List<PlayerBase>(); Reports = new List<Report>(); }
+        public ResearchLevels ResearchLevels { get; set; }
+        public ICollection<ResearchQueueItem> ResearchQueue { get; set; }
+        public User() { Bases = new List<PlayerBase>(); Reports = new List<Report>(); ResearchQueue = new List<ResearchQueueItem>(); }
     }
 }

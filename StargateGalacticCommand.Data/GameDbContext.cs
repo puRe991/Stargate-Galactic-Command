@@ -15,6 +15,8 @@ namespace StargateGalacticCommand.Data
         public DbSet<BuildingLevels> BuildingLevels { get; set; }
         public DbSet<BuildQueueItem> BuildQueueItems { get; set; }
         public DbSet<Report> Reports { get; set; }
+        public DbSet<ResearchLevels> ResearchLevels { get; set; }
+        public DbSet<ResearchQueueItem> ResearchQueueItems { get; set; }
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
@@ -32,6 +34,9 @@ namespace StargateGalacticCommand.Data
             modelBuilder.Entity<PlayerBase>().HasOne(b => b.Resources).WithOne().HasForeignKey<ResourceStock>(r => r.PlayerBaseId).OnDelete(DeleteBehavior.Cascade);
             modelBuilder.Entity<PlayerBase>().HasOne(b => b.BuildingLevels).WithOne().HasForeignKey<BuildingLevels>(l => l.PlayerBaseId).OnDelete(DeleteBehavior.Cascade);
             modelBuilder.Entity<PlayerBase>().HasOne(b => b.PlanetSector).WithOne(s => s.PlayerBase).HasForeignKey<PlayerBase>(b => b.PlanetSectorId).OnDelete(DeleteBehavior.Restrict);
+            modelBuilder.Entity<User>().HasOne(u => u.ResearchLevels).WithOne(l => l.User).HasForeignKey<ResearchLevels>(l => l.UserId).OnDelete(DeleteBehavior.Cascade);
+            modelBuilder.Entity<ResearchQueueItem>().HasOne(q => q.User).WithMany(u => u.ResearchQueue).HasForeignKey(q => q.UserId).OnDelete(DeleteBehavior.Cascade);
+            modelBuilder.Entity<ResearchQueueItem>().Property(q => q.ResearchType).HasConversion<int>();
         }
     }
 }

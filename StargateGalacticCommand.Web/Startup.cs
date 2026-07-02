@@ -28,6 +28,9 @@ namespace StargateGalacticCommand.Web
             services.AddScoped<BuildingCatalogService>();
             services.AddScoped<ResourceService>();
             services.AddScoped<BuildQueueService>();
+            services.AddScoped<ResearchCatalogService>();
+            services.AddScoped<ResearchQueueService>();
+            services.AddScoped<FactionModifierService>();
             services.AddScoped<PasswordService>();
             services.AddScoped<RegistrationService>();
         }
