@@ -15,5 +15,6 @@
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\StargateGalacticCommand.Core\StargateGalacticCommand.Core.csproj" />
+    <ProjectReference Include="..\StargateGalacticCommand.Data\StargateGalacticCommand.Data.csproj" />
   </ItemGroup>
 </Project>

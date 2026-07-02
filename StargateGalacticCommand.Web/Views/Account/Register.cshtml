@@ -1,0 +1,3 @@
+@model RegisterViewModel
+@{ ViewData["Title"]="Registrierung"; }
+<section class="panel"><h1>Registrierung</h1>@if(!string.IsNullOrEmpty(Model.Error)){<p class="error">@Model.Error</p>}<form method="post"><label>Benutzername<input name="UserName" value="@Model.UserName" /></label><label>E-Mail<input name="Email" value="@Model.Email" /></label><label>Passwort<input name="Password" type="password" /></label><label>Fraktion<select name="FactionId">@foreach(var f in Model.Factions){<option value="@f.Id">@f.Name</option>}</select></label><button type="submit">Basis gründen</button></form></section>

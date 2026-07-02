@@ -21,9 +21,12 @@ namespace StargateGalacticCommand.Web
         public void ConfigureServices(IServiceCollection services)
         {
             services.AddControllersWithViews();
+            services.AddSession();
             services.AddDbContext<GameDbContext>(options =>
                 options.UseSqlite(Configuration.GetConnectionString("DefaultConnection")));
             services.AddScoped<EconomyService>();
+            services.AddScoped<PasswordService>();
+            services.AddScoped<RegistrationService>();
         }
 
         public void Configure(IApplicationBuilder app, IWebHostEnvironment env, GameDbContext dbContext)
@@ -43,6 +46,7 @@ namespace StargateGalacticCommand.Web
             app.UseHttpsRedirection();
             app.UseStaticFiles();
             app.UseRouting();
+            app.UseSession();
             app.UseAuthorization();
 
             app.UseEndpoints(endpoints =>

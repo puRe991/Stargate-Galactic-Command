@@ -5,85 +5,65 @@ namespace StargateGalacticCommand.Core.Services
 {
     public class EconomyService
     {
-        public BuildCost CalculateBuildingCost(BuildingType type, int targetLevel)
+        public const int StartNaquadah = 500, StartTrinium = 500, StartSupplies = 750, StartEnergy = 100, StartPersonnel = 50, StartIntel = 0;
+
+        public ResourceStock CreateStartingResources()
         {
-            if (targetLevel < 1 || targetLevel > 100)
-            {
-                throw new ArgumentOutOfRangeException("targetLevel", "Target level must be between 1 and 100.");
-            }
+            return new ResourceStock { Naquadah = StartNaquadah, Trinium = StartTrinium, Supplies = StartSupplies, Energy = StartEnergy, Personnel = StartPersonnel, Intel = StartIntel };
+        }
 
-            BuildCost baseCost = GetBaseCost(type);
-            double factor = Math.Pow(1.55, targetLevel - 1);
+        public BuildingLevels CreateStartingBuildings()
+        {
+            return new BuildingLevels { CommandCenter = 1 };
+        }
 
-            return new BuildCost
+        public ResourceProduction CalculateHourlyProduction(BuildingLevels levels)
+        {
+            if (levels == null) throw new ArgumentNullException("levels");
+            return new ResourceProduction
             {
-                Naquadah = Scale(baseCost.Naquadah, factor),
-                Trinium = Scale(baseCost.Trinium, factor),
-                Deuterium = Scale(baseCost.Deuterium, factor),
-                Supplies = Scale(baseCost.Supplies, factor),
-                Seconds = Math.Max(30, Scale(baseCost.Seconds, Math.Pow(1.35, targetLevel - 1)))
+                Naquadah = 30 * Math.Max(0, levels.NaquadahRefinery),
+                Trinium = 25 * Math.Max(0, levels.TriniumMine),
+                Supplies = 35 * Math.Max(0, levels.SupplyDepot),
+                Energy = 20 * Math.Max(0, levels.EnergyGenerator),
+                Personnel = 2 * Math.Max(0, levels.CommandCenter),
+                Intel = 1 * Math.Max(0, levels.SensorStation)
             };
         }
 
-        public int CalculateHourlyProduction(BuildingType type, int level)
+        public void ApplyOfflineProduction(PlayerBase playerBase, DateTime nowUtc)
         {
-            if (level < 0 || level > 100)
-            {
-                throw new ArgumentOutOfRangeException("level", "Level must be between 0 and 100.");
-            }
+            if (playerBase == null) throw new ArgumentNullException("playerBase");
+            if (playerBase.Resources == null) throw new ArgumentException("Base has no resource stock.", "playerBase");
+            if (playerBase.BuildingLevels == null) throw new ArgumentException("Base has no building levels.", "playerBase");
+            if (nowUtc <= playerBase.LastResourceUpdateUtc) return;
 
-            if (level == 0)
-            {
-                return 0;
-            }
-
-            if (type != BuildingType.NaquadahMine && type != BuildingType.TriniumExtractor && type != BuildingType.DeuteriumPlant && type != BuildingType.SupplyDepot)
-            {
-                return 0;
-            }
-
-            return (int)Math.Floor(20 * level * Math.Pow(1.12, level));
+            double hours = (nowUtc - playerBase.LastResourceUpdateUtc).TotalHours;
+            ResourceProduction hourly = CalculateHourlyProduction(playerBase.BuildingLevels);
+            playerBase.Resources.Naquadah = AddCapped(playerBase.Resources.Naquadah, hourly.Naquadah, hours);
+            playerBase.Resources.Trinium = AddCapped(playerBase.Resources.Trinium, hourly.Trinium, hours);
+            playerBase.Resources.Supplies = AddCapped(playerBase.Resources.Supplies, hourly.Supplies, hours);
+            playerBase.Resources.Energy = AddCapped(playerBase.Resources.Energy, hourly.Energy, hours);
+            playerBase.Resources.Personnel = AddCapped(playerBase.Resources.Personnel, hourly.Personnel, hours);
+            playerBase.Resources.Intel = AddCapped(playerBase.Resources.Intel, hourly.Intel, hours);
+            playerBase.LastResourceUpdateUtc = nowUtc;
         }
 
-        private BuildCost GetBaseCost(BuildingType type)
+        private static int AddCapped(int current, int perHour, double hours)
         {
-            switch (type)
-            {
-                case BuildingType.CommandBunker:
-                    return new BuildCost { Naquadah = 80, Trinium = 60, Supplies = 40, Seconds = 45 };
-                case BuildingType.NaquadahMine:
-                    return new BuildCost { Naquadah = 60, Trinium = 20, Supplies = 20, Seconds = 35 };
-                case BuildingType.TriniumExtractor:
-                    return new BuildCost { Naquadah = 50, Trinium = 45, Supplies = 25, Seconds = 40 };
-                case BuildingType.DeuteriumPlant:
-                    return new BuildCost { Naquadah = 40, Deuterium = 25, Supplies = 30, Seconds = 40 };
-                case BuildingType.SupplyDepot:
-                    return new BuildCost { Naquadah = 35, Trinium = 35, Supplies = 15, Seconds = 30 };
-                case BuildingType.ResearchLab:
-                    return new BuildCost { Naquadah = 120, Trinium = 90, Deuterium = 40, Supplies = 80, Seconds = 90 };
-                case BuildingType.Shipyard:
-                    return new BuildCost { Naquadah = 160, Trinium = 140, Deuterium = 80, Supplies = 120, Seconds = 120 };
-                case BuildingType.GateRoom:
-                    return new BuildCost { Naquadah = 200, Trinium = 160, Deuterium = 120, Supplies = 160, Seconds = 150 };
-                default:
-                    throw new ArgumentOutOfRangeException("type", "Unknown building type.");
-            }
+            if (perHour <= 0 || hours <= 0) return current;
+            double value = current + Math.Floor(perHour * hours);
+            return value > int.MaxValue ? int.MaxValue : (int)value;
         }
+    }
 
-        private int Scale(int value, double factor)
-        {
-            if (value <= 0)
-            {
-                return 0;
-            }
-
-            double scaled = Math.Ceiling(value * factor);
-            if (scaled > int.MaxValue)
-            {
-                return int.MaxValue;
-            }
-
-            return (int)scaled;
-        }
+    public class ResourceProduction
+    {
+        public int Naquadah { get; set; }
+        public int Trinium { get; set; }
+        public int Supplies { get; set; }
+        public int Energy { get; set; }
+        public int Personnel { get; set; }
+        public int Intel { get; set; }
     }
 }

@@ -1,10 +1,9 @@
 namespace StargateGalacticCommand.Core.Models
 {
-    public enum Faction
+    public class Faction
     {
-        TauriSgc = 1,
-        FreeJaffa = 2,
-        Tokra = 3,
-        LucianAlliance = 4
+        public int Id { get; set; }
+        public string Name { get; set; }
+        public string ShortName { get; set; }
     }
 }
