@@ -50,17 +50,7 @@ StargateGalacticCommand.Tests  Unit-Tests für Economy-Formeln, Gate-Missionen, 
 build-and-run.bat
 ```
 
-Das Skript stellt NuGet-Pakete wieder her, baut die Solution und startet anschließend die Webanwendung unter `http://localhost:5000`. Es öffnet den Browser nach kurzer Verzögerung automatisch und hält das Konsolenfenster offen, damit Fehlermeldungen nach einem Doppelklick sichtbar bleiben.
-
-Optionale Parameter:
-
-```bat
-build-and-run.bat --url http://localhost:5050
-build-and-run.bat --no-browser
-build-and-run.bat --no-pause
-```
-
-Wenn Port 5000 bereits belegt ist, nutze `--url` mit einem freien lokalen Port oder beende den blockierenden Prozess.
+Das Skript stellt NuGet-Pakete wieder her, baut die Solution und startet anschließend die Webanwendung. Es bricht mit einer klaren Fehlermeldung ab, wenn die .NET SDK-Installation, die Solution oder das Webprojekt nicht gefunden werden.
 
 ### Manuell per .NET CLI
 
