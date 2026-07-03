@@ -24,23 +24,44 @@ namespace StargateGalacticCommand.Core.Services
 
         public ResourceProduction CalculateHourlyProduction(BuildingLevels levels, ResearchLevels researchLevels, Faction faction)
         {
+            return CalculateHourlyProduction(levels, researchLevels, faction, null);
+        }
+
+        public ResourceProduction CalculateHourlyProduction(BuildingLevels levels, ResearchLevels researchLevels, Faction faction, SectorBonus sectorBonus)
+        {
             if (levels == null) throw new ArgumentNullException("levels");
             var modifiers = new FactionModifierService();
+            double naquadahMultiplier = 1;
+            double triniumMultiplier = 1;
+            double personnelMultiplier = 1;
             double energyMultiplier = 1 + (Math.Max(0, researchLevels == null ? 0 : researchLevels.NaquadahEnergyTechnology) * 0.02);
             double intelMultiplier = (1 + (Math.Max(0, researchLevels == null ? 0 : researchLevels.Sensorics) * 0.02)) * modifiers.GetIntelProductionMultiplier(faction);
             double suppliesMultiplier = modifiers.GetSuppliesProductionMultiplier(faction);
+            if (sectorBonus != null)
+            {
+                naquadahMultiplier = 1 + Math.Max(0, sectorBonus.NaquadahMultiplier);
+                triniumMultiplier = 1 + Math.Max(0, sectorBonus.TriniumMultiplier);
+                suppliesMultiplier *= 1 + Math.Max(0, sectorBonus.SuppliesMultiplier);
+                personnelMultiplier = 1 + Math.Max(0, sectorBonus.PersonnelMultiplier);
+                intelMultiplier *= 1 + Math.Max(0, sectorBonus.IntelMultiplier);
+            }
             return new ResourceProduction
             {
-                Naquadah = 30 * Math.Max(0, levels.NaquadahRefinery),
-                Trinium = 25 * Math.Max(0, levels.TriniumMine),
+                Naquadah = ScaleProduction(30 * Math.Max(0, levels.NaquadahRefinery), naquadahMultiplier),
+                Trinium = ScaleProduction(25 * Math.Max(0, levels.TriniumMine), triniumMultiplier),
                 Supplies = ScaleProduction(35 * Math.Max(0, levels.SupplyDepot), suppliesMultiplier),
                 Energy = ScaleProduction(20 * Math.Max(0, levels.EnergyGenerator), energyMultiplier),
-                Personnel = 2 * Math.Max(0, levels.CommandCenter),
+                Personnel = ScaleProduction(2 * Math.Max(0, levels.CommandCenter), personnelMultiplier),
                 Intel = ScaleProduction(1 * Math.Max(0, levels.SensorStation), intelMultiplier)
             };
         }
 
         public void ApplyOfflineProduction(PlayerBase playerBase, DateTime nowUtc)
+        {
+            ApplyOfflineProduction(playerBase, nowUtc, null);
+        }
+
+        public void ApplyOfflineProduction(PlayerBase playerBase, DateTime nowUtc, SectorBonus sectorBonus)
         {
             if (playerBase == null) throw new ArgumentNullException("playerBase");
             if (playerBase.Resources == null) throw new ArgumentException("Base has no resource stock.", "playerBase");
@@ -48,7 +69,7 @@ namespace StargateGalacticCommand.Core.Services
             if (nowUtc <= playerBase.LastResourceUpdateUtc) return;
 
             double hours = (nowUtc - playerBase.LastResourceUpdateUtc).TotalHours;
-            ResourceProduction hourly = CalculateHourlyProduction(playerBase.BuildingLevels, playerBase.User == null ? null : playerBase.User.ResearchLevels, playerBase.Faction);
+            ResourceProduction hourly = CalculateHourlyProduction(playerBase.BuildingLevels, playerBase.User == null ? null : playerBase.User.ResearchLevels, playerBase.Faction, sectorBonus);
             playerBase.Resources.Naquadah = AddCapped(playerBase.Resources.Naquadah, hourly.Naquadah, hours);
             playerBase.Resources.Trinium = AddCapped(playerBase.Resources.Trinium, hourly.Trinium, hours);
             playerBase.Resources.Supplies = AddCapped(playerBase.Resources.Supplies, hourly.Supplies, hours);

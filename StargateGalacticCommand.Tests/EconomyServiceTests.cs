@@ -35,5 +35,12 @@ namespace StargateGalacticCommand.Tests
             service.ApplyOfflineProduction(playerBase, now.AddMinutes(-1));
             Assert.Equal(500, playerBase.Resources.Naquadah);
         }
+        [Fact]
+        public void CalculateHourlyProduction_AppliesSectorBonus()
+        {
+            var production = new EconomyService().CalculateHourlyProduction(new BuildingLevels { CommandCenter = 20, NaquadahRefinery = 10 }, null, null, new SectorBonus { NaquadahMultiplier = 0.10, PersonnelMultiplier = 0.05 });
+            Assert.Equal(330, production.Naquadah);
+            Assert.Equal(42, production.Personnel);
+        }
     }
 }

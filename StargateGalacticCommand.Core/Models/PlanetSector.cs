@@ -8,6 +8,8 @@ namespace StargateGalacticCommand.Core.Models
         public int Number { get; set; }
         public string Name { get; set; }
         public bool IsSettlementSector { get; set; }
+        public SectorType SectorType { get; set; }
         public PlayerBase PlayerBase { get; set; }
+        public SectorControl SectorControl { get; set; }
     }
 }
