@@ -19,6 +19,10 @@ namespace StargateGalacticCommand.Web.Models
         public ResearchQueueItem ActiveResearch { get; set; }
         public double DefenseModifier { get; set; }
         public DateTime NowUtc { get; set; }
+        public IList<KnownGateAddress> KnownGateAddresses { get; set; }
+        public IList<MissionTeam> MissionTeams { get; set; }
+        public IList<GateMission> ActiveGateMissions { get; set; }
+        public IList<GateMissionReport> GateMissionReports { get; set; }
     }
 
     public class BuildingUpgradeViewModel
