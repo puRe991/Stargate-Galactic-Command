@@ -44,6 +44,16 @@ StargateGalacticCommand.Tests  Unit-Tests für Economy-Formeln, Gate-Missionen, 
 
 ## Lokal starten
 
+### Windows Batch
+
+```bat
+build-and-run.bat
+```
+
+Das Skript stellt NuGet-Pakete wieder her, baut die Solution und startet anschließend die Webanwendung unter `http://localhost:5000`. Es öffnet den Browser automatisch und hält das Konsolenfenster offen, damit Fehlermeldungen nach einem Doppelklick sichtbar bleiben. Wenn Port 5000 bereits belegt ist, beende den blockierenden Prozess oder starte die Anwendung manuell per .NET CLI mit einer anderen URL.
+
+### Manuell per .NET CLI
+
 ```bash
 dotnet restore
 
