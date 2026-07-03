@@ -50,7 +50,7 @@ StargateGalacticCommand.Tests  Unit-Tests für Economy-Formeln, Gate-Missionen, 
 build-and-run.bat
 ```
 
-Das Skript stellt NuGet-Pakete wieder her, baut die Solution und startet anschließend die Webanwendung unter `http://localhost:5000`. Beim Start öffnet es die URL automatisch im Standardbrowser. Wenn ein Fehler auftritt (z. B. fehlendes .NET SDK oder Buildfehler), bleibt das Konsolenfenster geöffnet, damit die Fehlermeldung lesbar bleibt.
+Das Skript prüft zuerst, ob ein .NET SDK 8.0 oder neuer verfügbar ist. Fehlt es, versucht das Skript eine automatische Installation: zuerst über `winget`, danach als Fallback per offiziellem `dotnet-install.ps1` in das Benutzerprofil. Anschließend stellt es NuGet-Pakete wieder her, baut die Solution und startet die Webanwendung unter `http://localhost:5000`. Beim Start öffnet es die URL automatisch im Standardbrowser. Wenn ein Fehler auftritt (z. B. fehlende Installationsrechte, Netzwerkproblem oder Buildfehler), bleibt das Konsolenfenster geöffnet, damit die Fehlermeldung lesbar bleibt.
 
 ### Manuell per .NET CLI
 
