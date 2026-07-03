@@ -36,11 +36,11 @@ StargateGalacticCommand.Tests  Unit-Tests für Economy-Formeln, Gate-Missionen, 
 
 ## Voraussetzungen
 
-- Visual Studio 2019
-- .NET Core SDK 3.1
+- Visual Studio 2022 17.8 oder neuer
+- .NET SDK 8.0 oder neuer (das Repository enthält eine `global.json` mit Roll-forward auf neuere installierte SDKs)
 - SQLite wird lokal über `Microsoft.EntityFrameworkCore.Sqlite` verwendet; kein separater Server ist nötig.
 
-> Hinweis: .NET Core 3.1 ist end-of-life. Es wurde hier gewählt, um Visual-Studio-2019-Kompatibilität einfach zu halten. Für produktive Weiterentwicklung sollte ein Upgrade auf eine unterstützte .NET-LTS-Version geplant werden.
+> Hinweis: Die Projekte zielen auf .NET 8 LTS. Wenn Visual Studio die Projekte nicht lädt, installiere das aktuelle .NET SDK und stelle sicher, dass der Workload „ASP.NET und Webentwicklung“ aktiv ist.
 
 ## Lokal starten
 

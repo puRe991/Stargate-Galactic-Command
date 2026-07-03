@@ -92,7 +92,7 @@ namespace StargateGalacticCommand.Core.Services
                 report.IntelFound = 3; report.Outcome = GateMissionOutcome.IntelDiscovery;
             }
             playerBase.Resources.Naquadah += report.NaquadahFound; playerBase.Resources.Trinium += report.TriniumFound; playerBase.Resources.Supplies += report.SuppliesFound; playerBase.Resources.Intel += report.IntelFound;
-            report.Summary = "Gate-Mission abgeschlossen. Transport beschränkte sich lorekonform auf Personen, kleine Ausrüstung und Missionsteams.";
+            report.Summary = "Gate-Mission abgeschlossen. Keine Schiffe oder Großflotten wurden durch das Gate bewegt; Transport beschränkte sich lorekonform auf Personen, kleine Ausrüstung und Missionsteams.";
         }
 
         public MissionTeam CreateFactionTeam(User user)
