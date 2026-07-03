@@ -21,10 +21,11 @@ namespace StargateGalacticCommand.Web.Controllers
         private readonly ResearchQueueService _researchQueue;
         private readonly FactionModifierService _factionModifiers;
         private readonly GateMissionService _gateMissions;
+        private readonly LocalSectorService _localSectors;
 
-        public GameController(GameDbContext db, EconomyService economy, BuildingCatalogService catalog, BuildQueueService buildQueue, ResourceService resources, ResearchCatalogService researchCatalog, ResearchQueueService researchQueue, FactionModifierService factionModifiers, GateMissionService gateMissions)
+        public GameController(GameDbContext db, EconomyService economy, BuildingCatalogService catalog, BuildQueueService buildQueue, ResourceService resources, ResearchCatalogService researchCatalog, ResearchQueueService researchQueue, FactionModifierService factionModifiers, GateMissionService gateMissions, LocalSectorService localSectors)
         {
-            _db = db; _economy = economy; _catalog = catalog; _buildQueue = buildQueue; _resources = resources; _researchCatalog = researchCatalog; _researchQueue = researchQueue; _factionModifiers = factionModifiers; _gateMissions = gateMissions;
+            _db = db; _economy = economy; _catalog = catalog; _buildQueue = buildQueue; _resources = resources; _researchCatalog = researchCatalog; _researchQueue = researchQueue; _factionModifiers = factionModifiers; _gateMissions = gateMissions; _localSectors = localSectors;
         }
 
         public IActionResult Overview() { return GameView("Overview"); }
@@ -36,6 +37,53 @@ namespace StargateGalacticCommand.Web.Controllers
         public IActionResult Research() { return GameView("Research"); }
         public IActionResult GateRoom() { return GameView("GateRoom"); }
 
+
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public IActionResult ClaimSector(int sectorId)
+        {
+            int? userId = HttpContext.Session.GetInt32("UserId");
+            if (!userId.HasValue) return RedirectToAction("Login", "Account");
+            var user = LoadCurrentUser(userId.Value);
+            var playerBase = LoadCurrentBase(user.Id);
+            var now = DateTime.UtcNow;
+            try
+            {
+                var sector = _db.PlanetSectors.Include(s => s.PlayerBase).Include(s => s.SectorControl).Single(s => s.Id == sectorId && s.PlanetId == playerBase.PlanetSector.PlanetId);
+                var activeClaims = _db.SectorClaims.Where(c => !c.IsCompleted && c.PlanetSectorId == sector.Id).ToList();
+                _db.SectorClaims.Add(_localSectors.StartClaim(user, sector, activeClaims, now));
+                TempData["Message"] = "Beanspruchung gestartet. Der Startplanet bleibt PvP-geschützt; Angriffe sind in Version 0.0.5 deaktiviert.";
+            }
+            catch (Exception ex) when (ex is InvalidOperationException || ex is ArgumentException)
+            {
+                TempData["Error"] = ex.Message;
+            }
+            _db.SaveChanges();
+            return RedirectToAction("Planet");
+        }
+
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public IActionResult CompleteSectorClaim(int claimId)
+        {
+            int? userId = HttpContext.Session.GetInt32("UserId");
+            if (!userId.HasValue) return RedirectToAction("Login", "Account");
+            var now = DateTime.UtcNow;
+            try
+            {
+                var claim = _db.SectorClaims.Include(c => c.PlanetSector).ThenInclude(s => s.SectorControl).Single(c => c.Id == claimId && c.UserId == userId.Value);
+                var report = _localSectors.CompleteClaim(claim, now);
+                _db.LocalActionReports.Add(report);
+                _db.Reports.Add(new Report { UserId = userId.Value, Title = report.Title, Body = report.Body, CreatedAtUtc = now });
+                TempData["Message"] = "Sektor erfolgreich gesichert.";
+            }
+            catch (Exception ex) when (ex is InvalidOperationException || ex is ArgumentException)
+            {
+                TempData["Error"] = ex.Message;
+            }
+            _db.SaveChanges();
+            return RedirectToAction("Planet");
+        }
 
         [HttpPost]
         [ValidateAntiForgeryToken]
@@ -154,9 +202,13 @@ namespace StargateGalacticCommand.Web.Controllers
             var now = DateTime.UtcNow;
             _buildQueue.CompleteFinishedBuilds(playerBase, now);
             _researchQueue.CompleteFinishedResearch(user, now);
-            _economy.ApplyOfflineProduction(playerBase, now);
+            var offlineBonus = _localSectors.CalculateBonus(_db.PlanetSectors.Include(s => s.SectorControl).Where(s => s.PlanetId == playerBase.PlanetSector.PlanetId && s.SectorControl != null && s.SectorControl.UserId == user.Id).ToList());
+            _economy.ApplyOfflineProduction(playerBase, now, offlineBonus);
             _db.SaveChanges();
-            var planet = _db.Planets.Include(p => p.Sectors).ThenInclude(s => s.PlayerBase).Single(p => p.Id == playerBase.PlanetSector.PlanetId);
+            var planet = _db.Planets.Include(p => p.Sectors).ThenInclude(s => s.PlayerBase).Include(p => p.Sectors).ThenInclude(s => s.SectorControl).Single(p => p.Id == playerBase.PlanetSector.PlanetId);
+            var activeSectorClaims = _db.SectorClaims.Include(c => c.PlanetSector).Where(c => !c.IsCompleted && c.PlanetSector.PlanetId == planet.Id).ToList();
+            var controlledSectors = planet.Sectors.Where(s => s.SectorControl != null && s.SectorControl.UserId == user.Id).ToList();
+            var sectorBonus = _localSectors.CalculateBonus(controlledSectors);
             bool queueBusy = playerBase.BuildQueue.Any();
             var buildings = _catalog.GetAll().Select(d =>
             {
@@ -173,8 +225,16 @@ namespace StargateGalacticCommand.Web.Controllers
                     QueueBusy = queueBusy
                 };
             }).ToList();
-            var model = new OverviewViewModel { User = user, Base = playerBase, Planet = planet, Hourly = _economy.CalculateHourlyProduction(playerBase.BuildingLevels, user.ResearchLevels, user.Faction), Sectors = planet.Sectors.OrderBy(s => s.Number).ToList(), Reports = _db.Reports.Where(r => r.UserId == user.Id).OrderByDescending(r => r.CreatedAtUtc).ToList(), Buildings = buildings, ActiveBuild = playerBase.BuildQueue.OrderBy(q => q.CompletesAtUtc).FirstOrDefault(), NowUtc = now, Researches = BuildResearchViewModels(user, playerBase), ActiveResearch = user.ResearchQueue.OrderBy(q => q.CompletesAtUtc).FirstOrDefault(), DefenseModifier = _factionModifiers.GetDefenseMultiplier(user.Faction), KnownGateAddresses = _db.KnownGateAddresses.Include(k => k.GateAddress).Where(k => k.UserId == user.Id).ToList(), MissionTeams = _db.MissionTeams.Where(t => t.UserId == user.Id).ToList(), ActiveGateMissions = _db.GateMissions.Include(m => m.GateAddress).Include(m => m.MissionTeam).Where(m => m.UserId == user.Id && !m.IsCompleted).ToList(), GateMissionReports = _db.GateMissionReports.Include(r => r.GateMission).ThenInclude(m => m.GateAddress).Where(r => r.UserId == user.Id).OrderByDescending(r => r.CreatedAtUtc).ToList() };
+            var model = new OverviewViewModel { User = user, Base = playerBase, Planet = planet, Hourly = _economy.CalculateHourlyProduction(playerBase.BuildingLevels, user.ResearchLevels, user.Faction, sectorBonus), Sectors = planet.Sectors.OrderBy(s => s.Number).ToList(), Reports = _db.Reports.Where(r => r.UserId == user.Id).OrderByDescending(r => r.CreatedAtUtc).ToList(), Buildings = buildings, ActiveBuild = playerBase.BuildQueue.OrderBy(q => q.CompletesAtUtc).FirstOrDefault(), NowUtc = now, Researches = BuildResearchViewModels(user, playerBase), ActiveResearch = user.ResearchQueue.OrderBy(q => q.CompletesAtUtc).FirstOrDefault(), DefenseModifier = _factionModifiers.GetDefenseMultiplier(user.Faction), KnownGateAddresses = _db.KnownGateAddresses.Include(k => k.GateAddress).Where(k => k.UserId == user.Id).ToList(), MissionTeams = _db.MissionTeams.Where(t => t.UserId == user.Id).ToList(), ActiveGateMissions = _db.GateMissions.Include(m => m.GateAddress).Include(m => m.MissionTeam).Where(m => m.UserId == user.Id && !m.IsCompleted).ToList(), GateMissionReports = _db.GateMissionReports.Include(r => r.GateMission).ThenInclude(m => m.GateAddress).Where(r => r.UserId == user.Id).OrderByDescending(r => r.CreatedAtUtc).ToList(), ActiveSectorClaims = activeSectorClaims, ControlledSectors = controlledSectors, SectorBonus = sectorBonus, PlanetInfluences = BuildPlanetInfluences(planet.Id), OwnInfluence = _localSectors.CalculateInfluence(playerBase, user, controlledSectors, activeSectorClaims.Where(c => c.UserId == user.Id)) };
             return View(view, model);
+        }
+
+        private System.Collections.Generic.IList<PlanetInfluence> BuildPlanetInfluences(int planetId)
+        {
+            var bases = _db.PlayerBases.Include(b => b.User).ThenInclude(u => u.ResearchLevels).Include(b => b.BuildingLevels).Include(b => b.PlanetSector).Where(b => b.PlanetSector.PlanetId == planetId).ToList();
+            var sectors = _db.PlanetSectors.Include(s => s.SectorControl).Where(s => s.PlanetId == planetId && s.SectorControl != null).ToList();
+            var claims = _db.SectorClaims.Include(c => c.PlanetSector).Where(c => !c.IsCompleted && c.PlanetSector.PlanetId == planetId).ToList();
+            return bases.Select(b => new PlanetInfluence { PlanetId = planetId, UserId = b.UserId, UserName = b.User.UserName, Score = _localSectors.CalculateInfluence(b, b.User, sectors.Where(s => s.SectorControl.UserId == b.UserId), claims.Where(c => c.UserId == b.UserId)) }).OrderByDescending(i => i.Score).ToList();
         }
 
         private void EnsureGateAccessForUser(User user)

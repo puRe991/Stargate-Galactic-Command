@@ -23,6 +23,11 @@ namespace StargateGalacticCommand.Web.Models
         public IList<MissionTeam> MissionTeams { get; set; }
         public IList<GateMission> ActiveGateMissions { get; set; }
         public IList<GateMissionReport> GateMissionReports { get; set; }
+        public IList<SectorClaim> ActiveSectorClaims { get; set; }
+        public IList<PlanetInfluence> PlanetInfluences { get; set; }
+        public IList<PlanetSector> ControlledSectors { get; set; }
+        public SectorBonus SectorBonus { get; set; }
+        public int OwnInfluence { get; set; }
     }
 
     public class BuildingUpgradeViewModel

@@ -22,6 +22,9 @@ namespace StargateGalacticCommand.Data
         public DbSet<MissionTeam> MissionTeams { get; set; }
         public DbSet<GateMission> GateMissions { get; set; }
         public DbSet<GateMissionReport> GateMissionReports { get; set; }
+        public DbSet<SectorControl> SectorControls { get; set; }
+        public DbSet<SectorClaim> SectorClaims { get; set; }
+        public DbSet<LocalActionReport> LocalActionReports { get; set; }
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
@@ -35,6 +38,15 @@ namespace StargateGalacticCommand.Data
             modelBuilder.Entity<Planet>().HasIndex(p => p.Name).IsUnique();
             modelBuilder.Entity<PlanetSector>().HasIndex(s => new { s.PlanetId, s.Number }).IsUnique();
             modelBuilder.Entity<PlanetSector>().HasOne(s => s.Planet).WithMany(p => p.Sectors).HasForeignKey(s => s.PlanetId).OnDelete(DeleteBehavior.Cascade);
+            modelBuilder.Entity<PlanetSector>().Property(s => s.SectorType).HasConversion<int>();
+            modelBuilder.Entity<SectorControl>().HasIndex(c => c.PlanetSectorId).IsUnique();
+            modelBuilder.Entity<SectorControl>().HasOne(c => c.PlanetSector).WithOne(s => s.SectorControl).HasForeignKey<SectorControl>(c => c.PlanetSectorId).OnDelete(DeleteBehavior.Cascade);
+            modelBuilder.Entity<SectorControl>().HasOne(c => c.User).WithMany().HasForeignKey(c => c.UserId).OnDelete(DeleteBehavior.Cascade);
+            modelBuilder.Entity<SectorClaim>().HasIndex(c => new { c.PlanetSectorId, c.IsCompleted });
+            modelBuilder.Entity<SectorClaim>().HasOne(c => c.PlanetSector).WithMany().HasForeignKey(c => c.PlanetSectorId).OnDelete(DeleteBehavior.Cascade);
+            modelBuilder.Entity<SectorClaim>().HasOne(c => c.User).WithMany().HasForeignKey(c => c.UserId).OnDelete(DeleteBehavior.Cascade);
+            modelBuilder.Entity<LocalActionReport>().HasOne(r => r.User).WithMany().HasForeignKey(r => r.UserId).OnDelete(DeleteBehavior.Cascade);
+            modelBuilder.Entity<LocalActionReport>().HasOne(r => r.PlanetSector).WithMany().HasForeignKey(r => r.PlanetSectorId).OnDelete(DeleteBehavior.Cascade);
             modelBuilder.Entity<PlayerBase>().HasIndex(b => b.PlanetSectorId).IsUnique();
             modelBuilder.Entity<PlayerBase>().HasOne(b => b.Resources).WithOne().HasForeignKey<ResourceStock>(r => r.PlayerBaseId).OnDelete(DeleteBehavior.Cascade);
             modelBuilder.Entity<PlayerBase>().HasOne(b => b.BuildingLevels).WithOne().HasForeignKey<BuildingLevels>(l => l.PlayerBaseId).OnDelete(DeleteBehavior.Cascade);

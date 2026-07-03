@@ -4,17 +4,17 @@ Browserbasierter Strategie-MMO-Prototyp im OGame-Stil mit Stargate-inspirierter 
 
 ## Status dieser Version
 
-Version 0.0.2 erweitert die technische Grundstruktur um Gebäudeausbau:
+Version 0.0.5 macht gemeinsame Planeten spielmechanisch aktiv:
 
 - ASP.NET Core MVC/Razor Webanwendung
 - getrennte Projekte für Web, Core, Data und Tests
 - SQLite-Anbindung über Entity Framework Core
 - Basismodelle für Planeten, Basissektoren, Ressourcen, Gebäude und Fraktionen
-- Economy-Service für einfache Produktionsformeln
-- Gebäudekatalog mit Kosten- und Bauzeitformeln
-- serverseitige Bauwarteschlange mit Ressourcenabzug und automatischem Abschluss
-- Gebäudeübersicht mit Ausbauaktionen, Baukosten, Bauzeit und laufendem Timer
-- dunkle tabellarische Startseite mit freigegebenen Welten und einer Startbasis
+- Economy-Service mit Forschungs-, Fraktions- und lokalen Sektorboni
+- friedliche Beanspruchung neutraler Ressourcenzonen auf gemeinsamen Planeten
+- Sektorkontrolle, laufende lokale Aktionen, Abschlussberichte und Einflussberechnung
+- Planetenseite mit Sektorstatus, kontrollierten Sektoren und Einflussrangliste
+- Gebäude, Forschung, Gate-Raum und PvE-Gate-Missionen aus den Vorversionen
 
 ## Lore-Leitplanken
 
@@ -31,7 +31,7 @@ Version 0.0.2 erweitert die technische Grundstruktur um Gebäudeausbau:
 StargateGalacticCommand.Core   Domänenmodelle und Services
 StargateGalacticCommand.Data   Entity Framework Core DbContext und DB-Initialisierung
 StargateGalacticCommand.Web    ASP.NET Core MVC/Razor Anwendung
-StargateGalacticCommand.Tests  Unit-Tests für Economy-Formeln
+StargateGalacticCommand.Tests  Unit-Tests für Economy-Formeln, Gate-Missionen, Forschung, Bauwarteschlangen und lokale Sektoren
 ```
 
 ## Voraussetzungen
@@ -62,8 +62,7 @@ dotnet test StargateGalacticCommand.sln
 
 ## Offene TODOs
 
-- Spieler- und Authentifizierungsmodell ergänzen.
 - Parallelbau und erweiterte Warteschlangenlogik modellieren.
-- Gate-Missionen strikt von Hyperraum-Flotten trennen.
+- PvP-Regeln für umkämpfte Sektoren erst nach dem Startplanet-Schutz sauber modellieren.
 - Erste Migrationen ergänzen, sobald das Datenmodell stabiler ist.
 - Balancing-Werte für Kosten und Produktion mit Spieldesign-Zielen abgleichen.
