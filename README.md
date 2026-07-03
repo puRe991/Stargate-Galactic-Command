@@ -44,6 +44,16 @@ StargateGalacticCommand.Tests  Unit-Tests für Economy-Formeln, Gate-Missionen, 
 
 ## Lokal starten
 
+### Windows Batch
+
+```bat
+build-and-run.bat
+```
+
+Das Skript stellt NuGet-Pakete wieder her, baut die Solution und startet anschließend die Webanwendung. Es bricht mit einer klaren Fehlermeldung ab, wenn die .NET SDK-Installation, die Solution oder das Webprojekt nicht gefunden werden.
+
+### Manuell per .NET CLI
+
 ```bash
 dotnet restore
 
