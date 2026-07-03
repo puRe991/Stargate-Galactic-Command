@@ -17,6 +17,11 @@ namespace StargateGalacticCommand.Data
         public DbSet<Report> Reports { get; set; }
         public DbSet<ResearchLevels> ResearchLevels { get; set; }
         public DbSet<ResearchQueueItem> ResearchQueueItems { get; set; }
+        public DbSet<GateAddress> GateAddresses { get; set; }
+        public DbSet<KnownGateAddress> KnownGateAddresses { get; set; }
+        public DbSet<MissionTeam> MissionTeams { get; set; }
+        public DbSet<GateMission> GateMissions { get; set; }
+        public DbSet<GateMissionReport> GateMissionReports { get; set; }
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
@@ -37,6 +42,19 @@ namespace StargateGalacticCommand.Data
             modelBuilder.Entity<User>().HasOne(u => u.ResearchLevels).WithOne(l => l.User).HasForeignKey<ResearchLevels>(l => l.UserId).OnDelete(DeleteBehavior.Cascade);
             modelBuilder.Entity<ResearchQueueItem>().HasOne(q => q.User).WithMany(u => u.ResearchQueue).HasForeignKey(q => q.UserId).OnDelete(DeleteBehavior.Cascade);
             modelBuilder.Entity<ResearchQueueItem>().Property(q => q.ResearchType).HasConversion<int>();
+            modelBuilder.Entity<GateAddress>().Property(a => a.Code).IsRequired().HasMaxLength(20);
+            modelBuilder.Entity<GateAddress>().HasIndex(a => a.Code).IsUnique();
+            modelBuilder.Entity<GateAddress>().HasOne(a => a.Planet).WithOne().HasForeignKey<GateAddress>(a => a.PlanetId).OnDelete(DeleteBehavior.SetNull);
+            modelBuilder.Entity<KnownGateAddress>().HasIndex(k => new { k.UserId, k.GateAddressId }).IsUnique();
+            modelBuilder.Entity<KnownGateAddress>().HasOne(k => k.User).WithMany(u => u.KnownGateAddresses).HasForeignKey(k => k.UserId).OnDelete(DeleteBehavior.Cascade);
+            modelBuilder.Entity<KnownGateAddress>().HasOne(k => k.GateAddress).WithMany(a => a.KnownByUsers).HasForeignKey(k => k.GateAddressId).OnDelete(DeleteBehavior.Cascade);
+            modelBuilder.Entity<MissionTeam>().HasOne(t => t.User).WithMany(u => u.MissionTeams).HasForeignKey(t => t.UserId).OnDelete(DeleteBehavior.Cascade);
+            modelBuilder.Entity<MissionTeam>().Property(t => t.Type).HasConversion<int>();
+            modelBuilder.Entity<GateMission>().HasOne(m => m.User).WithMany(u => u.GateMissions).HasForeignKey(m => m.UserId).OnDelete(DeleteBehavior.Cascade);
+            modelBuilder.Entity<GateMission>().HasOne(m => m.MissionTeam).WithMany().HasForeignKey(m => m.MissionTeamId).OnDelete(DeleteBehavior.Restrict);
+            modelBuilder.Entity<GateMission>().Property(m => m.MissionType).HasConversion<int>();
+            modelBuilder.Entity<GateMissionReport>().HasOne(r => r.User).WithMany(u => u.GateMissionReports).HasForeignKey(r => r.UserId).OnDelete(DeleteBehavior.Cascade);
+            modelBuilder.Entity<GateMissionReport>().Property(r => r.Outcome).HasConversion<int>();
         }
     }
 }

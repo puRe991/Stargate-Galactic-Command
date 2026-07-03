@@ -17,6 +17,10 @@ namespace StargateGalacticCommand.Core.Models
         public ICollection<Report> Reports { get; set; }
         public ResearchLevels ResearchLevels { get; set; }
         public ICollection<ResearchQueueItem> ResearchQueue { get; set; }
-        public User() { Bases = new List<PlayerBase>(); Reports = new List<Report>(); ResearchQueue = new List<ResearchQueueItem>(); }
+        public ICollection<KnownGateAddress> KnownGateAddresses { get; set; }
+        public ICollection<MissionTeam> MissionTeams { get; set; }
+        public ICollection<GateMission> GateMissions { get; set; }
+        public ICollection<GateMissionReport> GateMissionReports { get; set; }
+        public User() { Bases = new List<PlayerBase>(); Reports = new List<Report>(); ResearchQueue = new List<ResearchQueueItem>(); KnownGateAddresses = new List<KnownGateAddress>(); MissionTeams = new List<MissionTeam>(); GateMissions = new List<GateMission>(); GateMissionReports = new List<GateMissionReport>(); }
     }
 }

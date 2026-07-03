@@ -1,0 +1,107 @@
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using StargateGalacticCommand.Core.Models;
+
+namespace StargateGalacticCommand.Core.Services
+{
+    public class GateMissionService
+    {
+        private readonly ResourceService _resources;
+        public GateMissionService(ResourceService resources) { _resources = resources; }
+
+        public BuildCost GetMissionCost(GateMissionType type)
+        {
+            switch (type)
+            {
+                case GateMissionType.SecureResources: return new BuildCost { Energy = 35, Supplies = 45, Personnel = 8 };
+                case GateMissionType.SearchArtifact: return new BuildCost { Energy = 45, Supplies = 35, Personnel = 6, Intel = 2 };
+                case GateMissionType.DiplomaticContact: return new BuildCost { Energy = 25, Supplies = 55, Personnel = 5 };
+                case GateMissionType.RiskAnalysis: return new BuildCost { Energy = 30, Supplies = 25, Personnel = 4, Intel = 1 };
+                case GateMissionType.AnalyzeAddress: return new BuildCost { Energy = 40, Supplies = 30, Personnel = 4, Intel = 3 };
+                default: return new BuildCost { Energy = 30, Supplies = 30, Personnel = 5 };
+            }
+        }
+
+        public int GetMissionSeconds(GateMissionType type)
+        {
+            return type == GateMissionType.AnalyzeAddress ? 180 : 120;
+        }
+
+        public GateMission StartMission(User user, PlayerBase playerBase, GateAddress address, MissionTeam team, GateMissionType type, DateTime nowUtc)
+        {
+            if (user == null) throw new ArgumentNullException("user");
+            if (playerBase == null) throw new ArgumentNullException("playerBase");
+            if (address == null) throw new ArgumentNullException("address");
+            if (team == null) throw new ArgumentNullException("team");
+            if (playerBase.BuildingLevels == null || playerBase.BuildingLevels.GateControlRoom < 1) throw new InvalidOperationException("Gate-Missionen benötigen Gate-Kontrollraum Level 1.");
+            if (user.ResearchLevels == null || user.ResearchLevels.GateAddressing < 1) throw new InvalidOperationException("Gate-Missionen benötigen Gate-Adressierung Level 1.");
+            if (!team.IsAvailable) throw new InvalidOperationException("Missionsteam ist bereits im Einsatz.");
+            if (address.Planet != null && !address.Planet.StargateActive) throw new InvalidOperationException("Diese Gate-Adresse ist aktuell instabil oder inaktiv.");
+
+            _resources.Spend(playerBase.Resources, GetMissionCost(type));
+            team.IsAvailable = false;
+            return new GateMission { UserId = user.Id, User = user, GateAddressId = address.Id, GateAddress = address, MissionTeamId = team.Id, MissionTeam = team, MissionType = type, StartedAtUtc = nowUtc, CompletesAtUtc = nowUtc.AddSeconds(GetMissionSeconds(type)), IsCompleted = false };
+        }
+
+        public GateMissionReport CompleteMission(GateMission mission, PlayerBase playerBase, IList<GateAddress> undiscoveredAddresses, DateTime nowUtc)
+        {
+            if (mission == null) throw new ArgumentNullException("mission");
+            if (playerBase == null) throw new ArgumentNullException("playerBase");
+            if (nowUtc < mission.CompletesAtUtc) throw new InvalidOperationException("Gate-Mission läuft noch.");
+            if (mission.IsCompleted) throw new InvalidOperationException("Gate-Mission wurde bereits abgeschlossen.");
+            var team = mission.MissionTeam ?? throw new InvalidOperationException("Missionsteam fehlt.");
+            int score = team.Strength + team.Science + team.Diplomacy + team.Stealth + team.CarryCapacity - team.Risk - (mission.GateAddress == null ? 0 : mission.GateAddress.RiskLevel);
+            score += (int)mission.MissionType;
+            var outcome = score >= 28 ? GateMissionOutcome.Success : score >= 20 ? GateMissionOutcome.PartialSuccess : GateMissionOutcome.Failure;
+            var report = new GateMissionReport { UserId = mission.UserId, GateMission = mission, GateMissionId = mission.Id, Outcome = outcome, CreatedAtUtc = nowUtc };
+
+            if (outcome == GateMissionOutcome.Failure)
+            {
+                report.PersonnelLost = Math.Max(1, team.Risk / 3);
+                playerBase.Resources.Personnel = Math.Max(0, playerBase.Resources.Personnel - report.PersonnelLost);
+                report.Outcome = GateMissionOutcome.WoundedOrLosses;
+                report.Summary = "Das Team kehrt verwundet zurück. Keine Schiffe oder Großflotten wurden durch das Gate bewegt.";
+            }
+            else
+            {
+                ApplyRewards(mission, playerBase, report, outcome == GateMissionOutcome.Success ? 1.0 : 0.5);
+            }
+            mission.IsCompleted = true;
+            team.IsAvailable = true;
+            return report;
+        }
+
+        private static void ApplyRewards(GateMission mission, PlayerBase playerBase, GateMissionReport report, double factor)
+        {
+            int carry = Math.Max(1, mission.MissionTeam.CarryCapacity);
+            if (mission.MissionType == GateMissionType.SecureResources || mission.MissionType == GateMissionType.Explore)
+            {
+                report.TriniumFound = (int)Math.Ceiling(carry * 8 * factor); report.NaquadahFound = (int)Math.Ceiling(carry * 5 * factor); report.Outcome = GateMissionOutcome.ResourceDiscovery;
+            }
+            else if (mission.MissionType == GateMissionType.DiplomaticContact || mission.MissionType == GateMissionType.RiskAnalysis)
+            {
+                report.IntelFound = (int)Math.Ceiling((mission.MissionTeam.Diplomacy + mission.MissionTeam.Science) * factor); report.Outcome = GateMissionOutcome.IntelDiscovery;
+            }
+            else if (mission.MissionType == GateMissionType.SearchArtifact)
+            {
+                report.ArtifactLeadFound = factor >= 1; report.IntelFound = (int)Math.Ceiling(mission.MissionTeam.Science * factor); report.Outcome = GateMissionOutcome.ArtifactLead;
+            }
+            else if (mission.MissionType == GateMissionType.AnalyzeAddress)
+            {
+                report.IntelFound = 3; report.Outcome = GateMissionOutcome.IntelDiscovery;
+            }
+            playerBase.Resources.Naquadah += report.NaquadahFound; playerBase.Resources.Trinium += report.TriniumFound; playerBase.Resources.Supplies += report.SuppliesFound; playerBase.Resources.Intel += report.IntelFound;
+            report.Summary = "Gate-Mission abgeschlossen. Transport beschränkte sich lorekonform auf Personen, kleine Ausrüstung und Missionsteams.";
+        }
+
+        public MissionTeam CreateFactionTeam(User user)
+        {
+            string s = user?.Faction?.ShortName ?? "SGC";
+            if (s == "Jaffa") return new MissionTeam { User = user, UserId = user?.Id ?? 0, Type = MissionTeamType.JaffaSquad, Name = "Jaffa-Trupp", Strength = 10, Science = 3, Diplomacy = 4, Stealth = 5, CarryCapacity = 8, Risk = 5 };
+            if (s == "Tok’ra") return new MissionTeam { User = user, UserId = user?.Id ?? 0, Type = MissionTeamType.TokraAgentCell, Name = "Tok’ra-Agentenzelle", Strength = 5, Science = 8, Diplomacy = 7, Stealth = 10, CarryCapacity = 4, Risk = 4 };
+            if (s == "Lucian") return new MissionTeam { User = user, UserId = user?.Id ?? 0, Type = MissionTeamType.LucianScoutUnit, Name = "Lucian-Erkundungstrupp", Strength = 7, Science = 4, Diplomacy = 6, Stealth = 7, CarryCapacity = 9, Risk = 6 };
+            return new MissionTeam { User = user, UserId = user?.Id ?? 0, Type = MissionTeamType.SgTeam, Name = "SG-Team", Strength = 7, Science = 8, Diplomacy = 7, Stealth = 6, CarryCapacity = 6, Risk = 4 };
+        }
+    }
+}

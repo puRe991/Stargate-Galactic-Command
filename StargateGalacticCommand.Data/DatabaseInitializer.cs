@@ -12,6 +12,8 @@ namespace StargateGalacticCommand.Data
             SeedFactions(context);
             SeedStartPlanet(context);
             EnsureResearchLevels(context);
+            SeedGateAddresses(context);
+            EnsureGateAccess(context);
             context.SaveChanges();
         }
         private static void SeedFactions(GameDbContext context)
@@ -28,6 +30,37 @@ namespace StargateGalacticCommand.Data
             foreach (var user in context.Users.Where(u => u.ResearchLevels == null).ToList())
             {
                 context.ResearchLevels.Add(new ResearchLevels { UserId = user.Id });
+            }
+        }
+        private static void SeedGateAddresses(GameDbContext context)
+        {
+            var startPlanet = context.Planets.SingleOrDefault(p => p.Name == "P3X-742");
+            if (startPlanet != null && !context.GateAddresses.Any(a => a.Code == "P3X-742"))
+                context.GateAddresses.Add(new GateAddress { Planet = startPlanet, Code = "P3X-742", WorldName = "P3X-742", Description = "Startplanet mit aktiver Stargate-Lichtung.", IsNeutralPve = false, RiskLevel = 1 });
+            AddPve(context, "P4X-219", "verlassene Menschenkolonie", 3);
+            AddPve(context, "P2X-885", "alte Goa’uld-Ruine", 5);
+            AddPve(context, "P7X-331", "Triniumvorkommen", 4);
+            AddPve(context, "P9C-117", "instabile Gate-Adresse", 8);
+            AddPve(context, "P3R-636", "neutraler Handelskontakt", 2);
+        }
+        private static void AddPve(GameDbContext context, string code, string description, int risk)
+        {
+            if (!context.GateAddresses.Any(a => a.Code == code)) context.GateAddresses.Add(new GateAddress { Code = code, WorldName = code, Description = description, IsNeutralPve = true, RiskLevel = risk });
+        }
+        private static void EnsureGateAccess(GameDbContext context)
+        {
+            var service = new StargateGalacticCommand.Core.Services.GateMissionService(new StargateGalacticCommand.Core.Services.ResourceService());
+            var start = context.GateAddresses.SingleOrDefault(a => a.Code == "P3X-742");
+            if (start == null) return;
+            foreach (var user in context.Users.ToList())
+            {
+                if (!context.KnownGateAddresses.Any(k => k.UserId == user.Id && k.GateAddressId == start.Id))
+                    context.KnownGateAddresses.Add(new KnownGateAddress { UserId = user.Id, GateAddress = start, DiscoveredAtUtc = System.DateTime.UtcNow, DiscoveryMethod = "Startplanet" });
+                if (!context.MissionTeams.Any(t => t.UserId == user.Id))
+                {
+                    context.Entry(user).Reference(u => u.Faction).Load();
+                    context.MissionTeams.Add(service.CreateFactionTeam(user));
+                }
             }
         }
         private static void SeedStartPlanet(GameDbContext context)

@@ -20,10 +20,11 @@ namespace StargateGalacticCommand.Web.Controllers
         private readonly ResearchCatalogService _researchCatalog;
         private readonly ResearchQueueService _researchQueue;
         private readonly FactionModifierService _factionModifiers;
+        private readonly GateMissionService _gateMissions;
 
-        public GameController(GameDbContext db, EconomyService economy, BuildingCatalogService catalog, BuildQueueService buildQueue, ResourceService resources, ResearchCatalogService researchCatalog, ResearchQueueService researchQueue, FactionModifierService factionModifiers)
+        public GameController(GameDbContext db, EconomyService economy, BuildingCatalogService catalog, BuildQueueService buildQueue, ResourceService resources, ResearchCatalogService researchCatalog, ResearchQueueService researchQueue, FactionModifierService factionModifiers, GateMissionService gateMissions)
         {
-            _db = db; _economy = economy; _catalog = catalog; _buildQueue = buildQueue; _resources = resources; _researchCatalog = researchCatalog; _researchQueue = researchQueue; _factionModifiers = factionModifiers;
+            _db = db; _economy = economy; _catalog = catalog; _buildQueue = buildQueue; _resources = resources; _researchCatalog = researchCatalog; _researchQueue = researchQueue; _factionModifiers = factionModifiers; _gateMissions = gateMissions;
         }
 
         public IActionResult Overview() { return GameView("Overview"); }
@@ -33,6 +34,71 @@ namespace StargateGalacticCommand.Web.Controllers
         public IActionResult Resources() { return GameView("Resources"); }
         public IActionResult Reports() { return GameView("Reports"); }
         public IActionResult Research() { return GameView("Research"); }
+        public IActionResult GateRoom() { return GameView("GateRoom"); }
+
+
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public IActionResult StartGateMission(int gateAddressId, int missionTeamId, GateMissionType missionType)
+        {
+            int? userId = HttpContext.Session.GetInt32("UserId");
+            if (!userId.HasValue) return RedirectToAction("Login", "Account");
+            var user = LoadCurrentUser(userId.Value);
+            EnsureGateAccessForUser(user);
+            var playerBase = LoadCurrentBase(user.Id);
+            var now = DateTime.UtcNow;
+            _economy.ApplyOfflineProduction(playerBase, now);
+            try
+            {
+                bool knowsAddress = _db.KnownGateAddresses.Any(k => k.UserId == user.Id && k.GateAddressId == gateAddressId);
+                if (!knowsAddress) throw new InvalidOperationException("Gate-Adresse ist nicht bekannt.");
+                var address = _db.GateAddresses.Include(a => a.Planet).Single(a => a.Id == gateAddressId);
+                var team = _db.MissionTeams.Single(t => t.Id == missionTeamId && t.UserId == user.Id);
+                var mission = _gateMissions.StartMission(user, playerBase, address, team, missionType, now);
+                _db.GateMissions.Add(mission);
+                TempData["Message"] = "Gate-Mission gestartet. Keine Schiffe oder Großflotten passieren das Gate.";
+            }
+            catch (Exception ex) when (ex is InvalidOperationException || ex is ArgumentException || ex is ArgumentOutOfRangeException)
+            {
+                TempData["Error"] = ex.Message;
+            }
+            _db.SaveChanges();
+            return RedirectToAction("GateRoom");
+        }
+
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public IActionResult CompleteGateMission(int gateMissionId)
+        {
+            int? userId = HttpContext.Session.GetInt32("UserId");
+            if (!userId.HasValue) return RedirectToAction("Login", "Account");
+            var playerBase = LoadCurrentBase(userId.Value);
+            var now = DateTime.UtcNow;
+            try
+            {
+                var mission = _db.GateMissions.Include(m => m.MissionTeam).Include(m => m.GateAddress).Single(m => m.Id == gateMissionId && m.UserId == userId.Value);
+                var report = _gateMissions.CompleteMission(mission, playerBase, _db.GateAddresses.ToList(), now);
+                _db.GateMissionReports.Add(report);
+                if (mission.MissionType == GateMissionType.AnalyzeAddress && report.Outcome != GateMissionOutcome.WoundedOrLosses)
+                {
+                    var knownIds = _db.KnownGateAddresses.Where(k => k.UserId == userId.Value).Select(k => k.GateAddressId).ToList();
+                    var nextAddress = _db.GateAddresses.Where(a => a.IsNeutralPve && !knownIds.Contains(a.Id)).OrderBy(a => a.RiskLevel).FirstOrDefault();
+                    if (nextAddress != null)
+                    {
+                        _db.KnownGateAddresses.Add(new KnownGateAddress { UserId = userId.Value, GateAddressId = nextAddress.Id, DiscoveredAtUtc = now, DiscoveryMethod = "Adresse analysieren" });
+                        report.Summary += " Neue Adresse freigeschaltet: " + nextAddress.Code + ".";
+                    }
+                }
+                _db.Reports.Add(new Report { UserId = userId.Value, Title = "Gate-Mission: " + mission.MissionType, Body = report.Summary, CreatedAtUtc = now });
+                TempData["Message"] = "Gate-Mission abgeschlossen.";
+            }
+            catch (Exception ex) when (ex is InvalidOperationException || ex is ArgumentException)
+            {
+                TempData["Error"] = ex.Message;
+            }
+            _db.SaveChanges();
+            return RedirectToAction("GateRoom");
+        }
 
         [HttpPost]
         [ValidateAntiForgeryToken]
@@ -83,6 +149,7 @@ namespace StargateGalacticCommand.Web.Controllers
         {
             int? userId = HttpContext.Session.GetInt32("UserId"); if (!userId.HasValue) return RedirectToAction("Login", "Account");
             var user = LoadCurrentUser(userId.Value);
+            EnsureGateAccessForUser(user);
             var playerBase = LoadCurrentBase(user.Id);
             var now = DateTime.UtcNow;
             _buildQueue.CompleteFinishedBuilds(playerBase, now);
@@ -106,8 +173,17 @@ namespace StargateGalacticCommand.Web.Controllers
                     QueueBusy = queueBusy
                 };
             }).ToList();
-            var model = new OverviewViewModel { User = user, Base = playerBase, Planet = planet, Hourly = _economy.CalculateHourlyProduction(playerBase.BuildingLevels, user.ResearchLevels, user.Faction), Sectors = planet.Sectors.OrderBy(s => s.Number).ToList(), Reports = _db.Reports.Where(r => r.UserId == user.Id).OrderByDescending(r => r.CreatedAtUtc).ToList(), Buildings = buildings, ActiveBuild = playerBase.BuildQueue.OrderBy(q => q.CompletesAtUtc).FirstOrDefault(), NowUtc = now, Researches = BuildResearchViewModels(user, playerBase), ActiveResearch = user.ResearchQueue.OrderBy(q => q.CompletesAtUtc).FirstOrDefault(), DefenseModifier = _factionModifiers.GetDefenseMultiplier(user.Faction) };
+            var model = new OverviewViewModel { User = user, Base = playerBase, Planet = planet, Hourly = _economy.CalculateHourlyProduction(playerBase.BuildingLevels, user.ResearchLevels, user.Faction), Sectors = planet.Sectors.OrderBy(s => s.Number).ToList(), Reports = _db.Reports.Where(r => r.UserId == user.Id).OrderByDescending(r => r.CreatedAtUtc).ToList(), Buildings = buildings, ActiveBuild = playerBase.BuildQueue.OrderBy(q => q.CompletesAtUtc).FirstOrDefault(), NowUtc = now, Researches = BuildResearchViewModels(user, playerBase), ActiveResearch = user.ResearchQueue.OrderBy(q => q.CompletesAtUtc).FirstOrDefault(), DefenseModifier = _factionModifiers.GetDefenseMultiplier(user.Faction), KnownGateAddresses = _db.KnownGateAddresses.Include(k => k.GateAddress).Where(k => k.UserId == user.Id).ToList(), MissionTeams = _db.MissionTeams.Where(t => t.UserId == user.Id).ToList(), ActiveGateMissions = _db.GateMissions.Include(m => m.GateAddress).Include(m => m.MissionTeam).Where(m => m.UserId == user.Id && !m.IsCompleted).ToList(), GateMissionReports = _db.GateMissionReports.Include(r => r.GateMission).ThenInclude(m => m.GateAddress).Where(r => r.UserId == user.Id).OrderByDescending(r => r.CreatedAtUtc).ToList() };
             return View(view, model);
+        }
+
+        private void EnsureGateAccessForUser(User user)
+        {
+            if (user == null) return;
+            if (!_db.MissionTeams.Any(t => t.UserId == user.Id)) _db.MissionTeams.Add(_gateMissions.CreateFactionTeam(user));
+            var start = _db.GateAddresses.SingleOrDefault(a => a.Code == "P3X-742");
+            if (start != null && !_db.KnownGateAddresses.Any(k => k.UserId == user.Id && k.GateAddressId == start.Id))
+                _db.KnownGateAddresses.Add(new KnownGateAddress { UserId = user.Id, GateAddressId = start.Id, DiscoveredAtUtc = DateTime.UtcNow, DiscoveryMethod = "Startplanet" });
         }
 
         private PlayerBase LoadCurrentBase(int? userId = null)
