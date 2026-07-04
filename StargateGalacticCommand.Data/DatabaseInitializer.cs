@@ -14,6 +14,7 @@ namespace StargateGalacticCommand.Data
             EnsureResearchLevels(context);
             SeedGateAddresses(context);
             EnsureGateAccess(context);
+            SeedTradeTaxRule(context);
             context.SaveChanges();
         }
         private static void SeedFactions(GameDbContext context)
@@ -62,6 +63,10 @@ namespace StargateGalacticCommand.Data
                     context.MissionTeams.Add(service.CreateFactionTeam(user));
                 }
             }
+        }
+        private static void SeedTradeTaxRule(GameDbContext context)
+        {
+            if (!context.TradeTaxRules.Any()) context.TradeTaxRules.Add(new TradeTaxRule { BaseFeeRate = 0.02, LucianAllianceReduction = 0.25, TradingPostReduction = 0.05, MaxIntelAmount = 25 });
         }
         private static void SeedStartPlanet(GameDbContext context)
         {

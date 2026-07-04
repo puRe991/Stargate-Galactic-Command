@@ -27,6 +27,7 @@ namespace StargateGalacticCommand.Web
             services.AddScoped<EconomyService>();
             services.AddScoped<BuildingCatalogService>();
             services.AddScoped<ResourceService>();
+            services.AddScoped<PlanetMarketService>();
             services.AddScoped<BuildQueueService>();
             services.AddScoped<ResearchCatalogService>();
             services.AddScoped<ResearchQueueService>();

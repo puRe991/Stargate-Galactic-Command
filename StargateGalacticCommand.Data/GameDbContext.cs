@@ -25,6 +25,10 @@ namespace StargateGalacticCommand.Data
         public DbSet<SectorControl> SectorControls { get; set; }
         public DbSet<SectorClaim> SectorClaims { get; set; }
         public DbSet<LocalActionReport> LocalActionReports { get; set; }
+        public DbSet<PlanetMarketOrder> PlanetMarketOrders { get; set; }
+        public DbSet<PlanetMarketTransaction> PlanetMarketTransactions { get; set; }
+        public DbSet<TradeTaxRule> TradeTaxRules { get; set; }
+        public DbSet<TradeReport> TradeReports { get; set; }
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
@@ -67,6 +71,21 @@ namespace StargateGalacticCommand.Data
             modelBuilder.Entity<GateMission>().Property(m => m.MissionType).HasConversion<int>();
             modelBuilder.Entity<GateMissionReport>().HasOne(r => r.User).WithMany(u => u.GateMissionReports).HasForeignKey(r => r.UserId).OnDelete(DeleteBehavior.Cascade);
             modelBuilder.Entity<GateMissionReport>().Property(r => r.Outcome).HasConversion<int>();
+            modelBuilder.Entity<PlanetMarketOrder>().HasIndex(o => new { o.PlanetId, o.CompletedAtUtc, o.CancelledAtUtc, o.ExpiresAtUtc });
+            modelBuilder.Entity<PlanetMarketOrder>().Property(o => o.OfferedResource).HasConversion<int>();
+            modelBuilder.Entity<PlanetMarketOrder>().Property(o => o.RequestedResource).HasConversion<int>();
+            modelBuilder.Entity<PlanetMarketOrder>().HasOne(o => o.Planet).WithMany().HasForeignKey(o => o.PlanetId).OnDelete(DeleteBehavior.Cascade);
+            modelBuilder.Entity<PlanetMarketOrder>().HasOne(o => o.SellerUser).WithMany().HasForeignKey(o => o.SellerUserId).OnDelete(DeleteBehavior.Cascade);
+            modelBuilder.Entity<PlanetMarketOrder>().HasOne(o => o.SellerBase).WithMany().HasForeignKey(o => o.SellerBaseId).OnDelete(DeleteBehavior.Restrict);
+            modelBuilder.Entity<PlanetMarketTransaction>().HasIndex(t => t.PlanetMarketOrderId).IsUnique();
+            modelBuilder.Entity<PlanetMarketTransaction>().Property(t => t.OfferedResource).HasConversion<int>();
+            modelBuilder.Entity<PlanetMarketTransaction>().Property(t => t.RequestedResource).HasConversion<int>();
+            modelBuilder.Entity<PlanetMarketTransaction>().HasOne(t => t.PlanetMarketOrder).WithMany().HasForeignKey(t => t.PlanetMarketOrderId).OnDelete(DeleteBehavior.Restrict);
+            modelBuilder.Entity<PlanetMarketTransaction>().HasOne(t => t.Planet).WithMany().HasForeignKey(t => t.PlanetId).OnDelete(DeleteBehavior.Cascade);
+            modelBuilder.Entity<PlanetMarketTransaction>().HasOne(t => t.SellerUser).WithMany().HasForeignKey(t => t.SellerUserId).OnDelete(DeleteBehavior.Restrict);
+            modelBuilder.Entity<PlanetMarketTransaction>().HasOne(t => t.BuyerUser).WithMany().HasForeignKey(t => t.BuyerUserId).OnDelete(DeleteBehavior.Restrict);
+            modelBuilder.Entity<TradeReport>().HasOne(r => r.User).WithMany().HasForeignKey(r => r.UserId).OnDelete(DeleteBehavior.Cascade);
+            modelBuilder.Entity<TradeReport>().HasOne(r => r.PlanetMarketOrder).WithMany().HasForeignKey(r => r.PlanetMarketOrderId).OnDelete(DeleteBehavior.SetNull);
         }
     }
 }

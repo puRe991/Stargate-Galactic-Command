@@ -22,10 +22,11 @@ namespace StargateGalacticCommand.Web.Controllers
         private readonly FactionModifierService _factionModifiers;
         private readonly GateMissionService _gateMissions;
         private readonly LocalSectorService _localSectors;
+        private readonly PlanetMarketService _planetMarket;
 
-        public GameController(GameDbContext db, EconomyService economy, BuildingCatalogService catalog, BuildQueueService buildQueue, ResourceService resources, ResearchCatalogService researchCatalog, ResearchQueueService researchQueue, FactionModifierService factionModifiers, GateMissionService gateMissions, LocalSectorService localSectors)
+        public GameController(GameDbContext db, EconomyService economy, BuildingCatalogService catalog, BuildQueueService buildQueue, ResourceService resources, ResearchCatalogService researchCatalog, ResearchQueueService researchQueue, FactionModifierService factionModifiers, GateMissionService gateMissions, LocalSectorService localSectors, PlanetMarketService planetMarket)
         {
-            _db = db; _economy = economy; _catalog = catalog; _buildQueue = buildQueue; _resources = resources; _researchCatalog = researchCatalog; _researchQueue = researchQueue; _factionModifiers = factionModifiers; _gateMissions = gateMissions; _localSectors = localSectors;
+            _db = db; _economy = economy; _catalog = catalog; _buildQueue = buildQueue; _resources = resources; _researchCatalog = researchCatalog; _researchQueue = researchQueue; _factionModifiers = factionModifiers; _gateMissions = gateMissions; _localSectors = localSectors; _planetMarket = planetMarket;
         }
 
         public IActionResult Overview() { return GameView("Overview"); }
@@ -36,6 +37,7 @@ namespace StargateGalacticCommand.Web.Controllers
         public IActionResult Reports() { return GameView("Reports"); }
         public IActionResult Research() { return GameView("Research"); }
         public IActionResult GateRoom() { return GameView("GateRoom"); }
+        public IActionResult Market() { return GameView("Market"); }
 
 
         [HttpPost]
@@ -83,6 +85,87 @@ namespace StargateGalacticCommand.Web.Controllers
             }
             _db.SaveChanges();
             return RedirectToAction("Planet");
+        }
+
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public IActionResult CreateMarketOrder(TradeResourceType offeredResource, int offeredAmount, TradeResourceType requestedResource, int requestedAmount, int durationHours)
+        {
+            var playerBase = LoadCurrentBase();
+            if (playerBase == null) return RedirectToAction("Login", "Account");
+            var user = LoadCurrentUser(playerBase.UserId);
+            var now = DateTime.UtcNow;
+            _economy.ApplyOfflineProduction(playerBase, now);
+            try
+            {
+                durationHours = Math.Max(1, Math.Min(168, durationHours));
+                var order = _planetMarket.CreateOrder(user, playerBase, offeredResource, offeredAmount, requestedResource, requestedAmount, now.AddHours(durationHours), now);
+                _db.PlanetMarketOrders.Add(order);
+                _db.TradeReports.Add(new TradeReport { UserId = user.Id, PlanetMarketOrder = order, CreatedAtUtc = now, Title = "Marktangebot erstellt", Body = "Deine Ressourcen wurden reserviert." });
+                TempData["Message"] = "Marktangebot erstellt.";
+            }
+            catch (Exception ex) when (ex is InvalidOperationException || ex is ArgumentException || ex is ArgumentOutOfRangeException)
+            {
+                TempData["Error"] = ex.Message;
+            }
+            _db.SaveChanges();
+            return RedirectToAction("Market");
+        }
+
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public IActionResult BuyMarketOrder(int orderId)
+        {
+            var buyerBase = LoadCurrentBase();
+            if (buyerBase == null) return RedirectToAction("Login", "Account");
+            var buyer = LoadCurrentUser(buyerBase.UserId);
+            var now = DateTime.UtcNow;
+            using (var tx = _db.Database.BeginTransaction(System.Data.IsolationLevel.Serializable))
+            {
+                try
+                {
+                    var order = _db.PlanetMarketOrders.Include(o => o.SellerUser).ThenInclude(u => u.Faction).Single(o => o.Id == orderId);
+                    var sellerBase = _db.PlayerBases.Include(b => b.User).ThenInclude(u => u.ResearchLevels).Include(b => b.Resources).Include(b => b.BuildingLevels).Include(b => b.Faction).Include(b => b.PlanetSector).Single(b => b.Id == order.SellerBaseId);
+                    _economy.ApplyOfflineProduction(buyerBase, now);
+                    _economy.ApplyOfflineProduction(sellerBase, now);
+                    var sellerSectors = _db.PlanetSectors.Include(s => s.SectorControl).Where(s => s.PlanetId == order.PlanetId && s.SectorControl != null && s.SectorControl.UserId == order.SellerUserId).ToList();
+                    var transaction = _planetMarket.BuyOrder(order, buyer, buyerBase, sellerBase, sellerSectors, now);
+                    _db.PlanetMarketTransactions.Add(transaction);
+                    _db.TradeReports.Add(new TradeReport { UserId = buyer.Id, PlanetMarketOrder = order, CreatedAtUtc = now, Title = "Marktangebot gekauft", Body = "Du hast das Angebot gekauft." });
+                    _db.TradeReports.Add(new TradeReport { UserId = order.SellerUserId, PlanetMarketOrder = order, CreatedAtUtc = now, Title = "Marktangebot verkauft", Body = "Dein Angebot wurde gekauft. Marktgebühr: " + transaction.FeeAmount + "." });
+                    _db.SaveChanges();
+                    tx.Commit();
+                    TempData["Message"] = "Marktangebot gekauft.";
+                }
+                catch (Exception ex) when (ex is InvalidOperationException || ex is ArgumentException || ex is ArgumentOutOfRangeException || ex is DbUpdateException)
+                {
+                    tx.Rollback();
+                    TempData["Error"] = ex.Message;
+                }
+            }
+            return RedirectToAction("Market");
+        }
+
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public IActionResult CancelMarketOrder(int orderId)
+        {
+            var playerBase = LoadCurrentBase();
+            if (playerBase == null) return RedirectToAction("Login", "Account");
+            var now = DateTime.UtcNow;
+            try
+            {
+                var order = _db.PlanetMarketOrders.Single(o => o.Id == orderId && o.SellerUserId == playerBase.UserId);
+                _planetMarket.CancelOrder(order, playerBase.UserId, playerBase.Resources, now);
+                _db.TradeReports.Add(new TradeReport { UserId = playerBase.UserId, PlanetMarketOrder = order, CreatedAtUtc = now, Title = "Marktangebot storniert", Body = "Reservierte Ressourcen wurden zurückgegeben." });
+                TempData["Message"] = "Marktangebot storniert.";
+            }
+            catch (Exception ex) when (ex is InvalidOperationException || ex is ArgumentException)
+            {
+                TempData["Error"] = ex.Message;
+            }
+            _db.SaveChanges();
+            return RedirectToAction("Market");
         }
 
         [HttpPost]
@@ -204,6 +287,7 @@ namespace StargateGalacticCommand.Web.Controllers
             _researchQueue.CompleteFinishedResearch(user, now);
             var offlineBonus = _localSectors.CalculateBonus(_db.PlanetSectors.Include(s => s.SectorControl).Where(s => s.PlanetId == playerBase.PlanetSector.PlanetId && s.SectorControl != null && s.SectorControl.UserId == user.Id).ToList());
             _economy.ApplyOfflineProduction(playerBase, now, offlineBonus);
+            ExpirePlanetMarketOrders(playerBase.PlanetSector.PlanetId, now);
             _db.SaveChanges();
             var planet = _db.Planets.Include(p => p.Sectors).ThenInclude(s => s.PlayerBase).Include(p => p.Sectors).ThenInclude(s => s.SectorControl).Single(p => p.Id == playerBase.PlanetSector.PlanetId);
             var activeSectorClaims = _db.SectorClaims.Include(c => c.PlanetSector).Where(c => !c.IsCompleted && c.PlanetSector.PlanetId == planet.Id).ToList();
@@ -225,8 +309,22 @@ namespace StargateGalacticCommand.Web.Controllers
                     QueueBusy = queueBusy
                 };
             }).ToList();
-            var model = new OverviewViewModel { User = user, Base = playerBase, Planet = planet, Hourly = _economy.CalculateHourlyProduction(playerBase.BuildingLevels, user.ResearchLevels, user.Faction, sectorBonus), Sectors = planet.Sectors.OrderBy(s => s.Number).ToList(), Reports = _db.Reports.Where(r => r.UserId == user.Id).OrderByDescending(r => r.CreatedAtUtc).ToList(), Buildings = buildings, ActiveBuild = playerBase.BuildQueue.OrderBy(q => q.CompletesAtUtc).FirstOrDefault(), NowUtc = now, Researches = BuildResearchViewModels(user, playerBase), ActiveResearch = user.ResearchQueue.OrderBy(q => q.CompletesAtUtc).FirstOrDefault(), DefenseModifier = _factionModifiers.GetDefenseMultiplier(user.Faction), KnownGateAddresses = _db.KnownGateAddresses.Include(k => k.GateAddress).Where(k => k.UserId == user.Id).ToList(), MissionTeams = _db.MissionTeams.Where(t => t.UserId == user.Id).ToList(), ActiveGateMissions = _db.GateMissions.Include(m => m.GateAddress).Include(m => m.MissionTeam).Where(m => m.UserId == user.Id && !m.IsCompleted).ToList(), GateMissionReports = _db.GateMissionReports.Include(r => r.GateMission).ThenInclude(m => m.GateAddress).Where(r => r.UserId == user.Id).OrderByDescending(r => r.CreatedAtUtc).ToList(), ActiveSectorClaims = activeSectorClaims, ControlledSectors = controlledSectors, SectorBonus = sectorBonus, PlanetInfluences = BuildPlanetInfluences(planet.Id), OwnInfluence = _localSectors.CalculateInfluence(playerBase, user, controlledSectors, activeSectorClaims.Where(c => c.UserId == user.Id)) };
+            var model = new OverviewViewModel { User = user, Base = playerBase, Planet = planet, Hourly = _economy.CalculateHourlyProduction(playerBase.BuildingLevels, user.ResearchLevels, user.Faction, sectorBonus), Sectors = planet.Sectors.OrderBy(s => s.Number).ToList(), Reports = _db.Reports.Where(r => r.UserId == user.Id).OrderByDescending(r => r.CreatedAtUtc).ToList(), Buildings = buildings, ActiveBuild = playerBase.BuildQueue.OrderBy(q => q.CompletesAtUtc).FirstOrDefault(), NowUtc = now, Researches = BuildResearchViewModels(user, playerBase), ActiveResearch = user.ResearchQueue.OrderBy(q => q.CompletesAtUtc).FirstOrDefault(), DefenseModifier = _factionModifiers.GetDefenseMultiplier(user.Faction), KnownGateAddresses = _db.KnownGateAddresses.Include(k => k.GateAddress).Where(k => k.UserId == user.Id).ToList(), MissionTeams = _db.MissionTeams.Where(t => t.UserId == user.Id).ToList(), ActiveGateMissions = _db.GateMissions.Include(m => m.GateAddress).Include(m => m.MissionTeam).Where(m => m.UserId == user.Id && !m.IsCompleted).ToList(), GateMissionReports = _db.GateMissionReports.Include(r => r.GateMission).ThenInclude(m => m.GateAddress).Where(r => r.UserId == user.Id).OrderByDescending(r => r.CreatedAtUtc).ToList(), ActiveSectorClaims = activeSectorClaims, ControlledSectors = controlledSectors, SectorBonus = sectorBonus, PlanetInfluences = BuildPlanetInfluences(planet.Id), OwnInfluence = _localSectors.CalculateInfluence(playerBase, user, controlledSectors, activeSectorClaims.Where(c => c.UserId == user.Id)), ActiveMarketOrders = _db.PlanetMarketOrders.Include(o => o.SellerUser).Where(o => o.PlanetId == planet.Id && o.CompletedAtUtc == null && o.CancelledAtUtc == null && !o.ReservedReturned && o.ExpiresAtUtc > now).OrderBy(o => o.ExpiresAtUtc).ToList(), OwnMarketOrders = _db.PlanetMarketOrders.Where(o => o.PlanetId == planet.Id && o.SellerUserId == user.Id).OrderByDescending(o => o.CreatedAtUtc).ToList(), TradeReports = _db.TradeReports.Where(r => r.UserId == user.Id).OrderByDescending(r => r.CreatedAtUtc).ToList() };
             return View(view, model);
+        }
+
+
+        private void ExpirePlanetMarketOrders(int planetId, DateTime now)
+        {
+            var expired = _db.PlanetMarketOrders.Where(o => o.PlanetId == planetId && o.CompletedAtUtc == null && o.CancelledAtUtc == null && !o.ReservedReturned && o.ExpiresAtUtc <= now).ToList();
+            foreach (var order in expired)
+            {
+                var sellerBase = _db.PlayerBases.Include(b => b.Resources).Single(b => b.Id == order.SellerBaseId);
+                if (_planetMarket.ExpireOrder(order, sellerBase.Resources, now))
+                {
+                    _db.TradeReports.Add(new TradeReport { UserId = order.SellerUserId, PlanetMarketOrder = order, CreatedAtUtc = now, Title = "Marktangebot abgelaufen", Body = "Reservierte Ressourcen wurden zurückgegeben." });
+                }
+            }
         }
 
         private System.Collections.Generic.IList<PlanetInfluence> BuildPlanetInfluences(int planetId)
