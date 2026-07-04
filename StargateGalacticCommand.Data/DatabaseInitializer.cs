@@ -16,6 +16,7 @@ namespace StargateGalacticCommand.Data
             EnsureGateAccess(context);
             SeedTradeTaxRule(context);
             EnsureBaseShips(context);
+            EnsureProtectionStatuses(context);
             context.SaveChanges();
         }
         private static void SeedFactions(GameDbContext context)
@@ -73,6 +74,14 @@ namespace StargateGalacticCommand.Data
         {
             var existing = context.BaseShips.Select(s => s.PlayerBaseId).ToList();
             foreach (var b in context.PlayerBases.Where(b => !existing.Contains(b.Id)).ToList()) context.BaseShips.Add(new BaseShips { PlayerBaseId = b.Id });
+        }
+        private static void EnsureProtectionStatuses(GameDbContext context)
+        {
+            var existing = context.PlayerProtectionStatuses.Select(p => p.UserId).ToList();
+            foreach (var user in context.Users.Where(u => !existing.Contains(u.Id)).ToList())
+            {
+                context.PlayerProtectionStatuses.Add(new PlayerProtectionStatus { UserId = user.Id, ProtectedUntilUtc = user.CreatedAtUtc.AddDays(3), Score = 0 });
+            }
         }
         private static void SeedStartPlanet(GameDbContext context)
         {

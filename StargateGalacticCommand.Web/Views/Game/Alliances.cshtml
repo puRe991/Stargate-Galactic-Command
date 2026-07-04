@@ -1,0 +1,18 @@
+@model StargateGalacticCommand.Web.Models.OverviewViewModel
+@{ ViewData["Title"] = "Allianzen"; }
+<h1>Allianzen</h1>
+@if (TempData["Error"] != null) { <div class="alert">@TempData["Error"]</div> }
+@if (TempData["Message"] != null) { <div class="success">@TempData["Message"]</div> }
+@if (Model.OwnAlliance == null)
+{
+    <section><h2>Allianz erstellen</h2><form method="post" asp-action="CreateAlliance"><input name="name" placeholder="Name" maxlength="80" required /><input name="tag" placeholder="Tag" maxlength="8" required /><textarea name="description" placeholder="Beschreibung"></textarea><button type="submit">Erstellen</button></form></section>
+}
+else
+{
+    <section><h2>[@Model.OwnAlliance.Tag] @Model.OwnAlliance.Name</h2><p>@Model.OwnAlliance.Description</p><h3>Mitglieder</h3><ul>@foreach (var m in Model.OwnAlliance.Members.OrderBy(m => m.Rank)) { <li>@m.User.UserName – @m.Rank</li> }</ul></section>
+}
+<section><h2>Allianzsuche</h2><table><tr><th>Tag</th><th>Name</th><th>Mitglieder</th><th></th></tr>@foreach (var a in Model.Alliances) { <tr><td>@a.Tag</td><td>@a.Name</td><td>@a.Members.Count</td><td>@if (Model.OwnAlliance == null) { <form method="post" asp-action="ApplyAlliance"><input type="hidden" name="allianceId" value="@a.Id" /><input name="message" placeholder="Nachricht" /><button type="submit">Bewerben</button></form> }</td></tr> }</table></section>
+@if (Model.OwnAlliance != null)
+{
+<section><h2>Offene Bewerbungen</h2>@foreach (var app in Model.AllianceApplications.Where(a => a.AllianceId == Model.OwnAlliance.Id)) { <form method="post" asp-action="AcceptAllianceApplication"><input type="hidden" name="applicationId" value="@app.Id" />@app.User.UserName: @app.Message <button type="submit">Annehmen</button></form> }</section>
+}

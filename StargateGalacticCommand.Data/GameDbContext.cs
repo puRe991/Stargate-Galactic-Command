@@ -38,6 +38,13 @@ namespace StargateGalacticCommand.Data
         public DbSet<LocalCombatMission> LocalCombatMissions { get; set; }
         public DbSet<LocalCombatRound> LocalCombatRounds { get; set; }
         public DbSet<SectorBattleReport> SectorBattleReports { get; set; }
+        public DbSet<Alliance> Alliances { get; set; }
+        public DbSet<AllianceMember> AllianceMembers { get; set; }
+        public DbSet<AllianceApplication> AllianceApplications { get; set; }
+        public DbSet<SpaceCombatMission> SpaceCombatMissions { get; set; }
+        public DbSet<SpaceCombatReport> SpaceCombatReports { get; set; }
+        public DbSet<DebrisField> DebrisFields { get; set; }
+        public DbSet<PlayerProtectionStatus> PlayerProtectionStatuses { get; set; }
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
@@ -119,6 +126,26 @@ namespace StargateGalacticCommand.Data
             modelBuilder.Entity<SectorBattleReport>().HasOne(r => r.User).WithMany().HasForeignKey(r => r.UserId).OnDelete(DeleteBehavior.Cascade);
             modelBuilder.Entity<SectorBattleReport>().HasOne(r => r.LocalCombatMission).WithMany().HasForeignKey(r => r.LocalCombatMissionId).OnDelete(DeleteBehavior.Cascade);
             modelBuilder.Entity<SectorBattleReport>().HasOne(r => r.PlanetSector).WithMany().HasForeignKey(r => r.PlanetSectorId).OnDelete(DeleteBehavior.Restrict);
+            modelBuilder.Entity<Alliance>().Property(a => a.Name).IsRequired().HasMaxLength(80);
+            modelBuilder.Entity<Alliance>().Property(a => a.Tag).IsRequired().HasMaxLength(8);
+            modelBuilder.Entity<Alliance>().HasIndex(a => a.Name).IsUnique();
+            modelBuilder.Entity<Alliance>().HasIndex(a => a.Tag).IsUnique();
+            modelBuilder.Entity<Alliance>().HasOne(a => a.FounderUser).WithMany().HasForeignKey(a => a.FounderUserId).OnDelete(DeleteBehavior.Restrict);
+            modelBuilder.Entity<AllianceMember>().Property(m => m.Rank).HasConversion<int>();
+            modelBuilder.Entity<AllianceMember>().HasIndex(m => m.UserId).IsUnique();
+            modelBuilder.Entity<AllianceMember>().HasOne(m => m.Alliance).WithMany(a => a.Members).HasForeignKey(m => m.AllianceId).OnDelete(DeleteBehavior.Cascade);
+            modelBuilder.Entity<AllianceMember>().HasOne(m => m.User).WithMany().HasForeignKey(m => m.UserId).OnDelete(DeleteBehavior.Cascade);
+            modelBuilder.Entity<AllianceApplication>().HasIndex(a => new { a.AllianceId, a.UserId, a.AcceptedAtUtc, a.RejectedAtUtc });
+            modelBuilder.Entity<AllianceApplication>().HasOne(a => a.Alliance).WithMany(x => x.Applications).HasForeignKey(a => a.AllianceId).OnDelete(DeleteBehavior.Cascade);
+            modelBuilder.Entity<AllianceApplication>().HasOne(a => a.User).WithMany().HasForeignKey(a => a.UserId).OnDelete(DeleteBehavior.Cascade);
+            modelBuilder.Entity<SpaceCombatMission>().Property(m => m.MissionType).HasConversion<int>();
+            modelBuilder.Entity<SpaceCombatMission>().Property(m => m.ShipType).HasConversion<int>();
+            modelBuilder.Entity<SpaceCombatMission>().HasOne(m => m.OriginBase).WithMany().HasForeignKey(m => m.OriginBaseId).OnDelete(DeleteBehavior.Restrict);
+            modelBuilder.Entity<SpaceCombatMission>().HasOne(m => m.TargetBase).WithMany().HasForeignKey(m => m.TargetBaseId).OnDelete(DeleteBehavior.Restrict);
+            modelBuilder.Entity<SpaceCombatReport>().HasOne(r => r.SpaceCombatMission).WithMany().HasForeignKey(r => r.SpaceCombatMissionId).OnDelete(DeleteBehavior.Cascade);
+            modelBuilder.Entity<DebrisField>().HasOne(d => d.PlayerBase).WithMany().HasForeignKey(d => d.PlayerBaseId).OnDelete(DeleteBehavior.Cascade);
+            modelBuilder.Entity<PlayerProtectionStatus>().HasIndex(p => p.UserId).IsUnique();
+            modelBuilder.Entity<PlayerProtectionStatus>().HasOne(p => p.User).WithMany().HasForeignKey(p => p.UserId).OnDelete(DeleteBehavior.Cascade);
         }
     }
 }

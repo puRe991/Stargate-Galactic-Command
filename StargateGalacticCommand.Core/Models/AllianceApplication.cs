@@ -1,0 +1,2 @@
+using System;
+namespace StargateGalacticCommand.Core.Models { public class AllianceApplication { public int Id{get;set;} public int AllianceId{get;set;} public Alliance Alliance{get;set;} public int UserId{get;set;} public User User{get;set;} public string Message{get;set;} public DateTime CreatedAtUtc{get;set;} public DateTime? AcceptedAtUtc{get;set;} public DateTime? RejectedAtUtc{get;set;} public int? DecidedByUserId{get;set;} public bool IsOpen=>!AcceptedAtUtc.HasValue&&!RejectedAtUtc.HasValue; } }

@@ -42,6 +42,13 @@ namespace StargateGalacticCommand.Web.Models
         public IList<IntelligenceReport> SpyWarnings { get; set; }
         public IList<LocalCombatMission> ActiveLocalCombats { get; set; }
         public IList<SectorBattleReport> SectorBattleReports { get; set; }
+        public Alliance OwnAlliance { get; set; }
+        public IList<Alliance> Alliances { get; set; }
+        public IList<AllianceApplication> AllianceApplications { get; set; }
+        public IList<SpaceCombatMission> ActiveSpaceCombats { get; set; }
+        public IList<SpaceCombatReport> SpaceCombatReports { get; set; }
+        public IList<DebrisField> DebrisFields { get; set; }
+        public PlayerProtectionStatus ProtectionStatus { get; set; }
     }
 
     public class BuildingUpgradeViewModel
