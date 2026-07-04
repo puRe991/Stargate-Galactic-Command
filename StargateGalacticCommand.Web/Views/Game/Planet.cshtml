@@ -1,6 +1,103 @@
 @model OverviewViewModel
-@{ ViewData["Title"] = "Planet"; }
-<section class="panel"><h1>@Model.Planet.Name</h1><p>Gemeinsamer Planet: Spieler kontrollieren Basen und gesicherte Sektoren, nicht den ganzen Planeten. PvP gegen Spielersektoren ist in Version 0.0.5 deaktiviert; der Startplanet bleibt sicher.</p><table><tr><th>Eigener Einfluss</th><td>@Model.OwnInfluence</td></tr><tr><th>Aktive lokale Boni</th><td>Naquadah +@(Model.SectorBonus.NaquadahMultiplier * 100) %, Trinium +@(Model.SectorBonus.TriniumMultiplier * 100) %, Versorgung +@(Model.SectorBonus.SuppliesMultiplier * 100) %, Personal +@(Model.SectorBonus.PersonnelMultiplier * 100) %, Intel +@(Model.SectorBonus.IntelMultiplier * 100) %</td></tr></table></section>
-<section class="panel"><h2>Sektoren</h2><table><thead><tr><th>#</th><th>Name</th><th>Typ</th><th>Status</th><th>Aktion</th></tr></thead><tbody>@foreach(var s in Model.Sectors){ var claim = Model.ActiveSectorClaims.FirstOrDefault(c => c.PlanetSectorId == s.Id); <tr><td>@s.Number</td><td>@s.Name</td><td>@s.SectorType</td><td>@(s.PlayerBase != null ? "Basis" : s.SectorControl != null ? "kontrolliert" : claim != null ? "Beanspruchung läuft bis " + claim.CompletesAtUtc.ToString("u") : "neutral")</td><td>@if(s.PlayerBase == null && s.SectorControl == null && claim == null && s.SectorType != SectorType.SettlementSector && s.SectorType != SectorType.StargateZone){<form asp-action="ClaimSector" method="post"><input type="hidden" name="sectorId" value="@s.Id" /><button type="submit">Beanspruchen</button></form>} else if(claim != null && claim.UserId == Model.User.Id && claim.CompletesAtUtc <= Model.NowUtc){<form asp-action="CompleteSectorClaim" method="post"><input type="hidden" name="claimId" value="@claim.Id" /><button type="submit">Abschließen</button></form>} else {<span>—</span>}</td></tr>}</tbody></table></section>
-<section class="panel"><h2>Kontrollierte Sektoren</h2><ul>@foreach(var s in Model.ControlledSectors){<li>@s.Number - @s.Name (@s.SectorType)</li>}</ul></section>
-<section class="panel"><h2>Einflussrangliste</h2><table><thead><tr><th>Rang</th><th>Spieler</th><th>Einfluss</th></tr></thead><tbody>@{ var rank = 1; }@foreach(var influence in Model.PlanetInfluences){<tr><td>@rank</td><td>@influence.UserName</td><td>@influence.Score</td></tr> @{ rank++; }}</tbody></table></section>
+@{
+    ViewData["Title"] = "Planet";
+}
+
+<section class="panel">
+    <h1>@Model.Planet.Name</h1>
+    <p>Gemeinsamer Planet: Spieler kontrollieren Basen und gesicherte Sektoren, nicht den ganzen Planeten. PvP gegen Spielersektoren ist in Version 0.0.5 deaktiviert; der Startplanet bleibt sicher.</p>
+    <table>
+        <tr>
+            <th>Eigener Einfluss</th>
+            <td>@Model.OwnInfluence</td>
+        </tr>
+        <tr>
+            <th>Aktive lokale Boni</th>
+            <td>Naquadah +@(Model.SectorBonus.NaquadahMultiplier * 100) %, Trinium +@(Model.SectorBonus.TriniumMultiplier * 100) %, Versorgung +@(Model.SectorBonus.SuppliesMultiplier * 100) %, Personal +@(Model.SectorBonus.PersonnelMultiplier * 100) %, Intel +@(Model.SectorBonus.IntelMultiplier * 100) %</td>
+        </tr>
+    </table>
+</section>
+
+<section class="panel">
+    <h2>Sektoren</h2>
+    <table>
+        <thead>
+            <tr>
+                <th>#</th>
+                <th>Name</th>
+                <th>Typ</th>
+                <th>Status</th>
+                <th>Aktion</th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var s in Model.Sectors)
+            {
+                var claim = Model.ActiveSectorClaims.FirstOrDefault(c => c.PlanetSectorId == s.Id);
+                <tr>
+                    <td>@s.Number</td>
+                    <td>@s.Name</td>
+                    <td>@s.SectorType</td>
+                    <td>@(s.PlayerBase != null ? "Basis" : s.SectorControl != null ? "kontrolliert" : claim != null ? "Beanspruchung läuft bis " + claim.CompletesAtUtc.ToString("u") : "neutral")</td>
+                    <td>
+                        @if (s.PlayerBase == null && s.SectorControl == null && claim == null && s.SectorType != SectorType.SettlementSector && s.SectorType != SectorType.StargateZone)
+                        {
+                            <form asp-action="ClaimSector" method="post">
+                                <input type="hidden" name="sectorId" value="@s.Id" />
+                                <button type="submit">Beanspruchen</button>
+                            </form>
+                        }
+                        else if (claim != null && claim.UserId == Model.User.Id && claim.CompletesAtUtc <= Model.NowUtc)
+                        {
+                            <form asp-action="CompleteSectorClaim" method="post">
+                                <input type="hidden" name="claimId" value="@claim.Id" />
+                                <button type="submit">Abschließen</button>
+                            </form>
+                        }
+                        else
+                        {
+                            <span>—</span>
+                        }
+                    </td>
+                </tr>
+            }
+        </tbody>
+    </table>
+</section>
+
+<section class="panel">
+    <h2>Kontrollierte Sektoren</h2>
+    <ul>
+        @foreach (var s in Model.ControlledSectors)
+        {
+            <li>@s.Number - @s.Name (@s.SectorType)</li>
+        }
+    </ul>
+</section>
+
+<section class="panel">
+    <h2>Einflussrangliste</h2>
+    <table>
+        <thead>
+            <tr>
+                <th>Rang</th>
+                <th>Spieler</th>
+                <th>Einfluss</th>
+            </tr>
+        </thead>
+        <tbody>
+            @{
+                var rank = 1;
+            }
+            @foreach (var influence in Model.PlanetInfluences)
+            {
+                <tr>
+                    <td>@rank</td>
+                    <td>@influence.UserName</td>
+                    <td>@influence.Score</td>
+                </tr>
+                rank++;
+            }
+        </tbody>
+    </table>
+</section>
