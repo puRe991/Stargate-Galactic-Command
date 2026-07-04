@@ -31,6 +31,7 @@ namespace StargateGalacticCommand.Web
             services.AddScoped<BuildQueueService>();
             services.AddScoped<ShipyardService>();
             services.AddScoped<FleetService>();
+            services.AddScoped<EspionageService>();
             services.AddScoped<ResearchCatalogService>();
             services.AddScoped<ResearchQueueService>();
             services.AddScoped<FactionModifierService>();
