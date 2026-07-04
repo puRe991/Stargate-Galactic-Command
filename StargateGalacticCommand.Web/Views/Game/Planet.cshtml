@@ -5,7 +5,7 @@
 
 <section class="panel">
     <h1>@Model.Planet.Name</h1>
-    <p>Gemeinsamer Planet: Spieler kontrollieren Basen und gesicherte Sektoren, nicht den ganzen Planeten. PvP gegen Spielersektoren ist in Version 0.0.5 deaktiviert; der Startplanet bleibt sicher.</p>
+    <p>Gemeinsamer Planet: Spieler kontrollieren Basen und gesicherte Sektoren, nicht den ganzen Planeten. Version 0.0.9 erlaubt kontrollierte lokale Konflikte um neutrale oder umkämpfte Ressourcenzonen; Hauptbasen bleiben geschützt.</p>
     <table>
         <tr>
             <th>Eigener Einfluss</th>
@@ -27,6 +27,7 @@
                 <th>Name</th>
                 <th>Typ</th>
                 <th>Status</th>
+                <th>Risiko</th>
                 <th>Aktion</th>
             </tr>
         </thead>
@@ -39,12 +40,13 @@
                     <td>@s.Name</td>
                     <td>@s.SectorType</td>
                     <td>@(s.PlayerBase != null ? "Basis" : s.SectorControl != null ? "kontrolliert" : claim != null ? "Beanspruchung läuft bis " + claim.CompletesAtUtc.ToString("u") : "neutral")</td>
+                    <td>@(s.PlayerBase != null || s.SectorType == SectorType.StargateZone || s.SectorType == SectorType.SettlementSector ? "geschützt" : s.SectorControl == null ? "niedrig" : "mittel")</td>
                     <td>
                         @if (s.PlayerBase == null && s.SectorControl == null && claim == null && s.SectorType != SectorType.SettlementSector && s.SectorType != SectorType.StargateZone)
                         {
                             <form asp-action="ClaimSector" method="post">
                                 <input type="hidden" name="sectorId" value="@s.Id" />
-                                <button type="submit">Beanspruchen</button>
+                                <button type="submit">Sichern</button>
                             </form>
                         }
                         else if (claim != null && claim.UserId == Model.User.Id && claim.CompletesAtUtc <= Model.NowUtc)
@@ -52,6 +54,27 @@
                             <form asp-action="CompleteSectorClaim" method="post">
                                 <input type="hidden" name="claimId" value="@claim.Id" />
                                 <button type="submit">Abschließen</button>
+                            </form>
+                        }
+                        else if (s.PlayerBase == null && s.SectorType != SectorType.SettlementSector && s.SectorType != SectorType.StargateZone && (s.SectorControl == null || s.SectorControl.UserId != Model.User.Id))
+                        {
+                            <form asp-action="StartLocalCombat" method="post">
+                                <input type="hidden" name="sectorId" value="@s.Id" />
+                                <select name="objective">
+                                    <option value="SecureNeutralResourceZone">Neutrale Ressourcenzone sichern</option>
+                                    <option value="CaptureContestedResourceZone">Umkämpfte Ressourcenzone übernehmen</option>
+                                    <option value="DisruptOutpost">Außenposten stören</option>
+                                    <option value="SecureRuinAccess">Ruinenzugang sichern</option>
+                                </select>
+                                <input type="number" name="sgSecurityTeams" min="0" value="1" title="SG-Sicherheitsteam" />
+                                <input type="number" name="marines" min="0" value="0" title="Marines" />
+                                <input type="number" name="jaffaWarriors" min="0" value="0" title="Jaffa-Krieger" />
+                                <input type="number" name="eliteJaffa" min="0" value="0" title="Elite-Jaffa" />
+                                <input type="number" name="agentCells" min="0" value="0" title="Agentenzelle" />
+                                <input type="number" name="saboteurs" min="0" value="0" title="Saboteur" />
+                                <input type="number" name="mercenaries" min="0" value="0" title="Söldner" />
+                                <input type="number" name="smugglerSquads" min="0" value="0" title="Schmugglertrupp" />
+                                <button type="submit">Angreifen</button>
                             </form>
                         }
                         else
@@ -100,4 +123,22 @@
             }
         </tbody>
     </table>
+</section>
+
+<section class="panel">
+    <h2>Laufende lokale Konflikte</h2>
+    <table><thead><tr><th>Sektor</th><th>Ziel</th><th>Ankunft</th><th>Aktion</th></tr></thead><tbody>
+    @foreach (var c in Model.ActiveLocalCombats)
+    {
+        <tr><td>@c.PlanetSector.Number - @c.PlanetSector.Name</td><td>@c.Objective</td><td>@c.ResolvesAtUtc.ToString("u")</td><td>@if (c.AttackerUserId == Model.User.Id && c.ResolvesAtUtc <= Model.NowUtc) { <form asp-action="CompleteLocalCombat" method="post"><input type="hidden" name="missionId" value="@c.Id" /><button type="submit">Kampf berechnen</button></form> } else { <span>läuft</span> }</td></tr>
+    }
+    </tbody></table>
+</section>
+
+<section class="panel">
+    <h2>Kampfberichte</h2>
+    @foreach (var r in Model.SectorBattleReports)
+    {
+        <article><h3>@r.Title - @r.PlanetSector.Name</h3><pre>@r.Body</pre></article>
+    }
 </section>

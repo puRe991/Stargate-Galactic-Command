@@ -40,6 +40,8 @@ namespace StargateGalacticCommand.Web.Models
         public IList<PlayerBase> EspionageTargets { get; set; }
         public IList<IntelligenceReport> IntelligenceReports { get; set; }
         public IList<IntelligenceReport> SpyWarnings { get; set; }
+        public IList<LocalCombatMission> ActiveLocalCombats { get; set; }
+        public IList<SectorBattleReport> SectorBattleReports { get; set; }
     }
 
     public class BuildingUpgradeViewModel
