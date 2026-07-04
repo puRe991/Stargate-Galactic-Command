@@ -1,0 +1,9 @@
+@model StargateGalacticCommand.Web.Models.OverviewViewModel
+@{ ViewData["Title"] = "Werft"; }
+<h1>Werft</h1>
+<p>Schiffe reisen per Hyperraum oder lokalem Raumflug, nicht durch das Stargate.</p>
+@if (Model.Base.BuildingLevels.HangarLandingZone < 1) { <p class="error">Hangar / Landezone Level 1 erforderlich.</p> }
+@if (Model.ActiveShipBuild != null) { <p>Aktiver Bau: @Model.ActiveShipBuild.Quantity x @Model.ActiveShipBuild.ShipType bis @Model.ActiveShipBuild.CompletesAtUtc.ToString("u")</p> }
+<table><tr><th>Schiff</th><th>Kosten</th><th>Dauer</th><th>Kapazität</th><th>Aktion</th></tr>
+@foreach (var s in Model.ShipDefinitions) { <tr><td>@s.Name</td><td>@s.Cost.Naquadah NQ / @s.Cost.Trinium TR / @s.Cost.Supplies SUP / @s.Cost.Energy EN</td><td>@s.Cost.Seconds s</td><td>@s.CargoCapacity</td><td><form method="post" action="/Game/StartShipBuild">@Html.AntiForgeryToken()<input type="hidden" name="shipType" value="@s.Type"/><input type="number" name="quantity" value="1" min="1" max="100"/><button @(s.CanBuild ? "" : "disabled")>Bauen</button></form></td></tr> }
+</table>

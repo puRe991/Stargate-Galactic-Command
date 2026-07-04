@@ -29,6 +29,10 @@ namespace StargateGalacticCommand.Data
         public DbSet<PlanetMarketTransaction> PlanetMarketTransactions { get; set; }
         public DbSet<TradeTaxRule> TradeTaxRules { get; set; }
         public DbSet<TradeReport> TradeReports { get; set; }
+        public DbSet<BaseShips> BaseShips { get; set; }
+        public DbSet<ShipyardQueueItem> ShipyardQueueItems { get; set; }
+        public DbSet<FleetMovement> FleetMovements { get; set; }
+        public DbSet<FleetReport> FleetReports { get; set; }
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
@@ -54,6 +58,7 @@ namespace StargateGalacticCommand.Data
             modelBuilder.Entity<PlayerBase>().HasIndex(b => b.PlanetSectorId).IsUnique();
             modelBuilder.Entity<PlayerBase>().HasOne(b => b.Resources).WithOne().HasForeignKey<ResourceStock>(r => r.PlayerBaseId).OnDelete(DeleteBehavior.Cascade);
             modelBuilder.Entity<PlayerBase>().HasOne(b => b.BuildingLevels).WithOne().HasForeignKey<BuildingLevels>(l => l.PlayerBaseId).OnDelete(DeleteBehavior.Cascade);
+            modelBuilder.Entity<PlayerBase>().HasOne(b => b.Ships).WithOne(s => s.PlayerBase).HasForeignKey<BaseShips>(s => s.PlayerBaseId).OnDelete(DeleteBehavior.Cascade);
             modelBuilder.Entity<PlayerBase>().HasOne(b => b.PlanetSector).WithOne(s => s.PlayerBase).HasForeignKey<PlayerBase>(b => b.PlanetSectorId).OnDelete(DeleteBehavior.Restrict);
             modelBuilder.Entity<User>().HasOne(u => u.ResearchLevels).WithOne(l => l.User).HasForeignKey<ResearchLevels>(l => l.UserId).OnDelete(DeleteBehavior.Cascade);
             modelBuilder.Entity<ResearchQueueItem>().HasOne(q => q.User).WithMany(u => u.ResearchQueue).HasForeignKey(q => q.UserId).OnDelete(DeleteBehavior.Cascade);
@@ -86,6 +91,14 @@ namespace StargateGalacticCommand.Data
             modelBuilder.Entity<PlanetMarketTransaction>().HasOne(t => t.BuyerUser).WithMany().HasForeignKey(t => t.BuyerUserId).OnDelete(DeleteBehavior.Restrict);
             modelBuilder.Entity<TradeReport>().HasOne(r => r.User).WithMany().HasForeignKey(r => r.UserId).OnDelete(DeleteBehavior.Cascade);
             modelBuilder.Entity<TradeReport>().HasOne(r => r.PlanetMarketOrder).WithMany().HasForeignKey(r => r.PlanetMarketOrderId).OnDelete(DeleteBehavior.SetNull);
+            modelBuilder.Entity<ShipyardQueueItem>().Property(q => q.ShipType).HasConversion<int>();
+            modelBuilder.Entity<ShipyardQueueItem>().HasOne(q => q.PlayerBase).WithMany(b => b.ShipyardQueue).HasForeignKey(q => q.PlayerBaseId).OnDelete(DeleteBehavior.Cascade);
+            modelBuilder.Entity<FleetMovement>().Property(f => f.ShipType).HasConversion<int>();
+            modelBuilder.Entity<FleetMovement>().Property(f => f.MissionType).HasConversion<int>();
+            modelBuilder.Entity<FleetMovement>().Property(f => f.Status).HasConversion<int>();
+            modelBuilder.Entity<FleetMovement>().HasOne(f => f.OriginBase).WithMany().HasForeignKey(f => f.OriginBaseId).OnDelete(DeleteBehavior.Restrict);
+            modelBuilder.Entity<FleetMovement>().HasOne(f => f.TargetBase).WithMany().HasForeignKey(f => f.TargetBaseId).OnDelete(DeleteBehavior.Restrict);
+            modelBuilder.Entity<FleetReport>().HasOne(r => r.User).WithMany().HasForeignKey(r => r.UserId).OnDelete(DeleteBehavior.Cascade);
         }
     }
 }

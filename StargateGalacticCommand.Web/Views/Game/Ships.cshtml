@@ -1,0 +1,6 @@
+@model StargateGalacticCommand.Web.Models.OverviewViewModel
+@{ ViewData["Title"] = "Schiffsübersicht"; }
+<h1>Schiffsübersicht</h1>
+<table><tr><th>Schiff</th><th>Verfügbar</th><th>Kapazität</th><th>Speed</th></tr>
+@foreach (var s in Model.ShipDefinitions) { <tr><td>@s.Name</td><td>@s.Available</td><td>@s.CargoCapacity</td><td>@s.Speed</td></tr> }
+</table>

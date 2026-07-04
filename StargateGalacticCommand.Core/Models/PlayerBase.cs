@@ -17,6 +17,8 @@ namespace StargateGalacticCommand.Core.Models
         public BuildingLevels BuildingLevels { get; set; }
         public DateTime LastResourceUpdateUtc { get; set; }
         public ICollection<BuildQueueItem> BuildQueue { get; set; }
-        public PlayerBase() { BuildQueue = new List<BuildQueueItem>(); }
+        public BaseShips Ships { get; set; }
+        public ICollection<ShipyardQueueItem> ShipyardQueue { get; set; }
+        public PlayerBase() { BuildQueue = new List<BuildQueueItem>(); ShipyardQueue = new List<ShipyardQueueItem>(); }
     }
 }
