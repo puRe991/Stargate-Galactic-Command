@@ -1,0 +1,4 @@
+@model StargateGalacticCommand.Web.Models.OverviewViewModel
+@{ ViewData["Title"] = "Flottenberichte"; }
+<h1>Flottenberichte</h1>
+@foreach (var r in Model.FleetReports) { <article><h3>@r.Title</h3><small>@r.CreatedAtUtc.ToString("u")</small><p>@r.Body</p></article> }

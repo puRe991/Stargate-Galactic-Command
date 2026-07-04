@@ -1,0 +1,6 @@
+@model StargateGalacticCommand.Web.Models.OverviewViewModel
+@{ ViewData["Title"] = "Laufende Flotten"; }
+<h1>Laufende Flotten</h1>
+<table><tr><th>Mission</th><th>Schiffe</th><th>Status</th><th>Ankunft</th><th></th></tr>
+@foreach (var f in Model.ActiveFleets) { <tr><td>@f.MissionType</td><td>@f.ShipCount x @f.ShipType</td><td>@f.Status</td><td>@f.ArrivesAtUtc.ToString("u")</td><td><form method="post" action="/Game/CompleteFleet">@Html.AntiForgeryToken()<input type="hidden" name="fleetId" value="@f.Id"/><button>Abschließen</button></form></td></tr> }
+</table>

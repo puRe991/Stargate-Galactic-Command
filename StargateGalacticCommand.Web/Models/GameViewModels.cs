@@ -31,6 +31,12 @@ namespace StargateGalacticCommand.Web.Models
         public IList<PlanetMarketOrder> ActiveMarketOrders { get; set; }
         public IList<PlanetMarketOrder> OwnMarketOrders { get; set; }
         public IList<TradeReport> TradeReports { get; set; }
+        public IList<ShipViewModel> ShipDefinitions { get; set; }
+        public ShipyardQueueItem ActiveShipBuild { get; set; }
+        public IList<PlayerBase> FleetTargets { get; set; }
+        public IList<FleetMovement> ActiveFleets { get; set; }
+        public IList<FleetReport> FleetReports { get; set; }
+        public IList<OrbitPresence> OrbitPresences { get; set; }
     }
 
     public class BuildingUpgradeViewModel
@@ -58,4 +64,7 @@ namespace StargateGalacticCommand.Web.Models
         public bool QueueBusy { get; set; }
         public bool HasResearchLab { get; set; }
     }
+
+    public class ShipViewModel { public ShipType Type { get; set; } public string Name { get; set; } public BuildCost Cost { get; set; } public int CargoCapacity { get; set; } public int Speed { get; set; } public bool IsActive { get; set; } public bool CanBuild { get; set; } public int Available { get; set; } }
+
 }

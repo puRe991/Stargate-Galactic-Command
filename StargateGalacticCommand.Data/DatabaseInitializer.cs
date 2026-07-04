@@ -15,6 +15,7 @@ namespace StargateGalacticCommand.Data
             SeedGateAddresses(context);
             EnsureGateAccess(context);
             SeedTradeTaxRule(context);
+            EnsureBaseShips(context);
             context.SaveChanges();
         }
         private static void SeedFactions(GameDbContext context)
@@ -67,6 +68,11 @@ namespace StargateGalacticCommand.Data
         private static void SeedTradeTaxRule(GameDbContext context)
         {
             if (!context.TradeTaxRules.Any()) context.TradeTaxRules.Add(new TradeTaxRule { BaseFeeRate = 0.02, LucianAllianceReduction = 0.25, TradingPostReduction = 0.05, MaxIntelAmount = 25 });
+        }
+        private static void EnsureBaseShips(GameDbContext context)
+        {
+            var existing = context.BaseShips.Select(s => s.PlayerBaseId).ToList();
+            foreach (var b in context.PlayerBases.Where(b => !existing.Contains(b.Id)).ToList()) context.BaseShips.Add(new BaseShips { PlayerBaseId = b.Id });
         }
         private static void SeedStartPlanet(GameDbContext context)
         {

@@ -1,0 +1,6 @@
+@model StargateGalacticCommand.Web.Models.OverviewViewModel
+@{ ViewData["Title"] = "Orbit"; }
+<h1>Orbitale Präsenz</h1>
+<table><tr><th>Spieler</th><th>Stationierte Schiffe</th><th>Laufende Flotten</th></tr>
+@foreach (var o in Model.OrbitPresences) { <tr><td>@o.UserName</td><td>@o.StationedShips</td><td>@o.MovingFleets</td></tr> }
+</table>
