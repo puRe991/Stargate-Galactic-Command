@@ -38,6 +38,8 @@ namespace StargateGalacticCommand.Web
             services.AddScoped<GateMissionService>();
             services.AddScoped<LocalSectorService>();
             services.AddScoped<LocalCombatService>();
+            services.AddScoped<AllianceService>();
+            services.AddScoped<SpaceCombatService>();
             services.AddScoped<PasswordService>();
             services.AddScoped<RegistrationService>();
         }

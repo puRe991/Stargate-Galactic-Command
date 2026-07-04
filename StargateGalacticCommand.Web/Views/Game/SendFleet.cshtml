@@ -8,3 +8,9 @@
 <label>Anzahl</label><input name="shipCount" type="number" min="1" value="1" />
 <label>Naquadah</label><input name="naquadah" type="number" min="0" value="0" /><label>Trinium</label><input name="trinium" type="number" min="0" value="0" /><label>Supplies</label><input name="supplies" type="number" min="0" value="0" /><label>Energie</label><input name="energy" type="number" min="0" value="0" /><label>Personal</label><input name="personnel" type="number" min="0" value="0" />
 <button>Senden</button></form>
+<h2>Angriff starten</h2>
+<form method="post" action="/Game/StartSpaceAttack">@Html.AntiForgeryToken()
+<label>Ziel</label><select name="targetBaseId">@foreach (var b in Model.FleetTargets) { <option value="@b.Id">@b.Name (@b.User.UserName, @b.PlanetSector.Planet.Name Sektor @b.PlanetSector.Number)</option> }</select>
+<label>Schiff</label><select name="shipType">@foreach (var s in Model.ShipDefinitions.Where(x => x.Available > 0)) { <option value="@s.Type">@s.Name (@s.Available)</option> }</select>
+<label>Anzahl</label><input name="shipCount" type="number" min="1" value="1" />
+<button>Angreifen</button></form>
