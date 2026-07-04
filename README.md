@@ -4,7 +4,7 @@ Browserbasierter Strategie-MMO-Prototyp im OGame-Stil mit Stargate-inspirierter 
 
 ## Status dieser Version
 
-Version 0.0.5 macht gemeinsame Planeten spielmechanisch aktiv:
+Version 0.0.9 macht gemeinsame Planeten spielmechanisch aktiv:
 
 - ASP.NET Core MVC/Razor Webanwendung
 - getrennte Projekte für Web, Core, Data und Tests
