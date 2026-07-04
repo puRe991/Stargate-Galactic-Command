@@ -37,6 +37,9 @@ namespace StargateGalacticCommand.Web.Models
         public IList<FleetMovement> ActiveFleets { get; set; }
         public IList<FleetReport> FleetReports { get; set; }
         public IList<OrbitPresence> OrbitPresences { get; set; }
+        public IList<PlayerBase> EspionageTargets { get; set; }
+        public IList<IntelligenceReport> IntelligenceReports { get; set; }
+        public IList<IntelligenceReport> SpyWarnings { get; set; }
     }
 
     public class BuildingUpgradeViewModel

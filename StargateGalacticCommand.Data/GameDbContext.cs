@@ -33,6 +33,8 @@ namespace StargateGalacticCommand.Data
         public DbSet<ShipyardQueueItem> ShipyardQueueItems { get; set; }
         public DbSet<FleetMovement> FleetMovements { get; set; }
         public DbSet<FleetReport> FleetReports { get; set; }
+        public DbSet<EspionageMission> EspionageMissions { get; set; }
+        public DbSet<IntelligenceReport> IntelligenceReports { get; set; }
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
@@ -99,6 +101,11 @@ namespace StargateGalacticCommand.Data
             modelBuilder.Entity<FleetMovement>().HasOne(f => f.OriginBase).WithMany().HasForeignKey(f => f.OriginBaseId).OnDelete(DeleteBehavior.Restrict);
             modelBuilder.Entity<FleetMovement>().HasOne(f => f.TargetBase).WithMany().HasForeignKey(f => f.TargetBaseId).OnDelete(DeleteBehavior.Restrict);
             modelBuilder.Entity<FleetReport>().HasOne(r => r.User).WithMany().HasForeignKey(r => r.UserId).OnDelete(DeleteBehavior.Cascade);
+            modelBuilder.Entity<EspionageMission>().Property(m => m.MissionType).HasConversion<int>();
+            modelBuilder.Entity<EspionageMission>().HasOne(m => m.User).WithMany().HasForeignKey(m => m.UserId).OnDelete(DeleteBehavior.Cascade);
+            modelBuilder.Entity<EspionageMission>().HasOne(m => m.SourceBase).WithMany().HasForeignKey(m => m.SourceBaseId).OnDelete(DeleteBehavior.Restrict);
+            modelBuilder.Entity<EspionageMission>().HasOne(m => m.TargetBase).WithMany().HasForeignKey(m => m.TargetBaseId).OnDelete(DeleteBehavior.Restrict);
+            modelBuilder.Entity<IntelligenceReport>().HasOne(r => r.EspionageMission).WithMany().HasForeignKey(r => r.EspionageMissionId).OnDelete(DeleteBehavior.SetNull);
         }
     }
 }
