@@ -1,0 +1,64 @@
+@model StargateGalacticCommand.Web.Models.OverviewViewModel
+@using StargateGalacticCommand.Core.Models
+@{
+    ViewData["Title"] = "Planetarer Markt";
+    string ResourceName(TradeResourceType r) => r == TradeResourceType.Supplies ? "Versorgungsgüter" : r.ToString();
+    string Status(PlanetMarketOrder o) => o.CompletedAtUtc.HasValue ? "verkauft" : o.CancelledAtUtc.HasValue ? "storniert" : o.ReservedReturned ? "abgelaufen" : o.ExpiresAtUtc <= Model.NowUtc ? "abgelaufen" : "aktiv";
+}
+@if (TempData["Message"] != null) { <div class="notice">@TempData["Message"]</div> }
+@if (TempData["Error"] != null) { <div class="error">@TempData["Error"]</div> }
+<section class="panel">
+    <h1>@ViewData["Title"]</h1>
+    <p>Der Markt gilt nur für @Model.Planet.Name. Handelbar sind Naquadah, Trinium, Versorgungsgüter und begrenzt Intel. Energie und Personal bleiben gesperrt.</p>
+    <p>Basisgebühr: 2 %. Lucian Alliance zahlt 25 % weniger; ein kontrollierter Handelsplatz-Sektor verbessert die Gebühr um weitere 5 %.</p>
+</section>
+<section class="panel">
+    <h2>Angebot erstellen</h2>
+    <form method="post" asp-action="CreateMarketOrder">
+        @Html.AntiForgeryToken()
+        <label>Verkaufe <select name="offeredResource"><option value="Naquadah">Naquadah</option><option value="Trinium">Trinium</option><option value="Supplies">Versorgungsgüter</option><option value="Intel">Intel</option></select></label>
+        <label>Menge <input type="number" name="offeredAmount" min="1" required /></label>
+        <label>Gewünschte Ressource <select name="requestedResource"><option value="Naquadah">Naquadah</option><option value="Trinium">Trinium</option><option value="Supplies">Versorgungsgüter</option><option value="Intel">Intel</option></select></label>
+        <label>Menge <input type="number" name="requestedAmount" min="1" required /></label>
+        <label>Laufzeit (Stunden) <input type="number" name="durationHours" min="1" max="168" value="24" required /></label>
+        <button type="submit">Angebot erstellen</button>
+    </form>
+</section>
+<section class="panel">
+    <h2>Aktive Angebote</h2>
+    <table><thead><tr><th>Spieler</th><th>Verkauft</th><th>Fordert</th><th>Ablauf UTC</th><th>Aktion</th></tr></thead><tbody>
+    @foreach (var order in Model.ActiveMarketOrders)
+    {
+        <tr><td>@order.SellerUser.UserName</td><td>@order.OfferedAmount @ResourceName(order.OfferedResource)</td><td>@order.RequestedAmount @ResourceName(order.RequestedResource)</td><td>@order.ExpiresAtUtc</td><td>
+            @if (order.SellerUserId != Model.User.Id)
+            {
+                <form method="post" asp-action="BuyMarketOrder">@Html.AntiForgeryToken()<input type="hidden" name="orderId" value="@order.Id" /><button type="submit">Kaufen</button></form>
+            }
+            else { <span>Eigenes Angebot</span> }
+        </td></tr>
+    }
+    </tbody></table>
+</section>
+<section class="panel">
+    <h2>Eigene Angebote</h2>
+    <table><thead><tr><th>Verkauft</th><th>Fordert</th><th>Status</th><th>Aktion</th></tr></thead><tbody>
+    @foreach (var order in Model.OwnMarketOrders)
+    {
+        <tr><td>@order.OfferedAmount @ResourceName(order.OfferedResource)</td><td>@order.RequestedAmount @ResourceName(order.RequestedResource)</td><td>@Status(order)</td><td>
+        @if (Status(order) == "aktiv")
+        {
+            <form method="post" asp-action="CancelMarketOrder">@Html.AntiForgeryToken()<input type="hidden" name="orderId" value="@order.Id" /><button type="submit">Stornieren</button></form>
+        }
+        </td></tr>
+    }
+    </tbody></table>
+</section>
+<section class="panel">
+    <h2>Handelsberichte</h2>
+    <table><thead><tr><th>Zeit UTC</th><th>Titel</th><th>Details</th></tr></thead><tbody>
+    @foreach (var report in Model.TradeReports)
+    {
+        <tr><td>@report.CreatedAtUtc</td><td>@report.Title</td><td>@report.Body</td></tr>
+    }
+    </tbody></table>
+</section>

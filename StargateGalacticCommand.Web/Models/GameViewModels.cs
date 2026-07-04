@@ -28,6 +28,9 @@ namespace StargateGalacticCommand.Web.Models
         public IList<PlanetSector> ControlledSectors { get; set; }
         public SectorBonus SectorBonus { get; set; }
         public int OwnInfluence { get; set; }
+        public IList<PlanetMarketOrder> ActiveMarketOrders { get; set; }
+        public IList<PlanetMarketOrder> OwnMarketOrders { get; set; }
+        public IList<TradeReport> TradeReports { get; set; }
     }
 
     public class BuildingUpgradeViewModel
