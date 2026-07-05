@@ -7,6 +7,7 @@ namespace StargateGalacticCommand.Core.Models
         SearchArtifact = 3,
         DiplomaticContact = 4,
         RiskAnalysis = 5,
-        AnalyzeAddress = 6
+        AnalyzeAddress = 6,
+        FoundColony = 7
     }
 }

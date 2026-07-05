@@ -19,13 +19,14 @@ namespace StargateGalacticCommand.Core.Services
                 case GateMissionType.DiplomaticContact: return new BuildCost { Energy = 25, Supplies = 55, Personnel = 5 };
                 case GateMissionType.RiskAnalysis: return new BuildCost { Energy = 30, Supplies = 25, Personnel = 4, Intel = 1 };
                 case GateMissionType.AnalyzeAddress: return new BuildCost { Energy = 40, Supplies = 30, Personnel = 4, Intel = 3 };
+                case GateMissionType.FoundColony: return new BuildCost { Energy = 80, Supplies = 120, Personnel = 20, Intel = 5 };
                 default: return new BuildCost { Energy = 30, Supplies = 30, Personnel = 5 };
             }
         }
 
         public int GetMissionSeconds(GateMissionType type)
         {
-            return type == GateMissionType.AnalyzeAddress ? 180 : 120;
+            return type == GateMissionType.AnalyzeAddress ? 180 : type == GateMissionType.FoundColony ? 300 : 120;
         }
 
         public GateMission StartMission(User user, PlayerBase playerBase, GateAddress address, MissionTeam team, GateMissionType type, DateTime nowUtc)
@@ -91,8 +92,55 @@ namespace StargateGalacticCommand.Core.Services
             {
                 report.IntelFound = 3; report.Outcome = GateMissionOutcome.IntelDiscovery;
             }
+            else if (mission.MissionType == GateMissionType.FoundColony)
+            {
+                report.IntelFound = 1; report.Outcome = GateMissionOutcome.IntelDiscovery;
+            }
             playerBase.Resources.Naquadah += report.NaquadahFound; playerBase.Resources.Trinium += report.TriniumFound; playerBase.Resources.Supplies += report.SuppliesFound; playerBase.Resources.Intel += report.IntelFound;
             report.Summary = "Gate-Mission abgeschlossen. Keine Schiffe oder Großflotten wurden durch das Gate bewegt; Transport beschränkte sich lorekonform auf Personen, kleine Ausrüstung und Missionsteams.";
+        }
+
+        public string ApplyFoundColonyResult(User user, GateAddress targetAddress, IList<Planet> planets, DateTime nowUtc)
+        {
+            if (user == null) throw new ArgumentNullException("user");
+            if (targetAddress == null) throw new ArgumentNullException("targetAddress");
+            if (planets == null) throw new ArgumentNullException("planets");
+            bool knowsTarget = user.KnownGateAddresses != null && user.KnownGateAddresses.Any(k => k.GateAddressId == targetAddress.Id);
+            if (!knowsTarget) throw new InvalidOperationException("Koloniegründung benötigt eine bereits bekannte Gate-Adresse.");
+
+            if (targetAddress.Planet == null)
+            {
+                var planet = CreateColonyPlanet(targetAddress.Code, Math.Max(1, planets.Count + 1));
+                targetAddress.Planet = planet;
+                targetAddress.PlanetId = planet.Id == 0 ? (int?)null : planet.Id;
+                targetAddress.IsNeutralPve = false;
+                planets.Add(planet);
+                return "Neuer Kolonieplanet freigeschaltet: " + planet.Name + ". Stargates transportierten nur Team und Ausrüstung; Großschiffe bleiben auf Hyperraumrouten beschränkt.";
+            }
+
+            var expandable = planets.OrderBy(p => p.Id).ThenBy(p => p.Name).FirstOrDefault(IsNearlyFull);
+            if (expandable == null) expandable = targetAddress.Planet;
+            int next = expandable.Sectors.Any() ? expandable.Sectors.Max(s => s.Number) + 1 : 1;
+            expandable.Sectors.Add(new PlanetSector { Number = next, Name = "Koloniesektor " + next, SectorType = SectorType.SettlementSector, IsSettlementSector = true });
+            expandable.Sectors.Add(new PlanetSector { Number = next + 1, Name = "lokaler Versorgungsaußenposten", SectorType = SectorType.LocalSettlement, IsSettlementSector = true });
+            return "Bestehender Planet erweitert: " + expandable.Name + " erhält zusätzliche Siedlungssektoren. Werte sind vorläufig, noch mit Spieldesign-Zielen abzugleichen.";
+        }
+
+        private static bool IsNearlyFull(Planet planet)
+        {
+            var settlementSectors = planet.Sectors.Where(s => s.IsSettlementSector).ToList();
+            if (settlementSectors.Count == 0) return false;
+            int occupied = settlementSectors.Count(s => s.PlayerBase != null);
+            return occupied >= settlementSectors.Count - 1;
+        }
+
+        private static Planet CreateColonyPlanet(string code, int sequence)
+        {
+            var planet = new Planet { Name = code, Galaxy = "Milchstraße", Type = "Koloniewelt", StargateActive = true, Status = "neu erschlossen" };
+            string[] names = { "Stargate-Zone", "Pioniersiedlung", "Koloniesektor 3", "Koloniesektor 4", "Triniumprospektion", "Antike Ruinenstätte", "Naquadah-Ader", "Tauschposten" };
+            SectorType[] types = { SectorType.StargateZone, SectorType.LocalSettlement, SectorType.SettlementSector, SectorType.SettlementSector, SectorType.TriniumField, SectorType.GoauldRuin, SectorType.NaquadahDeposit, SectorType.TradingPost };
+            for (int i = 0; i < names.Length; i++) planet.Sectors.Add(new PlanetSector { Number = i + 1, Name = names[i], SectorType = types[i], IsSettlementSector = types[i] == SectorType.LocalSettlement || types[i] == SectorType.SettlementSector });
+            return planet;
         }
 
         public MissionTeam CreateFactionTeam(User user)

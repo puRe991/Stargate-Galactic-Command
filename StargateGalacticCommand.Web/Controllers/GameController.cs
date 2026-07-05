@@ -388,9 +388,15 @@ namespace StargateGalacticCommand.Web.Controllers
             var now = DateTime.UtcNow;
             try
             {
-                var mission = _db.GateMissions.Include(m => m.MissionTeam).Include(m => m.GateAddress).Single(m => m.Id == gateMissionId && m.UserId == userId);
+                var mission = _db.GateMissions.Include(m => m.MissionTeam).Include(m => m.GateAddress).ThenInclude(a => a.Planet).ThenInclude(p => p.Sectors).ThenInclude(s => s.PlayerBase).Single(m => m.Id == gateMissionId && m.UserId == userId);
                 var report = _gateMissions.CompleteMission(mission, playerBase, _db.GateAddresses.ToList(), now);
                 _db.GateMissionReports.Add(report);
+                if (mission.MissionType == GateMissionType.FoundColony && report.Outcome != GateMissionOutcome.WoundedOrLosses)
+                {
+                    var user = _db.Users.Include(u => u.KnownGateAddresses).Single(u => u.Id == userId);
+                    var planets = _db.Planets.Include(p => p.Sectors).ThenInclude(s => s.PlayerBase).OrderBy(p => p.Id).ToList();
+                    report.Summary += " " + _gateMissions.ApplyFoundColonyResult(user, mission.GateAddress, planets, now);
+                }
                 if (mission.MissionType == GateMissionType.AnalyzeAddress && report.Outcome != GateMissionOutcome.WoundedOrLosses)
                 {
                     var knownIds = _db.KnownGateAddresses.Where(k => k.UserId == userId).Select(k => k.GateAddressId).ToList();
@@ -541,7 +547,7 @@ namespace StargateGalacticCommand.Web.Controllers
 
         private User LoadCurrentUser(int userId)
         {
-            var user = _db.Users.Include(u => u.Faction).Include(u => u.ResearchLevels).Include(u => u.ResearchQueue).First(u => u.Id == userId);
+            var user = _db.Users.Include(u => u.Faction).Include(u => u.ResearchLevels).Include(u => u.ResearchQueue).Include(u => u.KnownGateAddresses).First(u => u.Id == userId);
             if (user.ResearchLevels == null) user.ResearchLevels = new ResearchLevels { UserId = user.Id };
             return user;
         }

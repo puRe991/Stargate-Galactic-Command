@@ -17,13 +17,18 @@ namespace StargateGalacticCommand.Core.Services
             if (users.Any(u => u.UserName == userName || u.Email == email)) throw new InvalidOperationException("Benutzername oder E-Mail ist bereits vergeben.");
             Faction faction = factions.SingleOrDefault(f => f.Id == factionId);
             if (faction == null) throw new ArgumentException("Unbekannte Fraktion.");
-            Planet planet = planets.Single(p => p.Name == "P3X-742");
-            PlanetSector sector = planet.Sectors.OrderBy(s => s.Number).FirstOrDefault(s => s.IsSettlementSector && s.PlayerBase == null);
+            PlanetSector sector = planets
+                .OrderBy(p => p.Id)
+                .ThenBy(p => p.Name)
+                .AsEnumerable()
+                .SelectMany(p => p.Sectors.OrderBy(s => s.Number))
+                .FirstOrDefault(s => s.IsSettlementSector && s.PlayerBase == null);
             if (sector == null) throw new InvalidOperationException("Alle Startsektoren auf P3X-742 sind belegt.");
             string hash, salt; _passwords.CreateHash(password, out hash, out salt);
             var user = new User { UserName = userName.Trim(), Email = email.Trim().ToLowerInvariant(), PasswordHash = hash, PasswordSalt = salt, FactionId = faction.Id, Faction = faction, ResearchLevels = new ResearchLevels(), CreatedAtUtc = DateTime.UtcNow };
             user.Bases.Add(new PlayerBase { Name = user.UserName + " Hauptbasis", FactionId = faction.Id, PlanetSector = sector, LastResourceUpdateUtc = DateTime.UtcNow, Resources = _economy.CreateStartingResources(), BuildingLevels = _economy.CreateStartingBuildings(), Ships = new BaseShips() });
-            user.Reports.Add(new Report { Title = "Willkommen auf P3X-742", Body = "Deine Hauptbasis wurde in einem freien Siedlungssektor eingerichtet. Version 0.0.9: Raumfahrt ist für kleine Transporter aktiv; Angriffe bleiben deaktiviert.", CreatedAtUtc = DateTime.UtcNow });
+            string planetName = sector.Planet == null ? "einem Startplaneten" : sector.Planet.Name;
+            user.Reports.Add(new Report { Title = "Willkommen auf " + planetName, Body = "Deine Hauptbasis wurde in einem freien Siedlungssektor eingerichtet. Version 0.0.9: Raumfahrt ist für kleine Transporter aktiv; Angriffe bleiben deaktiviert.", CreatedAtUtc = DateTime.UtcNow });
             return user;
         }
     }

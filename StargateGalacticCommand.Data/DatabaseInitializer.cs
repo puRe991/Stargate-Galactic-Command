@@ -39,14 +39,19 @@ namespace StargateGalacticCommand.Data
         }
         private static void SeedGateAddresses(GameDbContext context)
         {
-            var startPlanet = context.Planets.SingleOrDefault(p => p.Name == "P3X-742");
-            if (startPlanet != null && !context.GateAddresses.Any(a => a.Code == "P3X-742"))
-                context.GateAddresses.Add(new GateAddress { Planet = startPlanet, Code = "P3X-742", WorldName = "P3X-742", Description = "Startplanet mit aktiver Stargate-Lichtung.", IsNeutralPve = false, RiskLevel = 1 });
+            AddPlanetAddress(context, "P3X-742", "Startplanet mit aktiver Stargate-Lichtung.", 1);
+            AddPlanetAddress(context, "P4X-650", "Bewohnbarer Waldmond mit aktiver Stargate-Zone.", 2);
+            AddPlanetAddress(context, "P9G-844", "Wüstenkolonie mit stabiler Gate-Düne.", 2);
             AddPve(context, "P4X-219", "verlassene Menschenkolonie", 3);
             AddPve(context, "P2X-885", "alte Goa’uld-Ruine", 5);
             AddPve(context, "P7X-331", "Triniumvorkommen", 4);
             AddPve(context, "P9C-117", "instabile Gate-Adresse", 8);
             AddPve(context, "P3R-636", "neutraler Handelskontakt", 2);
+        }
+        private static void AddPlanetAddress(GameDbContext context, string code, string description, int risk)
+        {
+            var planet = context.Planets.SingleOrDefault(p => p.Name == code);
+            if (planet != null && !context.GateAddresses.Any(a => a.Code == code)) context.GateAddresses.Add(new GateAddress { Planet = planet, Code = code, WorldName = code, Description = description, IsNeutralPve = false, RiskLevel = risk });
         }
         private static void AddPve(GameDbContext context, string code, string description, int risk)
         {
@@ -86,10 +91,16 @@ namespace StargateGalacticCommand.Data
         }
         private static void SeedStartPlanet(GameDbContext context)
         {
-            if (context.Planets.Any(p => p.Name == "P3X-742")) return;
-            var planet = new Planet { Name = "P3X-742", Galaxy = "Milchstraße", Type = "Grenzwelt", StargateActive = true, Status = "geteilt" };
-            string[] names = { "Stargate-Lichtung", "lokale Siedlung", "Siedlungssektor 3", "Siedlungssektor 4", "Siedlungssektor 5", "Siedlungssektor 6", "Triniumfeld", "alte Goa’uld-Ruine", "Naquadah-Vorkommen", "Orbitalkorridor" };
-            SectorType[] types = { SectorType.StargateZone, SectorType.LocalSettlement, SectorType.SettlementSector, SectorType.SettlementSector, SectorType.SettlementSector, SectorType.SettlementSector, SectorType.TriniumField, SectorType.GoauldRuin, SectorType.NaquadahDeposit, SectorType.OrbitalCorridor };
+            AddSeedPlanet(context, "P3X-742", "Grenzwelt", "geteilt", new[] { "Stargate-Lichtung", "lokale Siedlung", "Siedlungssektor 3", "Siedlungssektor 4", "Siedlungssektor 5", "Siedlungssektor 6", "Triniumfeld", "alte Goa’uld-Ruine", "Naquadah-Vorkommen", "Orbitalkorridor" });
+            AddSeedPlanet(context, "P4X-650", "Waldmond", "umkämpft", new[] { "Stargate-Ring", "Flusssiedlung", "Siedlungsplateau 3", "Siedlungsplateau 4", "Siedlungsplateau 5", "Siedlungsplateau 6", "Triniumader", "verlassener Tempel", "Naquadah-Senke", "Handelspfad" });
+            AddSeedPlanet(context, "P9G-844", "Wüstenkolonie", "neutral", new[] { "Gate-Düne", "Oasenstadt", "Siedlungskamm 3", "Siedlungskamm 4", "Siedlungskamm 5", "Siedlungskamm 6", "Triniumbruch", "Goa’uld-Ausgrabung", "Naquadah-Schlucht", "Karawanenposten" });
+        }
+
+        private static void AddSeedPlanet(GameDbContext context, string name, string type, string status, string[] names)
+        {
+            if (context.Planets.Any(p => p.Name == name)) return;
+            var planet = new Planet { Name = name, Galaxy = "Milchstraße", Type = type, StargateActive = true, Status = status };
+            SectorType[] types = { SectorType.StargateZone, SectorType.LocalSettlement, SectorType.SettlementSector, SectorType.SettlementSector, SectorType.SettlementSector, SectorType.SettlementSector, SectorType.TriniumField, SectorType.GoauldRuin, SectorType.NaquadahDeposit, SectorType.TradingPost };
             for (int i = 0; i < names.Length; i++) planet.Sectors.Add(new PlanetSector { Number = i + 1, Name = names[i], IsSettlementSector = types[i] == SectorType.LocalSettlement || types[i] == SectorType.SettlementSector, SectorType = types[i] });
             context.Planets.Add(planet);
         }
