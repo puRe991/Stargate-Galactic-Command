@@ -1,1 +1,99 @@
-<!DOCTYPE html><html lang="de"><head><meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1.0" /><title>@ViewData["Title"] - Stargate Galactic Command</title><link rel="stylesheet" href="~/css/site.css" /></head><body><header class="topbar"><div class="container"><strong>Stargate Galactic Command</strong><span class="tagline">Version 0.1.0</span><nav><a href="/">Start</a><a href="/Account/Register">Registrierung</a><a href="/Account/Login">Login</a><a href="/Game/Overview">Übersicht</a><a href="/Game/Base">Basis</a><a href="/Game/Planet">Planet</a><a href="/Game/Sectors">Sektoren</a><a href="/Game/Market">Markt</a><a href="/Game/Shipyard">Werft</a><a href="/Game/Ships">Schiffe</a><a href="/Game/SendFleet">Flotte senden</a><a href="/Game/Fleets">Flotten</a><a href="/Game/Orbit">Orbit</a><a href="/Game/Intelligence">Geheimdienst</a><a href="/Game/Alliances">Allianzen</a><a href="/Game/CombatReports">Kampfberichte</a><a href="/Game/Resources">Ressourcen</a><a href="/Game/Research">Forschung</a><a href="/Game/GateRoom">Gate-Raum</a><a href="/Game/Reports">Berichte</a><a href="/Account/Logout">Logout</a></nav></div></header><main class="container">@RenderBody()</main></body></html>
+@using StargateGalacticCommand.Web.Models
+@{
+    var controller = (ViewContext.RouteData.Values["controller"]?.ToString() ?? string.Empty);
+    var action = (ViewContext.RouteData.Values["action"]?.ToString() ?? string.Empty);
+    var isAuthenticated = User?.Identity?.IsAuthenticated == true;
+    var commanderName = User?.Identity?.Name ?? "Commander";
+    var gameModel = Model as OverviewViewModel;
+
+    string Active(string targetController, string targetAction)
+    {
+        return string.Equals(controller, targetController, StringComparison.OrdinalIgnoreCase)
+            && string.Equals(action, targetAction, StringComparison.OrdinalIgnoreCase)
+            ? "active"
+            : string.Empty;
+    }
+
+    string GroupOpen(params string[] actions)
+    {
+        return actions.Any(a => string.Equals(action, a, StringComparison.OrdinalIgnoreCase)) ? "open" : string.Empty;
+    }
+}
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>@ViewData["Title"] - Stargate Galactic Command</title>
+    <link rel="stylesheet" href="~/css/site.css" asp-append-version="true" />
+</head>
+<body>
+    <header class="topbar">
+        <div class="container command-header">
+            <a class="brand" asp-controller="Home" asp-action="Index" aria-label="Stargate Galactic Command Startseite">
+                <span class="brand-mark">SGC</span>
+                <span><strong>Stargate Galactic Command</strong><small>Version 0.1.0 · Deep Space Operations</small></span>
+            </a>
+
+            <nav class="command-nav" aria-label="Hauptnavigation">
+                <details class="nav-shell" open>
+                    <summary>Navigation</summary>
+                    <div class="nav-content">
+                        @if (isAuthenticated)
+                        {
+                            <a class="nav-link @(Active("Game", "Overview"))" asp-controller="Game" asp-action="Overview">Übersicht</a>
+                            <div class="nav-group @(GroupOpen("Base", "Planet", "Resources", "Research", "GateRoom", "Sectors"))">
+                                <span class="nav-group-title">Basis-Verwaltung</span>
+                                <a class="nav-link @(Active("Game", "Base"))" asp-controller="Game" asp-action="Base">Basis</a>
+                                <a class="nav-link @(Active("Game", "Planet"))" asp-controller="Game" asp-action="Planet">Planet</a>
+                                <a class="nav-link @(Active("Game", "Resources"))" asp-controller="Game" asp-action="Resources">Ressourcen</a>
+                                <a class="nav-link @(Active("Game", "Research"))" asp-controller="Game" asp-action="Research">Forschung</a>
+                                <a class="nav-link @(Active("Game", "GateRoom"))" asp-controller="Game" asp-action="GateRoom">Gate-Raum</a>
+                                <a class="nav-link @(Active("Game", "Sectors"))" asp-controller="Game" asp-action="Sectors">Sektoren</a>
+                            </div>
+                            <div class="nav-group @(GroupOpen("Shipyard", "Ships", "SendFleet", "Fleets", "Orbit"))">
+                                <span class="nav-group-title">Militär</span>
+                                <a class="nav-link @(Active("Game", "Shipyard"))" asp-controller="Game" asp-action="Shipyard">Werft</a>
+                                <a class="nav-link @(Active("Game", "Ships"))" asp-controller="Game" asp-action="Ships">Schiffe</a>
+                                <a class="nav-link @(Active("Game", "SendFleet"))" asp-controller="Game" asp-action="SendFleet">Flotte senden</a>
+                                <a class="nav-link @(Active("Game", "Fleets"))" asp-controller="Game" asp-action="Fleets">Flotten</a>
+                                <a class="nav-link @(Active("Game", "Orbit"))" asp-controller="Game" asp-action="Orbit">Orbit</a>
+                            </div>
+                            <div class="nav-group @(GroupOpen("Market", "Alliances", "Intelligence"))">
+                                <span class="nav-group-title">Diplomatie & Intel</span>
+                                <a class="nav-link @(Active("Game", "Market"))" asp-controller="Game" asp-action="Market">Markt</a>
+                                <a class="nav-link @(Active("Game", "Alliances"))" asp-controller="Game" asp-action="Alliances">Allianzen</a>
+                                <a class="nav-link @(Active("Game", "Intelligence"))" asp-controller="Game" asp-action="Intelligence">Geheimdienst</a>
+                            </div>
+                            <div class="nav-group @(GroupOpen("Reports", "CombatReports", "FleetReports"))">
+                                <span class="nav-group-title">Berichte</span>
+                                <a class="nav-link @(Active("Game", "Reports"))" asp-controller="Game" asp-action="Reports">Berichte</a>
+                                <a class="nav-link @(Active("Game", "CombatReports"))" asp-controller="Game" asp-action="CombatReports">Kampfberichte</a>
+                                <a class="nav-link @(Active("Game", "FleetReports"))" asp-controller="Game" asp-action="FleetReports">Flottenberichte</a>
+                            </div>
+                            <div class="nav-account"><span>@commanderName</span><a class="nav-link" asp-controller="Account" asp-action="Logout">Logout</a></div>
+                        }
+                        else
+                        {
+                            <a class="nav-link @(Active("Home", "Index"))" asp-controller="Home" asp-action="Index">Start</a>
+                            <a class="nav-link @(Active("Account", "Register"))" asp-controller="Account" asp-action="Register">Registrierung</a>
+                            <a class="nav-link @(Active("Account", "Login"))" asp-controller="Account" asp-action="Login">Login</a>
+                        }
+                    </div>
+                </details>
+            </nav>
+        </div>
+        @if (isAuthenticated && gameModel?.Base?.Resources != null)
+        {
+            <div class="resource-strip" aria-label="Ressourcenübersicht">
+                <div class="container resource-grid">
+                    <span><b>Naquadah</b> @gameModel.Base.Resources.Naquadah</span><span><b>Trinium</b> @gameModel.Base.Resources.Trinium</span><span><b>Supplies</b> @gameModel.Base.Resources.Supplies</span><span><b>Energy</b> @gameModel.Base.Resources.Energy</span><span><b>Personnel</b> @gameModel.Base.Resources.Personnel</span><span><b>Intel</b> @gameModel.Base.Resources.Intel</span>
+                </div>
+            </div>
+        }
+    </header>
+    <main class="container command-main">@RenderBody()</main>
+    <script src="~/js/command-countdowns.js" asp-append-version="true"></script>
+    @await RenderSectionAsync("Scripts", required: false)
+</body>
+</html>
