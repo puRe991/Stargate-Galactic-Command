@@ -66,6 +66,23 @@ namespace StargateGalacticCommand.Tests
                 }
             }
         }
+        [Fact]
+        public void Initialize_WithDefaultMigrationMode_CreatesSchemaWhenNoMigrationsExist()
+        {
+            using (var connection = new SqliteConnection("DataSource=:memory:"))
+            {
+                connection.Open();
+                var options = new DbContextOptionsBuilder<GameDbContext>().UseSqlite(connection).Options;
+                using (var db = new GameDbContext(options))
+                {
+                    DatabaseInitializer.Initialize(db, new GateMissionService(new ResourceService()));
+
+                    Assert.Equal(4, db.Factions.Count());
+                    Assert.Equal(3, db.Planets.Count());
+                    Assert.True(db.GateAddresses.Any(a => a.Code == "P3X-742"));
+                }
+            }
+        }
 
         [Fact]
         public void FindLoginCandidate_ReturnsNormalUserOnlyAndExcludesNpcUser()

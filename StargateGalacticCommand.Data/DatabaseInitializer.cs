@@ -10,9 +10,10 @@ namespace StargateGalacticCommand.Data
         public static void Initialize(GameDbContext context, GateMissionService gateMissionService, bool useMigrations = true)
         {
             if (context == null) return;
-            if (useMigrations) context.Database.Migrate(); else context.Database.EnsureCreated();
+            EnsureDatabaseCreated(context, useMigrations);
             SeedFactions(context);
             SeedStartPlanet(context);
+            context.SaveChanges();
             EnsureResearchLevels(context);
             SeedGateAddresses(context);
             EnsureGateAccess(context, gateMissionService);
@@ -21,6 +22,20 @@ namespace StargateGalacticCommand.Data
             EnsureProtectionStatuses(context);
             context.SaveChanges();
         }
+        private static void EnsureDatabaseCreated(GameDbContext context, bool useMigrations)
+        {
+            // Migrate() does not create the model tables when the assembly has no
+            // migrations. This prototype currently has no migration files, so fall
+            // back to EnsureCreated() to avoid a startup crash while seeding.
+            if (useMigrations && context.Database.GetMigrations().Any())
+            {
+                context.Database.Migrate();
+                return;
+            }
+
+            context.Database.EnsureCreated();
+        }
+
         private static void SeedFactions(GameDbContext context)
         {
             if (context.Factions.Any()) return;
