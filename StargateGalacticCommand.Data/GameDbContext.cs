@@ -54,6 +54,7 @@ namespace StargateGalacticCommand.Data
             modelBuilder.Entity<User>().Property(u => u.Email).IsRequired().HasMaxLength(160);
             modelBuilder.Entity<User>().HasIndex(u => u.UserName).IsUnique();
             modelBuilder.Entity<User>().HasIndex(u => u.Email).IsUnique();
+            modelBuilder.Entity<User>().HasIndex(u => new { u.IsNpc, u.LastSeenAtUtc });
             modelBuilder.Entity<Planet>().Property(p => p.Name).IsRequired().HasMaxLength(80);
             modelBuilder.Entity<Planet>().HasIndex(p => p.Name).IsUnique();
             modelBuilder.Entity<PlanetSector>().HasIndex(s => new { s.PlanetId, s.Number }).IsUnique();

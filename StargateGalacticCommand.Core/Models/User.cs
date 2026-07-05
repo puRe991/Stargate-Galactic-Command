@@ -13,6 +13,8 @@ namespace StargateGalacticCommand.Core.Models
         public int FactionId { get; set; }
         public Faction Faction { get; set; }
         public DateTime CreatedAtUtc { get; set; }
+        public DateTime LastSeenAtUtc { get; set; }
+        public bool IsNpc { get; set; }
         public ICollection<PlayerBase> Bases { get; set; }
         public ICollection<Report> Reports { get; set; }
         public ResearchLevels ResearchLevels { get; set; }
