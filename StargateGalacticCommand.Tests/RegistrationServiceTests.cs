@@ -1,3 +1,4 @@
+using System.IO;
 using System.Linq;
 using StargateGalacticCommand.Core.Services;
 using StargateGalacticCommand.Core.Models;
@@ -60,6 +61,59 @@ namespace StargateGalacticCommand.Tests
                     var createdBase = db.PlayerBases.Include(b => b.PlanetSector).ThenInclude(s => s.Planet).Single(b => b.Name == "janet Hauptbasis");
                     Assert.Equal("P4X-650", createdBase.PlanetSector.Planet.Name);
                     Assert.Equal(2, createdBase.PlanetSector.Number);
+                }
+            }
+        }
+        [Fact]
+        public void Initialize_WithDefaultMigrationMode_CreatesSchemaWhenNoMigrationsExist()
+        {
+            using (var connection = new SqliteConnection("DataSource=:memory:"))
+            {
+                connection.Open();
+                var options = new DbContextOptionsBuilder<GameDbContext>().UseSqlite(connection).Options;
+                using (var db = new GameDbContext(options))
+                {
+                    DatabaseInitializer.Initialize(db, new GateMissionService(new ResourceService()));
+
+                    Assert.Equal(4, db.Factions.Count());
+                    Assert.Equal(3, db.Planets.Count());
+                    Assert.True(db.GateAddresses.Any(a => a.Code == "P3X-742"));
+                }
+            }
+        }
+        [Fact]
+        public void Initialize_WithPartialExistingSqliteDatabase_RebuildsMissingSchema()
+        {
+            var databasePath = Path.Combine(Path.GetTempPath(), Path.GetRandomFileName() + ".db");
+            try
+            {
+                using (var connection = new SqliteConnection("Data Source=" + databasePath))
+                {
+                    connection.Open();
+                    using (var command = connection.CreateCommand())
+                    {
+                        command.CommandText = "CREATE TABLE Factions (Id INTEGER NOT NULL CONSTRAINT PK_Factions PRIMARY KEY AUTOINCREMENT, Name TEXT NOT NULL, ShortName TEXT NULL);";
+                        command.ExecuteNonQuery();
+                    }
+                }
+
+                var options = new DbContextOptionsBuilder<GameDbContext>().UseSqlite("Data Source=" + databasePath).Options;
+                using (var db = new GameDbContext(options))
+                {
+                    DatabaseInitializer.Initialize(db, new GateMissionService(new ResourceService()));
+
+                    Assert.Single(db.TradeTaxRules);
+                    Assert.Equal(4, db.Factions.Count());
+                }
+
+                Assert.True(Directory.GetFiles(Path.GetDirectoryName(databasePath), Path.GetFileName(databasePath) + ".backup-*").Any());
+            }
+            finally
+            {
+                if (File.Exists(databasePath)) File.Delete(databasePath);
+                foreach (var backupPath in Directory.GetFiles(Path.GetDirectoryName(databasePath), Path.GetFileName(databasePath) + ".backup-*"))
+                {
+                    File.Delete(backupPath);
                 }
             }
         }

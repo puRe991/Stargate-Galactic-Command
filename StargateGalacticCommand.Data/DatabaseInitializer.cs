@@ -1,4 +1,8 @@
+using System;
+using System.Collections.Generic;
+using System.IO;
 using System.Linq;
+using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
 using StargateGalacticCommand.Core.Services;
 using StargateGalacticCommand.Core.Models;
@@ -10,9 +14,10 @@ namespace StargateGalacticCommand.Data
         public static void Initialize(GameDbContext context, GateMissionService gateMissionService, bool useMigrations = true)
         {
             if (context == null) return;
-            if (useMigrations) context.Database.Migrate(); else context.Database.EnsureCreated();
+            EnsureDatabaseCreated(context, useMigrations);
             SeedFactions(context);
             SeedStartPlanet(context);
+            context.SaveChanges();
             EnsureResearchLevels(context);
             SeedGateAddresses(context);
             EnsureGateAccess(context, gateMissionService);
@@ -21,6 +26,85 @@ namespace StargateGalacticCommand.Data
             EnsureProtectionStatuses(context);
             context.SaveChanges();
         }
+        private static void EnsureDatabaseCreated(GameDbContext context, bool useMigrations)
+        {
+            if (useMigrations && context.Database.GetMigrations().Any())
+            {
+                context.Database.Migrate();
+                return;
+            }
+
+            // EnsureCreated() is intentionally used while this prototype has no
+            // migrations. If an older partial SQLite database already exists,
+            // EnsureCreated() leaves it unchanged, so verify the schema before
+            // seeding and rebuild the local file with a backup when tables are
+            // missing.
+            context.Database.EnsureCreated();
+            if (!HasAllModelTables(context))
+            {
+                BackupSqliteDatabase(context);
+                context.Database.EnsureDeleted();
+                context.Database.EnsureCreated();
+            }
+        }
+
+        private static bool HasAllModelTables(GameDbContext context)
+        {
+            var missingTables = GetModelTableNames(context).Where(table => !TableExists(context, table)).ToList();
+            return missingTables.Count == 0;
+        }
+
+        private static IEnumerable<string> GetModelTableNames(GameDbContext context)
+        {
+            return context.Model.GetEntityTypes()
+                .Select(entityType => entityType.GetTableName())
+                .Where(tableName => !string.IsNullOrWhiteSpace(tableName))
+                .Select(tableName => tableName!)
+                .Distinct();
+        }
+
+        private static bool TableExists(GameDbContext context, string tableName)
+        {
+            var connection = context.Database.GetDbConnection();
+            var shouldClose = connection.State == System.Data.ConnectionState.Closed;
+
+            if (shouldClose) connection.Open();
+            try
+            {
+                using (var command = connection.CreateCommand())
+                {
+                    command.CommandText = "SELECT 1 FROM sqlite_master WHERE type = 'table' AND name = $tableName LIMIT 1";
+                    var parameter = command.CreateParameter();
+                    parameter.ParameterName = "$tableName";
+                    parameter.Value = tableName;
+                    command.Parameters.Add(parameter);
+                    return command.ExecuteScalar() != null;
+                }
+            }
+            finally
+            {
+                if (shouldClose) connection.Close();
+            }
+        }
+
+        private static void BackupSqliteDatabase(GameDbContext context)
+        {
+            var connection = context.Database.GetDbConnection();
+            if (connection is not SqliteConnection || string.IsNullOrWhiteSpace(connection.DataSource) || connection.DataSource == ":memory:")
+            {
+                return;
+            }
+
+            var databasePath = Path.GetFullPath(connection.DataSource);
+            if (!File.Exists(databasePath))
+            {
+                return;
+            }
+
+            var backupPath = databasePath + ".backup-" + DateTime.UtcNow.ToString("yyyyMMddHHmmss");
+            File.Copy(databasePath, backupPath, overwrite: false);
+        }
+
         private static void SeedFactions(GameDbContext context)
         {
             if (context.Factions.Any()) return;
