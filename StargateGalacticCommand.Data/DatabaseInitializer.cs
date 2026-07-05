@@ -1,19 +1,21 @@
 using System.Linq;
+using Microsoft.EntityFrameworkCore;
+using StargateGalacticCommand.Core.Services;
 using StargateGalacticCommand.Core.Models;
 
 namespace StargateGalacticCommand.Data
 {
     public static class DatabaseInitializer
     {
-        public static void Initialize(GameDbContext context)
+        public static void Initialize(GameDbContext context, GateMissionService gateMissionService, bool useMigrations = true)
         {
             if (context == null) return;
-            context.Database.EnsureCreated();
+            if (useMigrations) context.Database.Migrate(); else context.Database.EnsureCreated();
             SeedFactions(context);
             SeedStartPlanet(context);
             EnsureResearchLevels(context);
             SeedGateAddresses(context);
-            EnsureGateAccess(context);
+            EnsureGateAccess(context, gateMissionService);
             SeedTradeTaxRule(context);
             EnsureBaseShips(context);
             EnsureProtectionStatuses(context);
@@ -50,9 +52,8 @@ namespace StargateGalacticCommand.Data
         {
             if (!context.GateAddresses.Any(a => a.Code == code)) context.GateAddresses.Add(new GateAddress { Code = code, WorldName = code, Description = description, IsNeutralPve = true, RiskLevel = risk });
         }
-        private static void EnsureGateAccess(GameDbContext context)
+        private static void EnsureGateAccess(GameDbContext context, GateMissionService service)
         {
-            var service = new StargateGalacticCommand.Core.Services.GateMissionService(new StargateGalacticCommand.Core.Services.ResourceService());
             var start = context.GateAddresses.SingleOrDefault(a => a.Code == "P3X-742");
             if (start == null) return;
             foreach (var user in context.Users.ToList())

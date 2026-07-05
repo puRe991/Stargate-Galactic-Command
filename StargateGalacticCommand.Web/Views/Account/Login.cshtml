@@ -1,3 +1,15 @@
 @model LoginViewModel
 @{ ViewData["Title"]="Login"; }
-<section class="panel"><h1>Login</h1>@if(!string.IsNullOrEmpty(Model.Error)){<p class="error">@Model.Error</p>}<form method="post"><label>Benutzername oder E-Mail<input name="UserNameOrEmail" /></label><label>Passwort<input name="Password" type="password" /></label><button type="submit">Einloggen</button></form></section>
+<section class="panel">
+    <h1>Login</h1>
+    @if(!string.IsNullOrEmpty(Model.Error)){<p class="error">@Model.Error</p>}
+    <form method="post">
+        @Html.AntiForgeryToken()
+        <div asp-validation-summary="ModelOnly" class="error"></div>
+        <label>Benutzername oder E-Mail<input asp-for="UserNameOrEmail" /></label>
+        <span asp-validation-for="UserNameOrEmail" class="error"></span>
+        <label>Passwort<input asp-for="Password" type="password" /></label>
+        <span asp-validation-for="Password" class="error"></span>
+        <button type="submit">Einloggen</button>
+    </form>
+</section>

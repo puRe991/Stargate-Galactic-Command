@@ -7,9 +7,11 @@ using StargateGalacticCommand.Core.Models;
 using StargateGalacticCommand.Core.Services;
 using StargateGalacticCommand.Data;
 using StargateGalacticCommand.Web.Models;
+using StargateGalacticCommand.Web.Filters;
 
 namespace StargateGalacticCommand.Web.Controllers
 {
+    [RequireLogin]
     public class GameController : Controller
     {
         private readonly GameDbContext _db;
@@ -59,9 +61,9 @@ namespace StargateGalacticCommand.Web.Controllers
         [ValidateAntiForgeryToken]
         public IActionResult CreateAlliance(string name, string tag, string description)
         {
-            int? userId = HttpContext.Session.GetInt32("UserId"); if (!userId.HasValue) return RedirectToAction("Login", "Account");
+            int userId = CurrentUserId();
             var now = DateTime.UtcNow;
-            try { if (_db.AllianceMembers.Any(m => m.UserId == userId.Value)) throw new InvalidOperationException("Du bist bereits in einer Allianz."); if (_db.Alliances.Any(a => a.Name == name || a.Tag == tag)) throw new InvalidOperationException("Name oder Tag ist bereits vergeben."); var alliance = _alliances.CreateAlliance(LoadCurrentUser(userId.Value), name, tag, description, now); _db.Alliances.Add(alliance); _db.Reports.Add(new Report { UserId = userId.Value, Title = "Allianz gegründet", Body = "Allianz " + alliance.Tag + " wurde erstellt.", CreatedAtUtc = now }); TempData["Message"] = "Allianz erstellt."; }
+            try { if (_db.AllianceMembers.Any(m => m.UserId == userId)) throw new InvalidOperationException("Du bist bereits in einer Allianz."); if (_db.Alliances.Any(a => a.Name == name || a.Tag == tag)) throw new InvalidOperationException("Name oder Tag ist bereits vergeben."); var alliance = _alliances.CreateAlliance(LoadCurrentUser(userId), name, tag, description, now); _db.Alliances.Add(alliance); _db.Reports.Add(new Report { UserId = userId, Title = "Allianz gegründet", Body = "Allianz " + alliance.Tag + " wurde erstellt.", CreatedAtUtc = now }); TempData["Message"] = "Allianz erstellt."; }
             catch (Exception ex) when (ex is InvalidOperationException || ex is ArgumentException) { TempData["Error"] = ex.Message; }
             _db.SaveChanges(); return RedirectToAction("Alliances");
         }
@@ -70,9 +72,9 @@ namespace StargateGalacticCommand.Web.Controllers
         [ValidateAntiForgeryToken]
         public IActionResult ApplyAlliance(int allianceId, string message)
         {
-            int? userId = HttpContext.Session.GetInt32("UserId"); if (!userId.HasValue) return RedirectToAction("Login", "Account");
+            int userId = CurrentUserId();
             var now = DateTime.UtcNow;
-            try { var alliance = _db.Alliances.Single(a => a.Id == allianceId); var app = _alliances.Apply(alliance, LoadCurrentUser(userId.Value), message, _db.AllianceMembers.Where(m => m.UserId == userId.Value).ToList(), _db.AllianceApplications.Where(a => a.UserId == userId.Value).ToList(), now); _db.AllianceApplications.Add(app); TempData["Message"] = "Bewerbung gesendet."; }
+            try { var alliance = _db.Alliances.Single(a => a.Id == allianceId); var app = _alliances.Apply(alliance, LoadCurrentUser(userId), message, _db.AllianceMembers.Where(m => m.UserId == userId).ToList(), _db.AllianceApplications.Where(a => a.UserId == userId).ToList(), now); _db.AllianceApplications.Add(app); TempData["Message"] = "Bewerbung gesendet."; }
             catch (Exception ex) when (ex is InvalidOperationException || ex is ArgumentException) { TempData["Error"] = ex.Message; }
             _db.SaveChanges(); return RedirectToAction("Alliances");
         }
@@ -81,9 +83,9 @@ namespace StargateGalacticCommand.Web.Controllers
         [ValidateAntiForgeryToken]
         public IActionResult AcceptAllianceApplication(int applicationId)
         {
-            int? userId = HttpContext.Session.GetInt32("UserId"); if (!userId.HasValue) return RedirectToAction("Login", "Account");
+            int userId = CurrentUserId();
             var now = DateTime.UtcNow;
-            try { var app = _db.AllianceApplications.Single(a => a.Id == applicationId); var member = _alliances.Accept(app, LoadCurrentUser(userId.Value), _db.AllianceMembers.Where(m => m.AllianceId == app.AllianceId).ToList(), now); _db.AllianceMembers.Add(member); _db.Reports.Add(new Report { UserId = app.UserId, Title = "Allianzbeitritt", Body = "Deine Bewerbung wurde angenommen.", CreatedAtUtc = now }); TempData["Message"] = "Bewerbung angenommen."; }
+            try { var app = _db.AllianceApplications.Single(a => a.Id == applicationId); var member = _alliances.Accept(app, LoadCurrentUser(userId), _db.AllianceMembers.Where(m => m.AllianceId == app.AllianceId).ToList(), now); _db.AllianceMembers.Add(member); _db.Reports.Add(new Report { UserId = app.UserId, Title = "Allianzbeitritt", Body = "Deine Bewerbung wurde angenommen.", CreatedAtUtc = now }); TempData["Message"] = "Bewerbung angenommen."; }
             catch (Exception ex) when (ex is InvalidOperationException || ex is ArgumentException) { TempData["Error"] = ex.Message; }
             _db.SaveChanges(); return RedirectToAction("Alliances");
         }
@@ -103,8 +105,8 @@ namespace StargateGalacticCommand.Web.Controllers
         [ValidateAntiForgeryToken]
         public IActionResult CompleteSpaceCombat(int missionId)
         {
-            int? userId = HttpContext.Session.GetInt32("UserId"); if (!userId.HasValue) return RedirectToAction("Login", "Account"); var now=DateTime.UtcNow;
-            try { var m=_db.SpaceCombatMissions.Include(x=>x.OriginBase).ThenInclude(b=>b.Ships).Include(x=>x.OriginBase).ThenInclude(b=>b.Resources).Include(x=>x.TargetBase).ThenInclude(b=>b.Ships).Include(x=>x.TargetBase).ThenInclude(b=>b.Resources).Include(x=>x.TargetBase).ThenInclude(b=>b.BuildingLevels).Single(x=>x.Id==missionId && x.AttackerUserId==userId.Value); var attacker=LoadCurrentUser(m.AttackerUserId); var defender=_db.Users.Include(u=>u.Faction).Include(u=>u.ResearchLevels).Single(u=>u.Id==m.DefenderUserId); var report=_spaceCombat.Resolve(m,attacker,defender,now); _db.SpaceCombatReports.Add(report); _db.SpaceCombatReports.Add(new SpaceCombatReport{SpaceCombatMission=m,UserId=m.DefenderUserId,CreatedAtUtc=now,Title=report.Title,Body=report.Body,AttackerWon=report.AttackerWon,Rounds=report.Rounds,AttackerLosses=report.AttackerLosses,DefenderLosses=report.DefenderLosses}); _db.DebrisFields.Add(_spaceCombat.CreateDebris(m,report,now)); TempData["Message"]="Kampf berechnet."; }
+            int userId = CurrentUserId(); var now=DateTime.UtcNow;
+            try { var m=_db.SpaceCombatMissions.Include(x=>x.OriginBase).ThenInclude(b=>b.Ships).Include(x=>x.OriginBase).ThenInclude(b=>b.Resources).Include(x=>x.TargetBase).ThenInclude(b=>b.Ships).Include(x=>x.TargetBase).ThenInclude(b=>b.Resources).Include(x=>x.TargetBase).ThenInclude(b=>b.BuildingLevels).Single(x=>x.Id==missionId && x.AttackerUserId==userId); var attacker=LoadCurrentUser(m.AttackerUserId); var defender=_db.Users.Include(u=>u.Faction).Include(u=>u.ResearchLevels).Single(u=>u.Id==m.DefenderUserId); var report=_spaceCombat.Resolve(m,attacker,defender,now); _db.SpaceCombatReports.Add(report); _db.SpaceCombatReports.Add(new SpaceCombatReport{SpaceCombatMission=m,UserId=m.DefenderUserId,CreatedAtUtc=now,Title=report.Title,Body=report.Body,AttackerWon=report.AttackerWon,Rounds=report.Rounds,AttackerLosses=report.AttackerLosses,DefenderLosses=report.DefenderLosses}); _db.DebrisFields.Add(_spaceCombat.CreateDebris(m,report,now)); TempData["Message"]="Kampf berechnet."; }
             catch (Exception ex) when (ex is InvalidOperationException || ex is ArgumentException) { TempData["Error"] = ex.Message; }
             _db.SaveChanges(); return RedirectToAction("CombatReports");
         }
@@ -168,8 +170,8 @@ namespace StargateGalacticCommand.Web.Controllers
         [ValidateAntiForgeryToken]
         public IActionResult CompleteFleet(int fleetId)
         {
-            int? userId = HttpContext.Session.GetInt32("UserId"); if (!userId.HasValue) return RedirectToAction("Login", "Account"); var now=DateTime.UtcNow;
-            try { var fleet=_db.FleetMovements.Include(f=>f.OriginBase).ThenInclude(b=>b.Ships).Include(f=>f.OriginBase).ThenInclude(b=>b.Resources).Include(f=>f.OriginBase).ThenInclude(b=>b.PlanetSector).Include(f=>f.TargetBase).ThenInclude(b=>b.Ships).Include(f=>f.TargetBase).ThenInclude(b=>b.Resources).Include(f=>f.TargetBase).ThenInclude(b=>b.PlanetSector).Single(f=>f.Id==fleetId && f.UserId==userId.Value); var report=_fleets.Complete(fleet,now); _db.FleetReports.Add(report); TempData["Message"]="Flottenereignis abgeschlossen."; }
+            int userId = CurrentUserId(); var now=DateTime.UtcNow;
+            try { var fleet=_db.FleetMovements.Include(f=>f.OriginBase).ThenInclude(b=>b.Ships).Include(f=>f.OriginBase).ThenInclude(b=>b.Resources).Include(f=>f.OriginBase).ThenInclude(b=>b.PlanetSector).Include(f=>f.TargetBase).ThenInclude(b=>b.Ships).Include(f=>f.TargetBase).ThenInclude(b=>b.Resources).Include(f=>f.TargetBase).ThenInclude(b=>b.PlanetSector).Single(f=>f.Id==fleetId && f.UserId==userId); var report=_fleets.Complete(fleet,now); _db.FleetReports.Add(report); TempData["Message"]="Flottenereignis abgeschlossen."; }
             catch (Exception ex) when (ex is InvalidOperationException || ex is ArgumentException) { TempData["Error"] = ex.Message; }
             _db.SaveChanges(); return RedirectToAction("Fleets");
         }
@@ -178,9 +180,8 @@ namespace StargateGalacticCommand.Web.Controllers
         [ValidateAntiForgeryToken]
         public IActionResult ClaimSector(int sectorId)
         {
-            int? userId = HttpContext.Session.GetInt32("UserId");
-            if (!userId.HasValue) return RedirectToAction("Login", "Account");
-            var user = LoadCurrentUser(userId.Value);
+            int userId = CurrentUserId();
+            var user = LoadCurrentUser(userId);
             var playerBase = LoadCurrentBase(user.Id);
             var now = DateTime.UtcNow;
             try
@@ -202,15 +203,14 @@ namespace StargateGalacticCommand.Web.Controllers
         [ValidateAntiForgeryToken]
         public IActionResult CompleteSectorClaim(int claimId)
         {
-            int? userId = HttpContext.Session.GetInt32("UserId");
-            if (!userId.HasValue) return RedirectToAction("Login", "Account");
+            int userId = CurrentUserId();
             var now = DateTime.UtcNow;
             try
             {
-                var claim = _db.SectorClaims.Include(c => c.PlanetSector).ThenInclude(s => s.SectorControl).Single(c => c.Id == claimId && c.UserId == userId.Value);
+                var claim = _db.SectorClaims.Include(c => c.PlanetSector).ThenInclude(s => s.SectorControl).Single(c => c.Id == claimId && c.UserId == userId);
                 var report = _localSectors.CompleteClaim(claim, now);
                 _db.LocalActionReports.Add(report);
-                _db.Reports.Add(new Report { UserId = userId.Value, Title = report.Title, Body = report.Body, CreatedAtUtc = now });
+                _db.Reports.Add(new Report { UserId = userId, Title = report.Title, Body = report.Body, CreatedAtUtc = now });
                 TempData["Message"] = "Sektor erfolgreich gesichert.";
             }
             catch (Exception ex) when (ex is InvalidOperationException || ex is ArgumentException)
@@ -227,9 +227,8 @@ namespace StargateGalacticCommand.Web.Controllers
         [ValidateAntiForgeryToken]
         public IActionResult StartLocalCombat(int sectorId, LocalCombatObjective objective, int sgSecurityTeams, int marines, int jaffaWarriors, int eliteJaffa, int agentCells, int saboteurs, int mercenaries, int smugglerSquads)
         {
-            int? userId = HttpContext.Session.GetInt32("UserId");
-            if (!userId.HasValue) return RedirectToAction("Login", "Account");
-            var user = LoadCurrentUser(userId.Value);
+            int userId = CurrentUserId();
+            var user = LoadCurrentUser(userId);
             var playerBase = LoadCurrentBase(user.Id);
             var now = DateTime.UtcNow;
             try
@@ -253,12 +252,11 @@ namespace StargateGalacticCommand.Web.Controllers
         [ValidateAntiForgeryToken]
         public IActionResult CompleteLocalCombat(int missionId)
         {
-            int? userId = HttpContext.Session.GetInt32("UserId");
-            if (!userId.HasValue) return RedirectToAction("Login", "Account");
+            int userId = CurrentUserId();
             var now = DateTime.UtcNow;
             try
             {
-                var mission = _db.LocalCombatMissions.Include(m => m.AttackingUnits).Include(m => m.DefendingUnits).Include(m => m.PlanetSector).ThenInclude(s => s.PlayerBase).Include(m => m.PlanetSector).ThenInclude(s => s.SectorControl).Single(m => m.Id == missionId && m.AttackerUserId == userId.Value);
+                var mission = _db.LocalCombatMissions.Include(m => m.AttackingUnits).Include(m => m.DefendingUnits).Include(m => m.PlanetSector).ThenInclude(s => s.PlayerBase).Include(m => m.PlanetSector).ThenInclude(s => s.SectorControl).Single(m => m.Id == missionId && m.AttackerUserId == userId);
                 var attacker = _db.Users.Include(u => u.Faction).Single(u => u.Id == mission.AttackerUserId);
                 var defender = mission.DefenderUserId.HasValue ? _db.Users.Include(u => u.Faction).SingleOrDefault(u => u.Id == mission.DefenderUserId.Value) : null;
                 var report = _localCombat.Resolve(mission, attacker, defender, mission.PlanetSector, now);
@@ -357,9 +355,8 @@ namespace StargateGalacticCommand.Web.Controllers
         [ValidateAntiForgeryToken]
         public IActionResult StartGateMission(int gateAddressId, int missionTeamId, GateMissionType missionType)
         {
-            int? userId = HttpContext.Session.GetInt32("UserId");
-            if (!userId.HasValue) return RedirectToAction("Login", "Account");
-            var user = LoadCurrentUser(userId.Value);
+            int userId = CurrentUserId();
+            var user = LoadCurrentUser(userId);
             EnsureGateAccessForUser(user);
             var playerBase = LoadCurrentBase(user.Id);
             var now = DateTime.UtcNow;
@@ -386,26 +383,25 @@ namespace StargateGalacticCommand.Web.Controllers
         [ValidateAntiForgeryToken]
         public IActionResult CompleteGateMission(int gateMissionId)
         {
-            int? userId = HttpContext.Session.GetInt32("UserId");
-            if (!userId.HasValue) return RedirectToAction("Login", "Account");
-            var playerBase = LoadCurrentBase(userId.Value);
+            int userId = CurrentUserId();
+            var playerBase = LoadCurrentBase(userId);
             var now = DateTime.UtcNow;
             try
             {
-                var mission = _db.GateMissions.Include(m => m.MissionTeam).Include(m => m.GateAddress).Single(m => m.Id == gateMissionId && m.UserId == userId.Value);
+                var mission = _db.GateMissions.Include(m => m.MissionTeam).Include(m => m.GateAddress).Single(m => m.Id == gateMissionId && m.UserId == userId);
                 var report = _gateMissions.CompleteMission(mission, playerBase, _db.GateAddresses.ToList(), now);
                 _db.GateMissionReports.Add(report);
                 if (mission.MissionType == GateMissionType.AnalyzeAddress && report.Outcome != GateMissionOutcome.WoundedOrLosses)
                 {
-                    var knownIds = _db.KnownGateAddresses.Where(k => k.UserId == userId.Value).Select(k => k.GateAddressId).ToList();
+                    var knownIds = _db.KnownGateAddresses.Where(k => k.UserId == userId).Select(k => k.GateAddressId).ToList();
                     var nextAddress = _db.GateAddresses.Where(a => a.IsNeutralPve && !knownIds.Contains(a.Id)).OrderBy(a => a.RiskLevel).FirstOrDefault();
                     if (nextAddress != null)
                     {
-                        _db.KnownGateAddresses.Add(new KnownGateAddress { UserId = userId.Value, GateAddressId = nextAddress.Id, DiscoveredAtUtc = now, DiscoveryMethod = "Adresse analysieren" });
+                        _db.KnownGateAddresses.Add(new KnownGateAddress { UserId = userId, GateAddressId = nextAddress.Id, DiscoveredAtUtc = now, DiscoveryMethod = "Adresse analysieren" });
                         report.Summary += " Neue Adresse freigeschaltet: " + nextAddress.Code + ".";
                     }
                 }
-                _db.Reports.Add(new Report { UserId = userId.Value, Title = "Gate-Mission: " + mission.MissionType, Body = report.Summary, CreatedAtUtc = now });
+                _db.Reports.Add(new Report { UserId = userId, Title = "Gate-Mission: " + mission.MissionType, Body = report.Summary, CreatedAtUtc = now });
                 TempData["Message"] = "Gate-Mission abgeschlossen.";
             }
             catch (Exception ex) when (ex is InvalidOperationException || ex is ArgumentException)
@@ -442,9 +438,8 @@ namespace StargateGalacticCommand.Web.Controllers
         [ValidateAntiForgeryToken]
         public IActionResult StartResearch(ResearchType researchType)
         {
-            int? userId = HttpContext.Session.GetInt32("UserId");
-            if (!userId.HasValue) return RedirectToAction("Login", "Account");
-            var user = LoadCurrentUser(userId.Value);
+            int userId = CurrentUserId();
+            var user = LoadCurrentUser(userId);
             var playerBase = LoadCurrentBase(user.Id);
             var now = DateTime.UtcNow;
             _economy.ApplyOfflineProduction(playerBase, now);
@@ -461,10 +456,17 @@ namespace StargateGalacticCommand.Web.Controllers
             return RedirectToAction("Research");
         }
 
+        private int CurrentUserId()
+        {
+            return HttpContext.Items.TryGetValue(RequireLoginAttribute.UserIdItemKey, out var value) && value is int userId
+                ? userId
+                : HttpContext.Session.GetInt32("UserId")!.Value;
+        }
+
         private IActionResult GameView(string view)
         {
-            int? userId = HttpContext.Session.GetInt32("UserId"); if (!userId.HasValue) return RedirectToAction("Login", "Account");
-            var user = LoadCurrentUser(userId.Value);
+            int userId = CurrentUserId();
+            var user = LoadCurrentUser(userId);
             EnsureGateAccessForUser(user);
             var playerBase = LoadCurrentBase(user.Id);
             var now = DateTime.UtcNow;
