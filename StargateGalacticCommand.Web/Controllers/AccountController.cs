@@ -15,9 +15,11 @@ namespace StargateGalacticCommand.Web.Controllers
         public AccountController(GameDbContext db, RegistrationService registration, PasswordService passwords) { _db = db; _registration = registration; _passwords = passwords; }
         public IActionResult Register() { return View(new RegisterViewModel { Factions = _db.Factions.OrderBy(f => f.Id).ToList() }); }
         [HttpPost]
+        [ValidateAntiForgeryToken]
         public IActionResult Register(RegisterViewModel model)
         {
             model.Factions = _db.Factions.OrderBy(f => f.Id).ToList();
+            if (!ModelState.IsValid) return View(model);
             try
             {
                 var planets = _db.Planets.Include(p => p.Sectors).ThenInclude(s => s.PlayerBase);
@@ -28,8 +30,10 @@ namespace StargateGalacticCommand.Web.Controllers
         }
         public IActionResult Login() { return View(new LoginViewModel()); }
         [HttpPost]
+        [ValidateAntiForgeryToken]
         public IActionResult Login(LoginViewModel model)
         {
+            if (!ModelState.IsValid) return View(model);
             var key = (model.UserNameOrEmail ?? string.Empty).Trim().ToLowerInvariant();
             var user = _db.Users.FirstOrDefault(u => u.UserName.ToLower() == key || u.Email == key);
             if (user == null || !_passwords.Verify(model.Password, user.PasswordHash, user.PasswordSalt)) { model.Error = "Login fehlgeschlagen."; return View(model); }

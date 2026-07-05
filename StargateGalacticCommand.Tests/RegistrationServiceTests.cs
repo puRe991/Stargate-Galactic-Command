@@ -18,7 +18,7 @@ namespace StargateGalacticCommand.Tests
                 var options = new DbContextOptionsBuilder<GameDbContext>().UseSqlite(connection).Options;
                 using (var db = new GameDbContext(options))
                 {
-                    DatabaseInitializer.Initialize(db);
+                    DatabaseInitializer.Initialize(db, new GateMissionService(new ResourceService()), useMigrations: false);
                     var service = new RegistrationService(new EconomyService(), new PasswordService());
                     var user = service.CreateUserWithStartBase(db.Users, db.Factions, db.Planets.Include(p => p.Sectors).ThenInclude(s => s.PlayerBase), "sam", "sam@example.test", "Password123", 1);
                     db.Users.Add(user); db.SaveChanges();

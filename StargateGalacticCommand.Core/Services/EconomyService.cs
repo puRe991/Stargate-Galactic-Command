@@ -5,6 +5,15 @@ namespace StargateGalacticCommand.Core.Services
 {
     public class EconomyService
     {
+        private readonly FactionModifierService _factionModifiers;
+
+        public EconomyService() : this(new FactionModifierService()) { }
+
+        public EconomyService(FactionModifierService factionModifiers)
+        {
+            _factionModifiers = factionModifiers ?? throw new ArgumentNullException(nameof(factionModifiers));
+        }
+
         public const int StartNaquadah = 500, StartTrinium = 500, StartSupplies = 750, StartEnergy = 100, StartPersonnel = 50, StartIntel = 0;
 
         public ResourceStock CreateStartingResources()
@@ -30,13 +39,12 @@ namespace StargateGalacticCommand.Core.Services
         public ResourceProduction CalculateHourlyProduction(BuildingLevels levels, ResearchLevels researchLevels, Faction faction, SectorBonus sectorBonus)
         {
             if (levels == null) throw new ArgumentNullException("levels");
-            var modifiers = new FactionModifierService();
             double naquadahMultiplier = 1;
             double triniumMultiplier = 1;
             double personnelMultiplier = 1;
             double energyMultiplier = 1 + (Math.Max(0, researchLevels == null ? 0 : researchLevels.NaquadahEnergyTechnology) * 0.02);
-            double intelMultiplier = (1 + (Math.Max(0, researchLevels == null ? 0 : researchLevels.Sensorics) * 0.02)) * modifiers.GetIntelProductionMultiplier(faction);
-            double suppliesMultiplier = modifiers.GetSuppliesProductionMultiplier(faction);
+            double intelMultiplier = (1 + (Math.Max(0, researchLevels == null ? 0 : researchLevels.Sensorics) * 0.02)) * _factionModifiers.GetIntelProductionMultiplier(faction);
+            double suppliesMultiplier = _factionModifiers.GetSuppliesProductionMultiplier(faction);
             if (sectorBonus != null)
             {
                 naquadahMultiplier = 1 + Math.Max(0, sectorBonus.NaquadahMultiplier);
