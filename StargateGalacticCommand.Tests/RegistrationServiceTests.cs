@@ -4,6 +4,7 @@ using StargateGalacticCommand.Core.Models;
 using StargateGalacticCommand.Data;
 using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
+using StargateGalacticCommand.Web.Controllers;
 using Xunit;
 
 namespace StargateGalacticCommand.Tests
@@ -30,6 +31,8 @@ namespace StargateGalacticCommand.Tests
                     Assert.Equal(0, startBase.BuildingLevels.NaquadahRefinery);
                     Assert.Equal(2, db.PlayerBases.Include(b => b.PlanetSector).Single().PlanetSector.Number);
                     Assert.Single(db.Reports.Where(r => r.UserId == created.Id));
+                    Assert.False(created.IsNpc);
+                    Assert.Null(created.LastSeenAtUtc);
                 }
             }
         }
@@ -60,6 +63,41 @@ namespace StargateGalacticCommand.Tests
                     var createdBase = db.PlayerBases.Include(b => b.PlanetSector).ThenInclude(s => s.Planet).Single(b => b.Name == "janet Hauptbasis");
                     Assert.Equal("P4X-650", createdBase.PlanetSector.Planet.Name);
                     Assert.Equal(2, createdBase.PlanetSector.Number);
+                }
+            }
+        }
+
+        [Fact]
+        public void FindLoginCandidate_ReturnsNormalUserOnlyAndExcludesNpcUser()
+        {
+            using (var connection = new SqliteConnection("DataSource=:memory:"))
+            {
+                connection.Open();
+                var options = new DbContextOptionsBuilder<GameDbContext>().UseSqlite(connection).Options;
+                using (var db = new GameDbContext(options))
+                {
+                    db.Database.EnsureCreated();
+                    var passwordService = new PasswordService();
+                    passwordService.CreateHash("Password123", out var hash, out var salt);
+                    db.Factions.Add(new Faction { Id = 1, Name = "Tau'ri", ShortName = "SGC" });
+                    db.Users.AddRange(
+                        new User { UserName = "sam", Email = "sam@example.test", PasswordHash = hash, PasswordSalt = salt, IsNpc = false, FactionId = 1, ResearchLevels = new ResearchLevels() },
+                        new User { UserName = "npc-sam", Email = "npc@example.test", PasswordHash = string.Empty, PasswordSalt = string.Empty, IsNpc = true, FactionId = 1, ResearchLevels = new ResearchLevels() });
+                    db.SaveChanges();
+
+                    var normalByName = AccountController.FindLoginCandidate(db.Users, " Sam ");
+                    var normalByEmail = AccountController.FindLoginCandidate(db.Users, "SAM@EXAMPLE.TEST");
+                    var npcByName = AccountController.FindLoginCandidate(db.Users, "npc-sam");
+                    var npcByEmail = AccountController.FindLoginCandidate(db.Users, "npc@example.test");
+
+                    Assert.NotNull(normalByName);
+                    Assert.Equal("sam", normalByName.UserName);
+                    Assert.NotNull(normalByEmail);
+                    Assert.Equal("sam", normalByEmail.UserName);
+                    Assert.Null(npcByName);
+                    Assert.Null(npcByEmail);
+                    Assert.True(db.Users.Single(u => u.UserName == "npc-sam").IsNpc);
+                    Assert.Empty(db.PlayerBases.Where(b => b.UserId == db.Users.Single(u => u.UserName == "npc-sam").Id));
                 }
             }
         }

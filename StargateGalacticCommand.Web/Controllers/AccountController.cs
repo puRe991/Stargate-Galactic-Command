@@ -3,6 +3,7 @@ using System.Linq;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using StargateGalacticCommand.Core.Models;
 using StargateGalacticCommand.Core.Services;
 using StargateGalacticCommand.Data;
 using StargateGalacticCommand.Web.Models;
@@ -29,14 +30,21 @@ namespace StargateGalacticCommand.Web.Controllers
             catch (Exception ex) { model.Error = ex.Message; return View(model); }
         }
         public IActionResult Login() { return View(new LoginViewModel()); }
+        public static User? FindLoginCandidate(IQueryable<User> users, string? userNameOrEmail)
+        {
+            var key = (userNameOrEmail ?? string.Empty).Trim().ToLowerInvariant();
+            if (string.IsNullOrWhiteSpace(key)) return null;
+            return users.FirstOrDefault(u => !u.IsNpc && (u.UserName.ToLower() == key || u.Email == key));
+        }
         [HttpPost]
         [ValidateAntiForgeryToken]
         public IActionResult Login(LoginViewModel model)
         {
             if (!ModelState.IsValid) return View(model);
-            var key = (model.UserNameOrEmail ?? string.Empty).Trim().ToLowerInvariant();
-            var user = _db.Users.FirstOrDefault(u => u.UserName.ToLower() == key || u.Email == key);
+            var user = FindLoginCandidate(_db.Users, model.UserNameOrEmail);
             if (user == null || !_passwords.Verify(model.Password, user.PasswordHash, user.PasswordSalt)) { model.Error = "Login fehlgeschlagen."; return View(model); }
+            user.LastSeenAtUtc = DateTime.UtcNow;
+            _db.SaveChanges();
             HttpContext.Session.SetInt32("UserId", user.Id); return RedirectToAction("Overview", "Game");
         }
         public IActionResult Logout() { HttpContext.Session.Clear(); return RedirectToAction("Index", "Home"); }
