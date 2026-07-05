@@ -1,4 +1,5 @@
 using System;
+using System.Linq;
 using StargateGalacticCommand.Core.Models;
 using StargateGalacticCommand.Core.Services;
 using Xunit;
@@ -43,6 +44,35 @@ namespace StargateGalacticCommand.Tests
             Assert.NotNull(report);
             Assert.True(report.IntelFound > 0 || report.ArtifactLeadFound || report.PersonnelLost > 0);
             Assert.Contains("keine", report.Summary.ToLowerInvariant());
+        }
+
+        [Fact]
+        public void ApplyFoundColonyResult_CreatesPlanetForKnownAddress()
+        {
+            var service = new GateMissionService(new ResourceService());
+            var user = CreateUser();
+            var address = new GateAddress { Id = 7, Code = "P8X-404", WorldName = "P8X-404", Description = "neue Koloniewelt", RiskLevel = 2 };
+            user.KnownGateAddresses.Add(new KnownGateAddress { UserId = user.Id, GateAddressId = address.Id, GateAddress = address });
+            var planets = new System.Collections.Generic.List<Planet> { new Planet { Id = 1, Name = "P3X-742" } };
+
+            string summary = service.ApplyFoundColonyResult(user, address, planets, Now);
+
+            Assert.Equal(2, planets.Count);
+            Assert.Equal("P8X-404", planets[1].Name);
+            Assert.Equal(3, planets[1].Sectors.Count(s => s.IsSettlementSector));
+            Assert.Same(planets[1], address.Planet);
+            Assert.Contains("Großschiffe", summary);
+        }
+
+        [Fact]
+        public void ApplyFoundColonyResult_RequiresKnownAddress()
+        {
+            var service = new GateMissionService(new ResourceService());
+            var user = CreateUser();
+            var address = new GateAddress { Id = 8, Code = "P8X-405", RiskLevel = 2 };
+            var planets = new System.Collections.Generic.List<Planet>();
+
+            Assert.Throws<InvalidOperationException>(() => service.ApplyFoundColonyResult(user, address, planets, Now));
         }
 
         private static readonly DateTime Now = new DateTime(2026, 1, 1, 0, 0, 0, DateTimeKind.Utc);
