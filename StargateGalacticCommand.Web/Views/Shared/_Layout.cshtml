@@ -25,13 +25,14 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>@ViewData["Title"] - Stargate Galactic Command</title>
+    <link rel="icon" type="image/svg+xml" href="~/images/favicon.svg" />
     <link rel="stylesheet" href="~/css/site.css" asp-append-version="true" />
 </head>
 <body>
     <header class="topbar">
         <div class="container command-header">
             <a class="brand" asp-controller="Home" asp-action="Index" aria-label="Stargate Galactic Command Startseite">
-                <span class="brand-mark">SGC</span>
+                <span class="brand-mark"><img src="~/images/stargate-emblem.svg" alt="" width="48" height="48" /></span>
                 <span><strong>Stargate Galactic Command</strong><small>Version 0.1.0 · Deep Space Operations</small></span>
             </a>
 
@@ -87,7 +88,12 @@
         {
             <div class="resource-strip" aria-label="Ressourcenübersicht">
                 <div class="container resource-grid">
-                    <span><b>Naquadah</b> @gameModel.Base.Resources.Naquadah</span><span><b>Trinium</b> @gameModel.Base.Resources.Trinium</span><span><b>Supplies</b> @gameModel.Base.Resources.Supplies</span><span><b>Energy</b> @gameModel.Base.Resources.Energy</span><span><b>Personnel</b> @gameModel.Base.Resources.Personnel</span><span><b>Intel</b> @gameModel.Base.Resources.Intel</span>
+                    <div class="res-cell"><img class="res-icon" src="~/images/resources/naquadah.svg" alt="" width="18" height="18" /><span><b>Naquadah</b>@gameModel.Base.Resources.Naquadah</span></div>
+                    <div class="res-cell"><img class="res-icon" src="~/images/resources/trinium.svg" alt="" width="18" height="18" /><span><b>Trinium</b>@gameModel.Base.Resources.Trinium</span></div>
+                    <div class="res-cell"><img class="res-icon" src="~/images/resources/supplies.svg" alt="" width="18" height="18" /><span><b>Supplies</b>@gameModel.Base.Resources.Supplies</span></div>
+                    <div class="res-cell"><img class="res-icon" src="~/images/resources/energy.svg" alt="" width="18" height="18" /><span><b>Energy</b>@gameModel.Base.Resources.Energy</span></div>
+                    <div class="res-cell"><img class="res-icon" src="~/images/resources/personnel.svg" alt="" width="18" height="18" /><span><b>Personnel</b>@gameModel.Base.Resources.Personnel</span></div>
+                    <div class="res-cell"><img class="res-icon" src="~/images/resources/intel.svg" alt="" width="18" height="18" /><span><b>Intel</b>@gameModel.Base.Resources.Intel</span></div>
                 </div>
             </div>
         }
