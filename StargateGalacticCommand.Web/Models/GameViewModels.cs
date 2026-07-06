@@ -15,6 +15,7 @@ namespace StargateGalacticCommand.Web.Models
         public IList<Report> Reports { get; set; }
         public IList<BuildingUpgradeViewModel> Buildings { get; set; }
         public BuildQueueItem ActiveBuild { get; set; }
+        public IList<BuildQueueItem> BuildQueue { get; set; }
         public IList<ResearchViewModel> Researches { get; set; }
         public ResearchQueueItem ActiveResearch { get; set; }
         public double DefenseModifier { get; set; }
