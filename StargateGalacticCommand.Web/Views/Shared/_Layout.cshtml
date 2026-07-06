@@ -79,6 +79,10 @@
                                 <a class="nav-link @(Active("Game", "Galaxy"))" asp-controller="Game" asp-action="Galaxy">Galaxie</a>
                                 <a class="nav-link @(Active("Game", "Mailbox"))" asp-controller="Game" asp-action="Mailbox">Postfach @if (gameModel != null && gameModel.UnreadMessageCount > 0) { <span class="nav-badge">@gameModel.UnreadMessageCount</span> }</a>
                             </div>
+                            <div class="nav-group @(GroupOpen("Spike"))">
+                                <span class="nav-group-title">Prototyp</span>
+                                <a class="nav-link @(Active("Exploration", "Spike"))" asp-controller="Exploration" asp-action="Spike">Erkundung (Live)</a>
+                            </div>
                             <div class="nav-account"><span>@commanderName</span><a class="nav-link" asp-controller="Account" asp-action="Logout">Logout</a></div>
                         }
                         else

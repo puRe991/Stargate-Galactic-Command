@@ -1,0 +1,23 @@
+@{
+    ViewData["Title"] = "Erkundung (Prototyp)";
+    var commanderName = ViewData["CommanderName"] as string ?? "Commander";
+}
+
+<section class="panel">
+    <h1>Away-Team-Erkundung &mdash; technischer Prototyp</h1>
+    <p>
+        Dieser Bildschirm testet die Echtzeit-Grundlage aus <code>ROADMAP.md</code> Phase 1:
+        ein 2D-Client, der per SignalR mit dem Server synchronisiert. Klicke in das Feld, um
+        dein Away-Team-Symbol zu bewegen. Oeffne die Seite in einem zweiten Tab/Browser, um
+        einen weiteren Commander live mitlaufen zu sehen.
+    </p>
+    <p><strong>Angemeldet als:</strong> @commanderName</p>
+
+    <canvas id="exploration-canvas" width="600" height="400" style="background:#0a1220;border:1px solid #2a3a55;cursor:crosshair;"></canvas>
+    <p id="exploration-status" class="hint">Verbinde mit Server&hellip;</p>
+</section>
+
+@section Scripts {
+    <script src="~/lib/signalr/signalr.min.js"></script>
+    <script src="~/js/exploration-spike.js" asp-append-version="true"></script>
+}
