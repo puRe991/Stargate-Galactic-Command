@@ -6,6 +6,8 @@ namespace StargateGalacticCommand.Core.Services
 {
     public class BuildQueueService
     {
+        public const int MaxQueueLength = 5;
+
         private readonly BuildingCatalogService _catalog;
         private readonly ResourceService _resources;
 
@@ -19,12 +21,19 @@ namespace StargateGalacticCommand.Core.Services
         {
             ValidateBase(playerBase);
             CompleteFinishedBuilds(playerBase, nowUtc);
-            if (playerBase.BuildQueue.Any()) throw new InvalidOperationException("Es kann pro Basis nur ein Gebäude gleichzeitig gebaut werden.");
+            if (playerBase.BuildQueue.Count >= MaxQueueLength)
+                throw new InvalidOperationException("Die Bauwarteschlange ist voll (maximal " + MaxQueueLength + " Aufträge gleichzeitig).");
 
-            int currentLevel = playerBase.BuildingLevels.GetLevel(buildingType);
+            int queuedForType = playerBase.BuildQueue.Count(q => q.BuildingType == buildingType);
+            int currentLevel = playerBase.BuildingLevels.GetLevel(buildingType) + queuedForType;
             if (currentLevel < 0) throw new InvalidOperationException("Gebäudelevel darf nicht negativ sein.");
             var cost = _catalog.CalculateCost(buildingType, currentLevel);
             _resources.Spend(playerBase.Resources, cost);
+
+            DateTime startedAt = playerBase.BuildQueue.Any()
+                ? playerBase.BuildQueue.Max(q => q.CompletesAtUtc)
+                : nowUtc;
+            if (startedAt < nowUtc) startedAt = nowUtc;
 
             var item = new BuildQueueItem
             {
@@ -32,8 +41,8 @@ namespace StargateGalacticCommand.Core.Services
                 PlayerBase = playerBase,
                 BuildingType = buildingType,
                 TargetLevel = currentLevel + 1,
-                StartedAtUtc = nowUtc,
-                CompletesAtUtc = nowUtc.AddSeconds(_catalog.CalculateBuildSeconds(buildingType, currentLevel, playerBase.BuildingLevels.CommandCenter))
+                StartedAtUtc = startedAt,
+                CompletesAtUtc = startedAt.AddSeconds(_catalog.CalculateBuildSeconds(buildingType, currentLevel, playerBase.BuildingLevels.CommandCenter))
             };
             playerBase.BuildQueue.Add(item);
             return item;

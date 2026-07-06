@@ -72,7 +72,10 @@ dotnet test StargateGalacticCommand.sln
 
 ## Offene TODOs
 
-- Parallelbau und erweiterte Warteschlangenlogik modellieren.
 - PvP-Regeln für umkämpfte Sektoren erst nach dem Startplanet-Schutz sauber modellieren.
 - Erste Migrationen ergänzen, sobald das Datenmodell stabiler ist.
 - Balancing-Werte für Kosten und Produktion mit Spieldesign-Zielen abgleichen.
+
+## Erledigt
+
+- Bauwarteschlange pro Basis erlaubt jetzt bis zu `BuildQueueService.MaxQueueLength` (5) aufeinanderfolgende Aufträge statt nur einen; Kosten und Ziellevel berücksichtigen bereits wartende Aufträge desselben Gebäudetyps.
