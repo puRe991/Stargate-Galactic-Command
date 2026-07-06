@@ -15,6 +15,7 @@ Version 0.0.9 macht gemeinsame Planeten spielmechanisch aktiv:
 - Sektorkontrolle, laufende lokale Aktionen, Abschlussberichte und Einflussberechnung
 - Planetenseite mit Sektorstatus, kontrollierten Sektoren und Einflussrangliste
 - Gebäude, Forschung, Gate-Raum und PvE-Gate-Missionen aus den Vorversionen
+- Prozedural generierte Galaxie mit 300+ erforschbaren Gate-Adressen (`GalaxyGeneratorService`); zufällige Entdeckung neuer Adressen sowohl über Gate-Missionen ("Adresse analysieren") als auch über Erkundungsflüge von Schiffen ohne festes Ziel ("Fernaufklärung")
 
 ## Lore-Leitplanken
 

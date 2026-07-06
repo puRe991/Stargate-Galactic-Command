@@ -1,3 +1,4 @@
+using System;
 using System.Linq;
 using Microsoft.EntityFrameworkCore;
 using StargateGalacticCommand.Core.Services;
@@ -7,6 +8,9 @@ namespace StargateGalacticCommand.Data
 {
     public static class DatabaseInitializer
     {
+        public const int GeneratedWorldCount = 320;
+        public const int GalaxySeed = 20260706;
+
         public static void Initialize(GameDbContext context, GateMissionService gateMissionService, bool useMigrations = true)
         {
             if (context == null) return;
@@ -16,6 +20,7 @@ namespace StargateGalacticCommand.Data
             context.SaveChanges();
             EnsureResearchLevels(context);
             SeedGateAddresses(context);
+            SeedGeneratedWorlds(context);
             EnsureGateAccess(context, gateMissionService);
             SeedTradeTaxRule(context);
             EnsureBaseShips(context);
@@ -72,6 +77,22 @@ namespace StargateGalacticCommand.Data
         {
             if (!context.GateAddresses.Any(a => a.Code == code)) context.GateAddresses.Add(new GateAddress { Code = code, WorldName = code, Description = description, IsNeutralPve = true, RiskLevel = risk });
         }
+        private static void SeedGeneratedWorlds(GameDbContext context)
+        {
+            // SeedGateAddresses() above only Add()s to the change tracker; a plain
+            // DbSet query would miss those pending rows, so pull codes from both the
+            // database and the not-yet-saved Local view to avoid duplicate codes.
+            var existingCodes = context.GateAddresses.Select(a => a.Code).ToList()
+                .Concat(context.GateAddresses.Local.Select(a => a.Code))
+                .Distinct(StringComparer.OrdinalIgnoreCase)
+                .ToList();
+            if (existingCodes.Count >= GeneratedWorldCount) return;
+
+            var generator = new GalaxyGeneratorService();
+            var worlds = generator.GenerateWorlds(GeneratedWorldCount - existingCodes.Count, existingCodes, GalaxySeed);
+            context.GateAddresses.AddRange(worlds);
+        }
+
         private static void EnsureGateAccess(GameDbContext context, GateMissionService service)
         {
             var start = context.GateAddresses.SingleOrDefault(a => a.Code == "P3X-742");

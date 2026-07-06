@@ -75,6 +75,35 @@ namespace StargateGalacticCommand.Tests
             Assert.Throws<InvalidOperationException>(() => service.ApplyFoundColonyResult(user, address, planets, Now));
         }
 
+        [Fact]
+        public void DiscoverRandomAddress_ReturnsNullWhenNoCandidates()
+        {
+            var service = new GateMissionService(new ResourceService());
+            var user = CreateUser();
+            var result = service.DiscoverRandomAddress(user, new System.Collections.Generic.List<GateAddress>(), new Random(1), "Adresse analysieren", Now);
+            Assert.Null(result);
+        }
+
+        [Fact]
+        public void DiscoverRandomAddress_PicksOneOfTheCandidatesForTheUser()
+        {
+            var service = new GateMissionService(new ResourceService());
+            var user = CreateUser();
+            var candidates = new System.Collections.Generic.List<GateAddress>
+            {
+                new GateAddress { Id = 10, Code = "P1A-100" },
+                new GateAddress { Id = 11, Code = "P2B-200" },
+                new GateAddress { Id = 12, Code = "P3C-300" }
+            };
+
+            var discovered = service.DiscoverRandomAddress(user, candidates, new Random(42), "Fernaufklärung", Now);
+
+            Assert.NotNull(discovered);
+            Assert.Equal(user.Id, discovered.UserId);
+            Assert.Equal("Fernaufklärung", discovered.DiscoveryMethod);
+            Assert.Contains(discovered.GateAddressId, candidates.Select(c => c.Id));
+        }
+
         private static readonly DateTime Now = new DateTime(2026, 1, 1, 0, 0, 0, DateTimeKind.Utc);
         private static User CreateUser() => new User { Id = 1, Faction = new Faction { ShortName = "SGC" }, ResearchLevels = new ResearchLevels { GateAddressing = 1 } };
         private static PlayerBase CreateBase() => new PlayerBase { Id = 1, Resources = new ResourceStock { Energy = 1000, Supplies = 1000, Personnel = 1000, Intel = 10 }, BuildingLevels = new BuildingLevels { GateControlRoom = 1 } };

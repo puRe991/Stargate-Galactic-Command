@@ -80,6 +80,27 @@ namespace StargateGalacticCommand.Tests
                     Assert.Equal(4, db.Factions.Count());
                     Assert.Equal(3, db.Planets.Count());
                     Assert.True(db.GateAddresses.Any(a => a.Code == "P3X-742"));
+                    Assert.True(db.GateAddresses.Count() >= DatabaseInitializer.GeneratedWorldCount);
+                    Assert.Equal(db.GateAddresses.Count(), db.GateAddresses.Select(a => a.Code).Distinct().Count());
+                }
+            }
+        }
+
+        [Fact]
+        public void Initialize_CalledTwice_DoesNotDuplicateGeneratedWorlds()
+        {
+            using (var connection = new SqliteConnection("DataSource=:memory:"))
+            {
+                connection.Open();
+                var options = new DbContextOptionsBuilder<GameDbContext>().UseSqlite(connection).Options;
+                using (var db = new GameDbContext(options))
+                {
+                    DatabaseInitializer.Initialize(db, new GateMissionService(new ResourceService()), useMigrations: false);
+                    int firstCount = db.GateAddresses.Count();
+                    DatabaseInitializer.Initialize(db, new GateMissionService(new ResourceService()), useMigrations: false);
+                    int secondCount = db.GateAddresses.Count();
+
+                    Assert.Equal(firstCount, secondCount);
                 }
             }
         }
