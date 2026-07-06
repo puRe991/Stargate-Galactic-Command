@@ -25,7 +25,9 @@ namespace StargateGalacticCommand.Web.Controllers
             {
                 var planets = _db.Planets.Include(p => p.Sectors).ThenInclude(s => s.PlayerBase);
                 var user = _registration.CreateUserWithStartBase(_db.Users, _db.Factions, planets, model.UserName, model.Email, model.Password, model.FactionId);
-                _db.Users.Add(user); _db.SaveChanges(); HttpContext.Session.SetInt32("UserId", user.Id); return RedirectToAction("Overview", "Game");
+                _db.Users.Add(user);
+                _db.PlayerProtectionStatuses.Add(new PlayerProtectionStatus { User = user, ProtectedUntilUtc = user.CreatedAtUtc.AddDays(3), Score = 0 });
+                _db.SaveChanges(); HttpContext.Session.SetInt32("UserId", user.Id); return RedirectToAction("Overview", "Game");
             }
             catch (Exception ex) { model.Error = ex.Message; return View(model); }
         }

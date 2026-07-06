@@ -1,5 +1,6 @@
 using Microsoft.EntityFrameworkCore;
 using StargateGalacticCommand.Core.Models;
+using StargateGalacticCommand.Core.Services;
 
 namespace StargateGalacticCommand.Data
 {
@@ -45,6 +46,7 @@ namespace StargateGalacticCommand.Data
         public DbSet<SpaceCombatReport> SpaceCombatReports { get; set; }
         public DbSet<DebrisField> DebrisFields { get; set; }
         public DbSet<PlayerProtectionStatus> PlayerProtectionStatuses { get; set; }
+        public DbSet<PlayerMessage> PlayerMessages { get; set; }
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
@@ -148,6 +150,12 @@ namespace StargateGalacticCommand.Data
             modelBuilder.Entity<DebrisField>().HasOne(d => d.PlayerBase).WithMany().HasForeignKey(d => d.PlayerBaseId).OnDelete(DeleteBehavior.Cascade);
             modelBuilder.Entity<PlayerProtectionStatus>().HasIndex(p => p.UserId).IsUnique();
             modelBuilder.Entity<PlayerProtectionStatus>().HasOne(p => p.User).WithMany().HasForeignKey(p => p.UserId).OnDelete(DeleteBehavior.Cascade);
+            modelBuilder.Entity<PlayerMessage>().Property(m => m.Subject).IsRequired().HasMaxLength(MessageService.MaxSubjectLength);
+            modelBuilder.Entity<PlayerMessage>().Property(m => m.Body).IsRequired().HasMaxLength(MessageService.MaxBodyLength);
+            modelBuilder.Entity<PlayerMessage>().HasIndex(m => new { m.RecipientUserId, m.IsDeletedByRecipient, m.CreatedAtUtc });
+            modelBuilder.Entity<PlayerMessage>().HasIndex(m => new { m.SenderUserId, m.IsDeletedBySender, m.CreatedAtUtc });
+            modelBuilder.Entity<PlayerMessage>().HasOne(m => m.SenderUser).WithMany().HasForeignKey(m => m.SenderUserId).OnDelete(DeleteBehavior.Restrict);
+            modelBuilder.Entity<PlayerMessage>().HasOne(m => m.RecipientUser).WithMany().HasForeignKey(m => m.RecipientUserId).OnDelete(DeleteBehavior.Restrict);
         }
     }
 }

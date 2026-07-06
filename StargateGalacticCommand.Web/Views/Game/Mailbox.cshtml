@@ -1,0 +1,46 @@
+@model StargateGalacticCommand.Web.Models.OverviewViewModel
+@{ ViewData["Title"] = "Postfach"; var prefilled = ViewData["PrefilledRecipientId"] as int?; }
+<section class="panel">
+    <h1>Postfach</h1>
+    @if (TempData["Error"] != null) { <div class="alert">@TempData["Error"]</div> }
+    @if (TempData["Message"] != null) { <div class="success">@TempData["Message"]</div> }
+</section>
+<section class="panel">
+    <h2>Neue Nachricht</h2>
+    <form method="post" asp-action="SendMessage">@Html.AntiForgeryToken()
+        <label>Empfänger</label>
+        <select name="recipientUserId">
+            @foreach (var u in Model.MessageablePlayers)
+            {
+                <option value="@u.Id" selected="@(prefilled.HasValue && prefilled.Value == u.Id)">@u.UserName</option>
+            }
+        </select>
+        <label>Betreff</label><input name="subject" maxlength="120" required />
+        <label>Nachricht</label><textarea name="body" maxlength="4000" required></textarea>
+        <button type="submit">Senden</button>
+    </form>
+</section>
+<section class="panel">
+    <h2>Posteingang (@Model.UnreadMessageCount ungelesen)</h2>
+    <table>
+        <thead><tr><th>Zeit</th><th>Von</th><th>Betreff</th><th>Nachricht</th></tr></thead>
+        <tbody>
+        @foreach (var m in Model.InboxMessages)
+        {
+            <tr class="@(m.ReadAtUtc.HasValue ? "" : "active")"><td>@m.CreatedAtUtc.ToString("u")</td><td>@m.SenderUser.UserName</td><td>@m.Subject</td><td>@m.Body</td></tr>
+        }
+        </tbody>
+    </table>
+</section>
+<section class="panel">
+    <h2>Gesendet</h2>
+    <table>
+        <thead><tr><th>Zeit</th><th>An</th><th>Betreff</th><th>Nachricht</th></tr></thead>
+        <tbody>
+        @foreach (var m in Model.SentMessages)
+        {
+            <tr><td>@m.CreatedAtUtc.ToString("u")</td><td>@m.RecipientUser.UserName</td><td>@m.Subject</td><td>@m.Body</td></tr>
+        }
+        </tbody>
+    </table>
+</section>

@@ -24,7 +24,7 @@ namespace StargateGalacticCommand.Tests
         [Fact]
         public void AttackHasFlightTimeAndProtectionValidation()
         {
-            var service = new SpaceCombatService(new ShipyardService(new ResourceService()), new FactionModifierService()); var attacker = User(1); var defender = User(2); var origin = Base(1, attacker, 1, 1); var target = Base(2, defender, 2, 1);
+            var service = new SpaceCombatService(new ShipyardService(new ResourceService()), new FactionModifierService(), new RankingService()); var attacker = User(1); var defender = User(2); var origin = Base(1, attacker, 1, 1); var target = Base(2, defender, 2, 1);
             var protectedStatus = new PlayerProtectionStatus { UserId = defender.Id, ProtectedUntilUtc = DateTime.UtcNow.AddHours(1), Score = 1000 };
             Assert.Throws<InvalidOperationException>(() => service.StartAttack(attacker, origin, target, ShipType.SmallTransporter, 1, new List<SpaceCombatMission>(), protectedStatus, DateTime.UtcNow));
             var mission = service.StartAttack(attacker, origin, target, ShipType.SmallTransporter, 2, new List<SpaceCombatMission>(), null, DateTime.UtcNow);
@@ -32,9 +32,21 @@ namespace StargateGalacticCommand.Tests
         }
 
         [Fact]
+        public void RetaliationRightBypassesScoreRatioProtection()
+        {
+            var service = new SpaceCombatService(new ShipyardService(new ResourceService()), new FactionModifierService(), new RankingService()); var attacker = User(1); var defender = User(2); var origin = Base(1, attacker, 1, 1); var target = Base(2, defender, 2, 1);
+            var protectedStatus = new PlayerProtectionStatus { UserId = defender.Id, ProtectedUntilUtc = DateTime.UtcNow.AddHours(-1), Score = 1 };
+            var now = DateTime.UtcNow;
+            Assert.Throws<InvalidOperationException>(() => service.StartAttack(attacker, origin, target, ShipType.SmallTransporter, 1, new List<SpaceCombatMission>(), protectedStatus, now));
+            var priorAttackByDefender = new SpaceCombatMission { AttackerUserId = defender.Id, DefenderUserId = attacker.Id, TargetBaseId = origin.Id, CompletedAtUtc = now.AddHours(-2) };
+            var mission = service.StartAttack(attacker, origin, target, ShipType.SmallTransporter, 1, new List<SpaceCombatMission>(), protectedStatus, now, new List<SpaceCombatMission> { priorAttackByDefender });
+            Assert.NotNull(mission);
+        }
+
+        [Fact]
         public void CombatCreatesReportLootLimitAndKeepsBase()
         {
-            var service = new SpaceCombatService(new ShipyardService(new ResourceService()), new FactionModifierService()); var attacker = User(1); var defender = User(2); var origin = Base(1, attacker); origin.Ships.SmallTransporter = 20; var target = Base(2, defender, 1, 4); target.Ships.SmallTransporter = 0;
+            var service = new SpaceCombatService(new ShipyardService(new ResourceService()), new FactionModifierService(), new RankingService()); var attacker = User(1); var defender = User(2); var origin = Base(1, attacker); origin.Ships.SmallTransporter = 20; var target = Base(2, defender, 1, 4); target.Ships.SmallTransporter = 0;
             var mission = service.StartAttack(attacker, origin, target, ShipType.SmallTransporter, 10, new List<SpaceCombatMission>(), null, DateTime.UtcNow.AddMinutes(-10)); mission.ArrivesAtUtc = DateTime.UtcNow.AddMinutes(-1);
             var report = service.Resolve(mission, attacker, defender, DateTime.UtcNow); var debris = service.CreateDebris(mission, report, DateTime.UtcNow);
             Assert.True(report.Rounds <= 6); Assert.True(report.LootNaquadah <= 300); Assert.NotNull(mission.TargetBase); Assert.True(debris.Naquadah > 0); Assert.True(mission.CompletedAtUtc.HasValue);
