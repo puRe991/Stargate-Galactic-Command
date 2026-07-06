@@ -49,6 +49,14 @@ namespace StargateGalacticCommand.Web.Models
         public IList<SpaceCombatReport> SpaceCombatReports { get; set; }
         public IList<DebrisField> DebrisFields { get; set; }
         public PlayerProtectionStatus ProtectionStatus { get; set; }
+        public IList<PlayerRankingEntry> PlayerRankings { get; set; }
+        public IList<AllianceRankingEntry> AllianceRankings { get; set; }
+        public IList<GalaxyEntry> GalaxyEntries { get; set; }
+        public IList<PlayerMessage> InboxMessages { get; set; }
+        public IList<PlayerMessage> SentMessages { get; set; }
+        public int UnreadMessageCount { get; set; }
+        public int UnreadReportCount { get; set; }
+        public IList<User> MessageablePlayers { get; set; }
     }
 
     public class BuildingUpgradeViewModel

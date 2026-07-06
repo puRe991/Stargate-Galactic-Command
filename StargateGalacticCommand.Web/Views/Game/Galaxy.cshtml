@@ -1,0 +1,33 @@
+@model StargateGalacticCommand.Web.Models.OverviewViewModel
+@{ ViewData["Title"] = "Galaxie"; }
+<section class="panel">
+    <h1>Galaxie – @Model.Planet.Name</h1>
+    <p>Alle bekannten Kommandeure auf diesem geteilten Planeten. Nutze die Links, um Flotten zu senden, Spionage zu betreiben oder eine Nachricht zu schreiben.</p>
+</section>
+<section class="panel">
+    <table>
+        <thead><tr><th>Status</th><th>Sektor</th><th>Basis</th><th>Spieler</th><th>Fraktion</th><th>Allianz</th><th>Einfluss</th><th>Aktionen</th></tr></thead>
+        <tbody>
+        @foreach (var g in Model.GalaxyEntries)
+        {
+            <tr class="@(g.IsOwnBase ? "active" : "")">
+                <td>@(g.IsOnline ? "🟢" : "⚪")</td>
+                <td>@g.SectorNumber – @g.SectorName</td>
+                <td>@g.BaseName</td>
+                <td>@g.UserName</td>
+                <td>@g.FactionShortName</td>
+                <td>@(g.AllianceTag ?? "-")</td>
+                <td>@g.InfluenceScore</td>
+                <td>
+                @if (!g.IsOwnBase)
+                {
+                    <a class="button" asp-action="SendFleet">Flotte</a>
+                    <a class="button" asp-action="Intelligence">Spionage</a>
+                    <a class="button" asp-action="Mailbox" asp-route-to="@g.UserId">Nachricht</a>
+                }
+                </td>
+            </tr>
+        }
+        </tbody>
+    </table>
+</section>

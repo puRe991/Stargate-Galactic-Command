@@ -1,10 +1,11 @@
 @using StargateGalacticCommand.Web.Models
+@using Microsoft.AspNetCore.Http
 @{
     var controller = (ViewContext.RouteData.Values["controller"]?.ToString() ?? string.Empty);
     var action = (ViewContext.RouteData.Values["action"]?.ToString() ?? string.Empty);
-    var isAuthenticated = User?.Identity?.IsAuthenticated == true;
-    var commanderName = User?.Identity?.Name ?? "Commander";
+    var isAuthenticated = Context.Session.GetInt32("UserId").HasValue;
     var gameModel = Model as OverviewViewModel;
+    var commanderName = gameModel?.User?.UserName ?? "Commander";
 
     string Active(string targetController, string targetAction)
     {
@@ -68,9 +69,15 @@
                             </div>
                             <div class="nav-group @(GroupOpen("Reports", "CombatReports", "FleetReports"))">
                                 <span class="nav-group-title">Berichte</span>
-                                <a class="nav-link @(Active("Game", "Reports"))" asp-controller="Game" asp-action="Reports">Berichte</a>
+                                <a class="nav-link @(Active("Game", "Reports"))" asp-controller="Game" asp-action="Reports">Berichte @if (gameModel != null && gameModel.UnreadReportCount > 0) { <span class="nav-badge">@gameModel.UnreadReportCount</span> }</a>
                                 <a class="nav-link @(Active("Game", "CombatReports"))" asp-controller="Game" asp-action="CombatReports">Kampfberichte</a>
                                 <a class="nav-link @(Active("Game", "FleetReports"))" asp-controller="Game" asp-action="FleetReports">Flottenberichte</a>
+                            </div>
+                            <div class="nav-group @(GroupOpen("Rankings", "Galaxy", "Mailbox"))">
+                                <span class="nav-group-title">Gemeinschaft</span>
+                                <a class="nav-link @(Active("Game", "Rankings"))" asp-controller="Game" asp-action="Rankings">Rangliste</a>
+                                <a class="nav-link @(Active("Game", "Galaxy"))" asp-controller="Game" asp-action="Galaxy">Galaxie</a>
+                                <a class="nav-link @(Active("Game", "Mailbox"))" asp-controller="Game" asp-action="Mailbox">Postfach @if (gameModel != null && gameModel.UnreadMessageCount > 0) { <span class="nav-badge">@gameModel.UnreadMessageCount</span> }</a>
                             </div>
                             <div class="nav-account"><span>@commanderName</span><a class="nav-link" asp-controller="Account" asp-action="Logout">Logout</a></div>
                         }

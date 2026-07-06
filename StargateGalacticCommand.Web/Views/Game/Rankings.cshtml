@@ -1,0 +1,42 @@
+@model StargateGalacticCommand.Web.Models.OverviewViewModel
+@{ ViewData["Title"] = "Rangliste"; }
+<section class="panel">
+    <h1>Rangliste</h1>
+    <p>Punktzahl aus Ressourcen, Schiffen und Gebäudeausbau aller Kommandeure. Grün markiert zeigt Spieler, die in den letzten 15 Minuten aktiv waren.</p>
+</section>
+<section class="panel">
+    <h2>Kommandeure</h2>
+    <table>
+        <thead><tr><th>#</th><th>Status</th><th>Spieler</th><th>Fraktion</th><th>Allianz</th><th>Basen</th><th>Score</th></tr></thead>
+        <tbody>
+        @{ int rank = 0; }
+        @foreach (var p in Model.PlayerRankings)
+        {
+            rank++;
+            <tr class="@(p.UserId == Model.User.Id ? "active" : "")">
+                <td>@rank</td>
+                <td>@(p.IsOnline ? "🟢" : "⚪")</td>
+                <td>@p.UserName</td>
+                <td>@p.FactionShortName</td>
+                <td>@(p.AllianceTag ?? "-")</td>
+                <td>@p.BaseCount</td>
+                <td>@p.Score</td>
+            </tr>
+        }
+        </tbody>
+    </table>
+</section>
+<section class="panel">
+    <h2>Allianzen</h2>
+    <table>
+        <thead><tr><th>#</th><th>Tag</th><th>Name</th><th>Mitglieder</th><th>Gesamtscore</th></tr></thead>
+        <tbody>
+        @{ int allianceRank = 0; }
+        @foreach (var a in Model.AllianceRankings)
+        {
+            allianceRank++;
+            <tr><td>@allianceRank</td><td>@a.Tag</td><td>@a.Name</td><td>@a.MemberCount</td><td>@a.TotalScore</td></tr>
+        }
+        </tbody>
+    </table>
+</section>
