@@ -1,7 +1,7 @@
 :root {
     color-scheme: dark;
     --bg: #05080d;
-    --bg-radial: radial-gradient(circle at 20% -10%, rgba(21, 142, 180, .22), transparent 36%), radial-gradient(circle at 85% 0%, rgba(47, 255, 192, .12), transparent 28%), #05080d;
+    --bg-radial: radial-gradient(circle at 20% -10%, rgba(21, 142, 180, .22), transparent 36%), radial-gradient(circle at 85% 0%, rgba(47, 255, 192, .12), transparent 28%);
     --surface: rgba(11, 18, 28, .92);
     --surface-2: rgba(15, 28, 42, .96);
     --line: rgba(103, 190, 224, .28);
@@ -25,7 +25,10 @@ html { min-height: 100%; }
 body {
     min-height: 100vh;
     margin: 0;
-    background: var(--bg-radial);
+    background-color: #05080d;
+    background-image: var(--bg-radial), url('/images/starfield.svg');
+    background-repeat: no-repeat, no-repeat, repeat;
+    background-size: auto, auto, 220px 220px;
     color: var(--text);
     font-family: var(--font);
     line-height: 1.55;
@@ -47,7 +50,8 @@ a:hover { color: var(--accent-2); }
 .topbar { position: sticky; top: 0; z-index: 20; background: rgba(5, 10, 16, .9); border-bottom: 1px solid var(--line); backdrop-filter: blur(18px); }
 .command-header { display: grid; gap: .9rem; padding-block: .9rem; }
 .brand { display: inline-flex; align-items: center; gap: .85rem; width: fit-content; color: var(--text); }
-.brand-mark { display: grid; place-items: center; width: 3rem; height: 3rem; border: 1px solid var(--line-strong); border-radius: 50%; color: var(--accent-2); font-family: var(--hud-font); letter-spacing: .08em; box-shadow: inset 0 0 18px rgba(96,216,255,.22), 0 0 22px rgba(101,255,200,.14); }
+.brand-mark { display: grid; place-items: center; width: 3rem; height: 3rem; border-radius: 50%; box-shadow: inset 0 0 18px rgba(96,216,255,.22), 0 0 22px rgba(101,255,200,.14); }
+.brand-mark img { width: 100%; height: 100%; }
 .brand strong, h1, h2, h3, th, .nav-group-title { font-family: var(--hud-font); letter-spacing: .035em; text-transform: uppercase; }
 .brand small { display: block; color: var(--muted); font-size: .78rem; }
 
@@ -60,12 +64,15 @@ a:hover { color: var(--accent-2); }
 .nav-account { display: flex; gap: .55rem; align-items: center; margin-left: auto; color: var(--muted); }
 .resource-strip { border-top: 1px solid rgba(103,190,224,.12); background: rgba(8, 17, 27, .78); }
 .resource-grid { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: .5rem; padding-block: .7rem; }
-.resource-grid span { padding: .55rem .65rem; border: 1px solid rgba(103,238,209,.22); border-radius: 12px; background: rgba(5, 12, 18, .7); color: var(--accent-2); font-variant-numeric: tabular-nums; }
-.resource-grid b { display: block; color: var(--muted); font-size: .72rem; text-transform: uppercase; }
+.res-cell { display: flex; align-items: center; gap: .55rem; padding: .55rem .65rem; border: 1px solid rgba(103,238,209,.22); border-radius: 12px; background: rgba(5, 12, 18, .7); color: var(--accent-2); font-variant-numeric: tabular-nums; }
+.res-icon { flex: none; opacity: .92; }
+.res-cell b { display: block; color: var(--muted); font-size: .72rem; text-transform: uppercase; }
 .command-main { padding-block: 1.4rem 3rem; }
 
 .hero, .panel, section:not(.panel), article { position: relative; margin: 1rem 0; padding: 1.1rem; border: 1px solid var(--line); border-radius: var(--radius); background: linear-gradient(180deg, rgba(15, 28, 42, .95), rgba(8, 14, 23, .95)); box-shadow: var(--shadow); overflow: hidden; }
 .panel::before, section:not(.panel)::before, article::before { content: ""; position: absolute; inset: 0 0 auto; height: 2px; background: linear-gradient(90deg, transparent, var(--accent), var(--accent-2), transparent); opacity: .7; }
+.hero::after { content: ""; position: absolute; top: 50%; right: -4rem; width: 22rem; height: 22rem; transform: translateY(-50%); background: url('/images/stargate-emblem.svg') center / contain no-repeat; opacity: .16; pointer-events: none; }
+.hero > * { position: relative; }
 h1, h2, h3 { margin: 0 0 .8rem; color: var(--text); }
 p { color: #c4d4e1; }
 
