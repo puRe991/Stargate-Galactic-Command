@@ -47,5 +47,48 @@ namespace StargateGalacticCommand.Tests
             var service = new ShipyardService(new ResourceService());
             Assert.Throws<InvalidOperationException>(() => service.StartBuild(Base(1), ShipType.F302, 1, DateTime.UtcNow));
         }
+
+        [Fact]
+        public void StartExploration_HasNoFixedTargetAndReturnsToOrigin()
+        {
+            var shipyard = new ShipyardService(new ResourceService());
+            var service = new FleetService(shipyard);
+            var origin = Base(1); origin.Ships.SmallTransporter = 2;
+            var startEnergy = origin.Resources.Energy;
+
+            var fleet = service.StartExploration(origin, ShipType.SmallTransporter, 2, 100, DateTime.UtcNow);
+
+            Assert.Equal(origin.Id, fleet.TargetBaseId);
+            Assert.Equal(FleetMissionType.Exploration, fleet.MissionType);
+            Assert.Equal(0, origin.Ships.SmallTransporter);
+            Assert.True(origin.Resources.Energy < startEnergy);
+            Assert.True(fleet.FuelCost > 0);
+        }
+
+        [Fact]
+        public void StartExploration_ThrowsWhenNotEnoughShips()
+        {
+            var shipyard = new ShipyardService(new ResourceService());
+            var service = new FleetService(shipyard);
+            var origin = Base(1);
+            Assert.Throws<InvalidOperationException>(() => service.StartExploration(origin, ShipType.SmallTransporter, 1, 100, DateTime.UtcNow));
+        }
+
+        [Fact]
+        public void StartExploration_ThenComplete_ReturnsShipsToOriginBase()
+        {
+            var shipyard = new ShipyardService(new ResourceService());
+            var service = new FleetService(shipyard);
+            var origin = Base(1); origin.Ships.SmallTransporter = 3;
+
+            var fleet = service.StartExploration(origin, ShipType.SmallTransporter, 3, 100, DateTime.UtcNow);
+            fleet.TargetBase = origin;
+            service.Complete(fleet, fleet.ArrivesAtUtc.AddSeconds(1));
+            Assert.Equal(FleetMovementStatus.Returning, fleet.Status);
+
+            service.Complete(fleet, fleet.ArrivesAtUtc.AddSeconds(1));
+            Assert.Equal(FleetMovementStatus.Completed, fleet.Status);
+            Assert.Equal(3, origin.Ships.SmallTransporter);
+        }
     }
 }

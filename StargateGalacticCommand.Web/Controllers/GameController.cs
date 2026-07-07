@@ -201,10 +201,49 @@ namespace StargateGalacticCommand.Web.Controllers
 
         [HttpPost]
         [ValidateAntiForgeryToken]
+        public IActionResult StartExploration(ShipType shipType, int shipCount)
+        {
+            var origin = LoadCurrentBase(); if (origin == null) return RedirectToAction("Login", "Account");
+            var now = DateTime.UtcNow; _economy.ApplyOfflineProduction(origin, now);
+            try
+            {
+                int scanRange = Random.Shared.Next(FleetService.MinExplorationRangeDistance, FleetService.MaxExplorationRangeDistance + 1);
+                var fleet = _fleets.StartExploration(origin, shipType, shipCount, scanRange, now);
+                _db.FleetMovements.Add(fleet);
+                TempData["Message"] = "Erkundungsflug gestartet. Schiffe scannen unerforschte Raumsektoren nach neuen Gate-Adressen.";
+            }
+            catch (Exception ex) when (ex is InvalidOperationException || ex is ArgumentException || ex is ArgumentOutOfRangeException) { TempData["Error"] = ex.Message; }
+            _db.SaveChanges(); return RedirectToAction("Fleets");
+        }
+
+        [HttpPost]
+        [ValidateAntiForgeryToken]
         public IActionResult CompleteFleet(int fleetId)
         {
             int userId = CurrentUserId(); var now=DateTime.UtcNow;
-            try { var fleet=_db.FleetMovements.Include(f=>f.OriginBase).ThenInclude(b=>b.Ships).Include(f=>f.OriginBase).ThenInclude(b=>b.Resources).Include(f=>f.OriginBase).ThenInclude(b=>b.PlanetSector).Include(f=>f.TargetBase).ThenInclude(b=>b.Ships).Include(f=>f.TargetBase).ThenInclude(b=>b.Resources).Include(f=>f.TargetBase).ThenInclude(b=>b.PlanetSector).Single(f=>f.Id==fleetId && f.UserId==userId); var report=_fleets.Complete(fleet,now); _db.FleetReports.Add(report); TempData["Message"]="Flottenereignis abgeschlossen."; }
+            try
+            {
+                var fleet=_db.FleetMovements.Include(f=>f.OriginBase).ThenInclude(b=>b.Ships).Include(f=>f.OriginBase).ThenInclude(b=>b.Resources).Include(f=>f.OriginBase).ThenInclude(b=>b.PlanetSector).Include(f=>f.TargetBase).ThenInclude(b=>b.Ships).Include(f=>f.TargetBase).ThenInclude(b=>b.Resources).Include(f=>f.TargetBase).ThenInclude(b=>b.PlanetSector).Single(f=>f.Id==fleetId && f.UserId==userId);
+                var report=_fleets.Complete(fleet,now);
+                _db.FleetReports.Add(report);
+                if (fleet.MissionType == FleetMissionType.Exploration && fleet.Status == FleetMovementStatus.Completed)
+                {
+                    var user = _db.Users.Single(u => u.Id == userId);
+                    var knownIds = _db.KnownGateAddresses.Where(k => k.UserId == userId).Select(k => k.GateAddressId).ToList();
+                    var candidates = _db.GateAddresses.Where(a => !knownIds.Contains(a.Id)).ToList();
+                    var discovered = _gateMissions.DiscoverRandomAddress(user, candidates, Random.Shared, "Fernaufklärung", now);
+                    if (discovered != null)
+                    {
+                        _db.KnownGateAddresses.Add(discovered);
+                        report.Body += " Neue Gate-Adresse entdeckt: " + discovered.GateAddress.Code + " (" + discovered.GateAddress.Description + ")";
+                    }
+                    else
+                    {
+                        report.Body += " Keine neuen Gate-Signaturen im gescannten Sektor gefunden.";
+                    }
+                }
+                TempData["Message"]="Flottenereignis abgeschlossen.";
+            }
             catch (Exception ex) when (ex is InvalidOperationException || ex is ArgumentException) { TempData["Error"] = ex.Message; }
             _db.SaveChanges(); return RedirectToAction("Fleets");
         }
@@ -432,12 +471,14 @@ namespace StargateGalacticCommand.Web.Controllers
                 }
                 if (mission.MissionType == GateMissionType.AnalyzeAddress && report.Outcome != GateMissionOutcome.WoundedOrLosses)
                 {
+                    var user = _db.Users.Single(u => u.Id == userId);
                     var knownIds = _db.KnownGateAddresses.Where(k => k.UserId == userId).Select(k => k.GateAddressId).ToList();
-                    var nextAddress = _db.GateAddresses.Where(a => a.IsNeutralPve && !knownIds.Contains(a.Id)).OrderBy(a => a.RiskLevel).FirstOrDefault();
-                    if (nextAddress != null)
+                    var candidates = _db.GateAddresses.Where(a => a.IsNeutralPve && !knownIds.Contains(a.Id)).ToList();
+                    var discovered = _gateMissions.DiscoverRandomAddress(user, candidates, Random.Shared, "Adresse analysieren", now);
+                    if (discovered != null)
                     {
-                        _db.KnownGateAddresses.Add(new KnownGateAddress { UserId = userId, GateAddressId = nextAddress.Id, DiscoveredAtUtc = now, DiscoveryMethod = "Adresse analysieren" });
-                        report.Summary += " Neue Adresse freigeschaltet: " + nextAddress.Code + ".";
+                        _db.KnownGateAddresses.Add(discovered);
+                        report.Summary += " Neue Adresse freigeschaltet: " + discovered.GateAddress.Code + ".";
                     }
                 }
                 _db.Reports.Add(new Report { UserId = userId, Title = "Gate-Mission: " + mission.MissionType, Body = report.Summary, CreatedAtUtc = now });

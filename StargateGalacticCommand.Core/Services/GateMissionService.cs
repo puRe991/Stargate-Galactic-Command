@@ -143,6 +143,16 @@ namespace StargateGalacticCommand.Core.Services
             return planet;
         }
 
+        public KnownGateAddress DiscoverRandomAddress(User user, IList<GateAddress> undiscoveredAddresses, Random random, string discoveryMethod, DateTime nowUtc)
+        {
+            if (user == null) throw new ArgumentNullException("user");
+            if (random == null) throw new ArgumentNullException("random");
+            if (undiscoveredAddresses == null || undiscoveredAddresses.Count == 0) return null;
+
+            var picked = undiscoveredAddresses[random.Next(undiscoveredAddresses.Count)];
+            return new KnownGateAddress { UserId = user.Id, GateAddressId = picked.Id, GateAddress = picked, DiscoveredAtUtc = nowUtc, DiscoveryMethod = discoveryMethod };
+        }
+
         public MissionTeam CreateFactionTeam(User user)
         {
             string s = user?.Faction?.ShortName ?? "SGC";
