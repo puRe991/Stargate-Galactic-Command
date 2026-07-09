@@ -102,8 +102,8 @@ schneiden lassen.
 - **Balancing**: Eskorte (Schiffe/Verteidigung) sollte Abfangchance senken,
   damit Route-Sicherheit eine echte Entscheidung ist, nicht nur ein Passiv-Feature.
 
-### 1.5 Trümmerfeld-Recycling (Bergungsflotten)
-- **Ist-Zustand**: `DebrisField` wird bereits nach jedem `SpaceCombatService`-
+### 1.5 Trümmerfeld-Recycling (Bergungsflotten) — ✅ umgesetzt
+- **Ist-Zustand (vor Umsetzung)**: `DebrisField` wird bereits nach jedem `SpaceCombatService`-
   Kampf erzeugt (`CreateDebris`) und in der Übersicht angezeigt
   (`DebrisFields = ... Where(!IsRecycled)`), **aber es gibt aktuell keine
   Aktion, um ein Feld tatsächlich einzusammeln** – `IsRecycled` wird nirgends
@@ -121,6 +121,22 @@ schneiden lassen.
 - **Balancing**: Trümmerfelder sollten nach X Stunden automatisch verfallen
   (despawnen), damit Recycling ein Zeitfenster/Wettlauf ist und nicht beliebig
   aufgeschoben werden kann – erzeugt zusätzlichen PvP-Anreiz um Kampfzonen.
+  *(Noch offen – nicht Teil der ersten Umsetzung, siehe unten.)*
+- **Tatsächliche Umsetzung**: `FleetMissionType.Recycle` ergänzt;
+  `FleetService.StartRecycle` startet eine Bergungsflotte zu einem
+  `DebrisField` (Distanz-/Treibstofflogik wie bei `Start`/`StartExploration`);
+  `FleetService.Complete` sammelt bei Ankunft Naquadah/Trinium proportional
+  bis zur Frachtkapazität aller eingesetzten Schiffe ein, reduziert das Feld
+  entsprechend und setzt `IsRecycled = true`, sobald es leer ist – bei zu
+  geringer Kapazität bleibt ein Rest für einen weiteren Flug stehen. Die
+  Beute wird erst bei Rückkehr der Basis gutgeschrieben (`AddCargo` auf
+  `OriginBase.Resources`), nicht am fremden Zielort. Neue Route
+  `GameController.StartRecycle` sowie ein Formular auf der Seite „Flotte
+  senden“ (`SendFleet.cshtml`) machen die Aktion spielbar; die
+  Trümmerfeld-Übersicht (`CombatReports.cshtml`) zeigt jetzt Basisname und
+  Ort statt der rohen ID. Abgedeckt durch vier neue Tests in
+  `ShipyardAndFleetServiceTests`. Der automatische Verfall von
+  Trümmerfeldern (siehe Balancing-Hinweis) ist noch nicht umgesetzt.
 
 ## 2. Langzeit-Motivation / Meta-Progression
 

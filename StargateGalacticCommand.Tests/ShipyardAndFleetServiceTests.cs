@@ -90,5 +90,65 @@ namespace StargateGalacticCommand.Tests
             Assert.Equal(FleetMovementStatus.Completed, fleet.Status);
             Assert.Equal(3, origin.Ships.SmallTransporter);
         }
+
+        [Fact]
+        public void StartRecycle_ThrowsWhenFieldAlreadyRecycled()
+        {
+            var shipyard = new ShipyardService(new ResourceService());
+            var service = new FleetService(shipyard);
+            var origin = Base(1, 1, 1); origin.Ships.SmallTransporter = 1;
+            var owner = Base(2, 2, 4);
+            var field = new DebrisField { Id = 1, PlayerBaseId = owner.Id, PlayerBase = owner, Naquadah = 100, Trinium = 50, IsRecycled = true };
+
+            Assert.Throws<InvalidOperationException>(() => service.StartRecycle(origin, field, ShipType.SmallTransporter, 1, DateTime.UtcNow));
+        }
+
+        [Fact]
+        public void Recycle_FullyCollectsSmallFieldAndMarksItRecycled()
+        {
+            var shipyard = new ShipyardService(new ResourceService());
+            var service = new FleetService(shipyard);
+            var origin = Base(1, 1, 1); origin.Ships.SmallTransporter = 1;
+            var owner = Base(2, 2, 4);
+            var field = new DebrisField { Id = 1, PlayerBaseId = owner.Id, PlayerBase = owner, Naquadah = 300, Trinium = 200 };
+
+            var fleet = service.StartRecycle(origin, field, ShipType.SmallTransporter, 1, DateTime.UtcNow);
+            Assert.Equal(0, origin.Ships.SmallTransporter);
+            Assert.Equal(FleetMissionType.Recycle, fleet.MissionType);
+
+            service.Complete(fleet, fleet.ArrivesAtUtc.AddSeconds(1));
+            Assert.Equal(FleetMovementStatus.Returning, fleet.Status);
+            Assert.Equal(300, fleet.Naquadah);
+            Assert.Equal(200, fleet.Trinium);
+            Assert.True(field.IsRecycled);
+            Assert.Equal(0, field.Naquadah);
+            Assert.Equal(0, field.Trinium);
+
+            var originNaquadahBefore = origin.Resources.Naquadah;
+            service.Complete(fleet, fleet.ArrivesAtUtc.AddSeconds(1));
+            Assert.Equal(FleetMovementStatus.Completed, fleet.Status);
+            Assert.Equal(1, origin.Ships.SmallTransporter);
+            Assert.Equal(originNaquadahBefore + 300, origin.Resources.Naquadah);
+            Assert.Equal(200, fleet.Trinium);
+        }
+
+        [Fact]
+        public void Recycle_CapsCollectionAtCargoCapacityAndLeavesFieldPartiallyRecycled()
+        {
+            var shipyard = new ShipyardService(new ResourceService());
+            var service = new FleetService(shipyard);
+            var origin = Base(1, 1, 1); origin.Ships.SmallTransporter = 1;
+            var owner = Base(2, 2, 4);
+            var field = new DebrisField { Id = 1, PlayerBaseId = owner.Id, PlayerBase = owner, Naquadah = 600, Trinium = 600 };
+
+            var fleet = service.StartRecycle(origin, field, ShipType.SmallTransporter, 1, DateTime.UtcNow);
+            service.Complete(fleet, fleet.ArrivesAtUtc.AddSeconds(1));
+
+            Assert.Equal(250, fleet.Naquadah);
+            Assert.Equal(250, fleet.Trinium);
+            Assert.Equal(350, field.Naquadah);
+            Assert.Equal(350, field.Trinium);
+            Assert.False(field.IsRecycled);
+        }
     }
 }
