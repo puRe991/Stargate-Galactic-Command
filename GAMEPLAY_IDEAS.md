@@ -191,7 +191,7 @@ schneiden lassen.
   keine exklusiven Power-Vorteile, die verpasste Seasons dauerhaft
   benachteiligen (Fear-of-missing-out vermeiden, das reine Log-in-Zwang erzeugt).
 
-### 2.3 Achievements / Lore-Kodex
+### 2.3 Achievements / Lore-Kodex — ✅ umgesetzt
 - **Konzept**: Ein sich füllender Kodex (entdeckte Gate-Adressen, besiegte
   Gegnerfraktionen, abgeschlossene Missionstypen, kontaktierte Kulturen) als
   Sammelanreiz unabhängig von reiner Score-Progression. Gut geeignet für
@@ -203,6 +203,28 @@ schneiden lassen.
   `SpaceCombatService.Resolve`, `AllianceService`-Beitritt usw.
 - **Balancing**: Kleine kosmetische/Titel-Belohnungen statt Ressourcenboni,
   damit Achievements nicht zum verdeckten zweiten Wirtschaftssystem werden.
+- **Tatsächliche Umsetzung**: Gleiches Muster wie bei den Kontrakten (2.4):
+  Fortschritt wird **live aus bestehenden Tabellen berechnet**
+  (`KnownGateAddresses`, `SpaceCombatReports`, `GateMissionReports`,
+  `AllianceMembers`, `TradeReports`) statt Trigger-Hooks in jeden einzelnen
+  Service (`GateMissionService`, `SpaceCombatService`, `AllianceService`, …)
+  einzubauen – keiner dieser Services musste angefasst werden.
+  `AchievementProgress` speichert nur `UnlockedAtUtc` (kein Zählerstand, da
+  Errungenschaften anders als Kontrakte dauerhaft sind, kein Reset-Zyklus).
+  Katalog mit 12 Einträgen in `AchievementService` über 6 Zielkategorien
+  (`AchievementGoalType`): entdeckte Adressen (3 Stufen), gewonnene
+  Raumschlachten (3 Stufen), alle 7 Gate-Missionstypen mindestens einmal
+  erfolgreich abgeschlossen, Allianzbeitritt, gegründete Kolonien (2 Stufen),
+  abgeschlossene Markttransaktionen (2 Stufen). Ohne Ressourcenbelohnung wie
+  im Balancing-Hinweis gefordert – reines Sammel-/Titel-Feature. Freischaltung
+  passiert automatisch beim nächsten Seitenaufruf (`GameController.
+  BuildAchievementStatuses`, aufgerufen aus dem gemeinsamen Overview-Builder)
+  und erzeugt einen normalen Report-Eintrag ("Kodex-Eintrag freigeschaltet:
+  …") zur Benachrichtigung. Neue Seite „Kodex“ (`Codex.cshtml`) zeigt alle
+  Einträge inkl. Fortschrittsbalken und Freischaltdatum. Abgedeckt durch 5
+  neue Tests (`AchievementServiceTests`); Vollzyklus (Registrierung → Kodex-
+  Seite zeigt sofort Fortschritt „1 / 5“ für die Startadresse) manuell gegen
+  die laufende App verifiziert.
 
 ### 2.4 Tägliche/wöchentliche Kontrakte (fraktionsspezifisch) — ✅ umgesetzt
 - **Konzept**: Kurze, planbare Auftragslisten pro Fraktion (SGC-Aufträge,
@@ -356,7 +378,7 @@ Kein Umbau des Datenmodells nötig, sofort startbar:
 
 Mittlerer Aufwand, hoher Bindungseffekt:
 3. **2.4 Tägliche/wöchentliche Kontrakte** ✅
-4. **2.3 Achievements/Lore-Kodex**
+4. **2.3 Achievements/Lore-Kodex** ✅
 5. **1.3 Einfluss-Zerfall**
 
 Größerer Aufwand / mehr Design-Abstimmung nötig, aber hohe Langzeitwirkung:
