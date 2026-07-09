@@ -8,7 +8,8 @@ namespace StargateGalacticCommand.Core.Services
     public class GateMissionService
     {
         private readonly ResourceService _resources;
-        public GateMissionService(ResourceService resources) { _resources = resources; }
+        private readonly FactionModifierService _factionModifiers;
+        public GateMissionService(ResourceService resources, FactionModifierService factionModifiers = null) { _resources = resources; _factionModifiers = factionModifiers ?? new FactionModifierService(); }
 
         public BuildCost GetMissionCost(GateMissionType type)
         {
@@ -54,6 +55,7 @@ namespace StargateGalacticCommand.Core.Services
             var team = mission.MissionTeam ?? throw new InvalidOperationException("Missionsteam fehlt.");
             int score = team.Strength + team.Science + team.Diplomacy + team.Stealth + team.CarryCapacity - team.Risk - (mission.GateAddress == null ? 0 : mission.GateAddress.RiskLevel);
             score += (int)mission.MissionType;
+            score += _factionModifiers.GetGateMissionScoreBonus(playerBase.Faction, mission.MissionType);
             var outcome = score >= 28 ? GateMissionOutcome.Success : score >= 20 ? GateMissionOutcome.PartialSuccess : GateMissionOutcome.Failure;
             var report = new GateMissionReport { UserId = mission.UserId, GateMission = mission, GateMissionId = mission.Id, Outcome = outcome, CreatedAtUtc = nowUtc };
 

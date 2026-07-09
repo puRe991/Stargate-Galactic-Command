@@ -10,8 +10,8 @@ schneiden lassen.
 
 ## 1. Kurzfristige Gameplay-Verbesserungen
 
-### 1.1 Kontextsensitive Gate-Missionen
-- **Ist-Zustand**: `GateMissionType` (`Explore`, `SecureResources`,
+### 1.1 Kontextsensitive Gate-Missionen — ✅ umgesetzt (Bonus-Variante)
+- **Ist-Zustand (vor Umsetzung)**: `GateMissionType` (`Explore`, `SecureResources`,
   `SearchArtifact`, `DiplomaticContact`, `RiskAnalysis`, `AnalyzeAddress`,
   `FoundColony`) wird in `GameController.StartGateMission` unabhängig von der
   Fraktion des Spielers angeboten; `GateMissionService` kennt nur den Typ, nicht
@@ -35,6 +35,25 @@ schneiden lassen.
   wiederverwenden statt neue Parallelstruktur).
 - **Balancing**: Boni als Erfolgschance-Modifikator (+5–10 %) statt Freischaltung
   ganzer neuer Ressourcenklassen, um Startfraktionen nicht zu sehr zu spreizen.
+- **Tatsächliche Umsetzung**: Statt exklusiver Missionstypen (Balancing-Hinweis
+  empfahl ausdrücklich Modifikator statt Exklusivität) gibt es jetzt
+  `FactionModifierService.GetGateMissionScoreBonus(Faction, GateMissionType)`
+  mit einem festen `+4`-Bonus auf den Erfolgs-Score aus
+  `GateMissionService.CompleteMission` für die jeweilige
+  Fraktionsspezialität: SGC → `SearchArtifact`, Freie Jaffa →
+  `RiskAnalysis`, Tok'ra → `AnalyzeAddress`, Lucian Alliance →
+  `SecureResources`. Der Bonus wird auf Basis von `playerBase.Faction`
+  angewendet (bereits über `LoadCurrentBase` geladen, keine zusätzliche
+  Query nötig) und wirkt direkt auf die Erfolgsschwelle (28 = Erfolg, 20 =
+  Teilerfolg), wodurch Grenzfälle für die Spezialfraktion häufiger zu einem
+  vollen Erfolg (z. B. `ArtifactLeadFound = true` statt nur Teilerfolg)
+  werden. Die Missionsauswahl im Gate-Raum (`GateRoom.cshtml`) markiert die
+  Spezialität der eigenen Fraktion mit einem ★. `GateMissionService` erhält
+  `FactionModifierService` als optionalen Konstruktorparameter (Default:
+  neue Instanz), damit bestehende Testaufrufe ohne Änderung weiterlaufen.
+  Exklusive Missionstypen pro Fraktion (Befreiungsoperation,
+  Schmuggeloperation, …) sind bewusst nicht Teil dieser ersten Umsetzung –
+  eigenes, größeres Ticket.
 
 ### 1.2 Espionage-Gegenmaßnahmen: Köder & Falschinformationen
 - **Ist-Zustand**: `CounterIntelligenceLevel` (`Low`/`Guarded`/`Hardened`/
@@ -307,10 +326,10 @@ schneiden lassen.
 ## Priorisierungsvorschlag
 
 Kein Umbau des Datenmodells nötig, sofort startbar:
-1. **1.5 Trümmerfeld-Recycling** – Datenmodell existiert bereits vollständig,
+1. **1.5 Trümmerfeld-Recycling** ✅ – Datenmodell existiert bereits vollständig,
    es fehlt nur die Aktion/der Service-Aufruf. Kleinster Aufwand, klarer
    Mehrwert.
-2. **1.1 Kontextsensitive Gate-Missionen** – nutzt bestehende
+2. **1.1 Kontextsensitive Gate-Missionen** ✅ – nutzt bestehende
    `FactionModifierService`-Infrastruktur, keine neuen Tabellen nötig.
 
 Mittlerer Aufwand, hoher Bindungseffekt:
