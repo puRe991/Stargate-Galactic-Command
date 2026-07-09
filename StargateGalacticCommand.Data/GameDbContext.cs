@@ -47,6 +47,7 @@ namespace StargateGalacticCommand.Data
         public DbSet<DebrisField> DebrisFields { get; set; }
         public DbSet<PlayerProtectionStatus> PlayerProtectionStatuses { get; set; }
         public DbSet<PlayerMessage> PlayerMessages { get; set; }
+        public DbSet<ContractProgress> ContractProgresses { get; set; }
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
@@ -157,6 +158,8 @@ namespace StargateGalacticCommand.Data
             modelBuilder.Entity<PlayerMessage>().HasIndex(m => new { m.SenderUserId, m.IsDeletedBySender, m.CreatedAtUtc });
             modelBuilder.Entity<PlayerMessage>().HasOne(m => m.SenderUser).WithMany().HasForeignKey(m => m.SenderUserId).OnDelete(DeleteBehavior.Restrict);
             modelBuilder.Entity<PlayerMessage>().HasOne(m => m.RecipientUser).WithMany().HasForeignKey(m => m.RecipientUserId).OnDelete(DeleteBehavior.Restrict);
+            modelBuilder.Entity<ContractProgress>().HasOne(p => p.User).WithMany().HasForeignKey(p => p.UserId).OnDelete(DeleteBehavior.Cascade);
+            modelBuilder.Entity<ContractProgress>().HasIndex(p => new { p.UserId, p.ContractKey, p.PeriodStartUtc }).IsUnique();
         }
     }
 }

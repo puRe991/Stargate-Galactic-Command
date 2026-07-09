@@ -58,6 +58,20 @@ namespace StargateGalacticCommand.Web.Models
         public int UnreadMessageCount { get; set; }
         public int UnreadReportCount { get; set; }
         public IList<User> MessageablePlayers { get; set; }
+        public IList<ContractStatusViewModel> ContractStatuses { get; set; }
+    }
+
+    public class ContractStatusViewModel
+    {
+        public string Key { get; set; }
+        public string DisplayName { get; set; }
+        public string Description { get; set; }
+        public bool IsWeekly { get; set; }
+        public int Progress { get; set; }
+        public int Goal { get; set; }
+        public bool IsComplete { get; set; }
+        public bool IsClaimed { get; set; }
+        public BuildCost Reward { get; set; }
     }
 
     public class BuildingUpgradeViewModel
