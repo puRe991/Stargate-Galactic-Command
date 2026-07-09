@@ -1,0 +1,306 @@
+# Gameplay-Ideen: kurzfristige Verbesserungen & Langzeit-Motivation
+
+Dieses Dokument sammelt ausgearbeitete Ideen für Verbesserungen an bestehenden
+Systemen sowie Mechaniken für Langzeit-Motivation. Es ergänzt `ROADMAP.md`
+(dort geht es um den großen Sprung zu Echtzeit-Away-Teams) um Dinge, die sich
+**innerhalb des aktuellen Text-/Formular-MVC-Modells** umsetzen lassen, ohne
+auf SignalR/2D-Client zu warten. Jeder Punkt nennt den Ist-Zustand im Code,
+das Konzept und eine grobe Umsetzungsskizze, damit sich daraus direkt Tickets
+schneiden lassen.
+
+## 1. Kurzfristige Gameplay-Verbesserungen
+
+### 1.1 Kontextsensitive Gate-Missionen
+- **Ist-Zustand**: `GateMissionType` (`Explore`, `SecureResources`,
+  `SearchArtifact`, `DiplomaticContact`, `RiskAnalysis`, `AnalyzeAddress`,
+  `FoundColony`) wird in `GameController.StartGateMission` unabhängig von der
+  Fraktion des Spielers angeboten; `GateMissionService` kennt nur den Typ, nicht
+  `user.Faction`.
+- **Konzept**: Jede Startfraktion (Tau'ri/SGC, Freie Jaffa, Tok'ra, Lucian
+  Alliance) bekommt 1–2 exklusive Missionstypen bzw. abweichende
+  Erfolgschancen/Belohnungen für existierende Typen:
+  - Tau'ri/SGC: Bonus auf `SearchArtifact` (Technologiefokus), Zugriff auf
+    `DiplomaticContact` mit anderen Kulturen zuerst.
+  - Freie Jaffa: Bonus auf `RiskAnalysis`/Kampfmissionen, eigener Typ
+    "Befreiungsoperation" (befreit versklavte Jaffa als Personnel-Bonus).
+  - Tok'ra: Bonus auf `AnalyzeAddress`/Spionage-lastige Missionen, Zugriff auf
+    Infiltrationsvarianten von `DiplomaticContact`.
+  - Lucian Alliance: Bonus auf `SecureResources`, eigener Typ "Schmuggeloperation"
+    (höheres Risiko, höhere Ressourcenbeute, Rufabzug bei anderen Fraktionen).
+- **Umsetzung**: `GateMissionService` bekommt eine Methode
+  `GetAvailableMissionTypes(Faction)`, die die Basisliste filtert/erweitert;
+  Erfolgsformel in `CalculateOutcome`-artigen Methoden um einen
+  faktionsabhängigen Modifikator ergänzen (ähnlich `FactionModifierService`,
+  der schon für Verteidigung/Wirtschaft existiert – hier konsequent
+  wiederverwenden statt neue Parallelstruktur).
+- **Balancing**: Boni als Erfolgschance-Modifikator (+5–10 %) statt Freischaltung
+  ganzer neuer Ressourcenklassen, um Startfraktionen nicht zu sehr zu spreizen.
+
+### 1.2 Espionage-Gegenmaßnahmen: Köder & Falschinformationen
+- **Ist-Zustand**: `CounterIntelligenceLevel` (`Low`/`Guarded`/`Hardened`/
+  `Lockdown`) existiert bereits und wird in `EspionageService` als reiner
+  Abwehr-Multiplikator genutzt (Spionageerfolg sinkt, `SpyDefenseResult`
+  meldet ggf. Enttarnung des Spions).
+- **Konzept**: Ein aktives Gegenmittel statt nur passivem Multiplikator:
+  Spieler können auf `Hardened`/`Lockdown` einen "Ködervorrat" hinterlegen
+  (z. B. künstlich überhöhte Flottenzahlen), der Spionageberichten gezielt
+  falsche Werte unterschiebt. Der bespitzelte Spieler bekommt eine Meldung
+  ("Verdacht auf Falschinformation"), sieht aber nicht, welche Werte
+  manipuliert wurden – Bluff-Mechanik.
+- **Umsetzung**: neues Feld `DecoyProfile` (JSON oder eigene Tabelle mit
+  Ressourcen-/Flottenwerten) an `PlayerBase`/`User` hängen; in
+  `EspionageService.ResolveMission` bei erfolgreichem Spionageangriff auf eine
+  Basis mit aktivem Köder und `CounterIntelligenceLevel >= Hardened` eine
+  Zufallschance einbauen, den `IntelligenceReport` mit den Köderwerten statt
+  der echten Werte zu befüllen. Kosten: Ködervorrat muss aus Intel-Ressource
+  "aufgeladen" werden (limitierte, verbrauchbare Ressource, kein Dauerbuff).
+- **Balancing**: Aufdeckbar machen – wiederholte Angriffe mit hoher eigener
+  Spionagestufe sollten die Täuschung mit steigender Wahrscheinlichkeit
+  durchschauen, sonst wird Spionage komplett entwertet.
+
+### 1.3 Dynamische Sektorkontrolle: Einfluss-Zerfall
+- **Ist-Zustand**: `SectorControl` speichert nur `ControlledAtUtc`, kein
+  Verfallsmechanismus; `SectorClaim` hat `StartedAtUtc`/`CompletesAtUtc` für
+  den *Erwerb*, aber Kontrolle danach ist statisch/dauerhaft in
+  `LocalSectorService`.
+- **Konzept**: Kontrolle erfordert kontinuierliche Präsenz/Aktivität statt
+  einmaligem Claim. Ohne "Nachweis-Aktivität" (z. B. laufende lokale Aktion,
+  Truppenpräsenz, oder simple X-Tage-Inaktivität des kontrollierenden
+  Spielers) sinkt der Einfluss schrittweise, bis der Sektor wieder neutral
+  wird und neu beansprucht werden kann.
+- **Umsetzung**: `SectorControl` um `LastReinforcedAtUtc` erweitern;
+  periodischer Hintergrundjob (oder Berechnung on-demand beim Laden der
+  Planetenseite, analog zur bestehenden Lazy-Berechnung in
+  `LocalSectorService.CalculateInfluence`) reduziert Einfluss pro Tag ohne
+  Reinforcement. Reinforcement = neue leichtgewichtige Aktion ("Präsenz
+  bestätigen"), die z. B. eine kleine Personnel-/Energiekosten hat.
+- **Balancing**: Zerfallsrate so wählen, dass aktive aber nicht
+  permanent-online Spieler (1x/Tag einloggen) Kontrolle halten können –
+  verhindert Abwertung zu reinem Log-in-Zwang, aber auch dauerhaftes
+  Ersteinnehmer-Privileg.
+
+### 1.4 Handelsrouten statt Einzeltrades
+- **Ist-Zustand**: `PlanetMarketOrder`/`PlanetMarketService` bilden
+  Einzelangebote mit `ExpiresAtUtc` ab – jeder Trade ist ein manueller,
+  einmaliger Vorgang.
+- **Konzept**: "Handelsroute" als wiederkehrender, automatisierter Auftrag
+  zwischen zwei eigenen Basen oder mit einem Handelspartner: alle N Stunden
+  wird automatisch ein Trade zu vorher festgelegten Konditionen ausgeführt,
+  ohne dass der Spieler jedes Mal manuell bestätigen muss. Fügt dem Spiel
+  einen "Set-and-forget"-Idle-Layer hinzu, der Motivation zwischen Logins
+  erzeugt.
+- **Abfangrisiko**: Handelsrouten, die Sektor-/Systemgrenzen überschreiten,
+  können von anderen Spielern (insbesondere Lucian Alliance mit Rollenfokus
+  "Piraterie") abgefangen werden – ähnliche Mechanik wie `SpaceCombatService`-
+  Angriffe, aber Ziel ist eine Transportroute statt einer Basis. Erfolgreiches
+  Abfangen liefert einen Teil der transportierten Ressourcen als Beute
+  (vergleichbar `Loot`-Logik in `SpaceCombatService`).
+- **Umsetzung**: neues Modell `TradeRoute` (Quelle, Ziel, Ressourcen,
+  Intervall, Eskorte/Schiffstyp, aktiv/pausiert) plus Scheduler-Logik
+  analog zu `BuildQueueService`/`ResearchQueueService`, die beim
+  Übersicht-Laden fällige Routen abwickelt.
+- **Balancing**: Eskorte (Schiffe/Verteidigung) sollte Abfangchance senken,
+  damit Route-Sicherheit eine echte Entscheidung ist, nicht nur ein Passiv-Feature.
+
+### 1.5 Trümmerfeld-Recycling (Bergungsflotten)
+- **Ist-Zustand**: `DebrisField` wird bereits nach jedem `SpaceCombatService`-
+  Kampf erzeugt (`CreateDebris`) und in der Übersicht angezeigt
+  (`DebrisFields = ... Where(!IsRecycled)`), **aber es gibt aktuell keine
+  Aktion, um ein Feld tatsächlich einzusammeln** – `IsRecycled` wird nirgends
+  auf `true` gesetzt. Das ist also eine reine Anzeige ohne Gameplay-Payoff.
+- **Konzept**: Bergungsschiffe (bestehender oder neuer `ShipType`, z. B.
+  Recycler/Bergungsschiff) fliegen wie eine Flottenmission zum Trümmerfeld,
+  sammeln Naquadah/Trinium proportional zur Bergungskapazität ein und bringen
+  es zurück – analog zur bereits vorhandenen Flugzeit-/Distanzlogik in
+  `SpaceCombatService.CalculateDistance/CalculateFlightSeconds`.
+- **Umsetzung**: neue Missionsart in `FleetMissionType` ("Recycle"), Service-
+  Methode `StartRecycle(origin, debrisField, shipCount, now)` analog zu
+  `StartAttack`, die bei Ankunft `DebrisField.IsRecycled = true` setzt und
+  Ressourcen der Herkunftsbasis gutschreibt (gedeckelt durch Frachtkapazität
+  der eingesetzten Schiffe).
+- **Balancing**: Trümmerfelder sollten nach X Stunden automatisch verfallen
+  (despawnen), damit Recycling ein Zeitfenster/Wettlauf ist und nicht beliebig
+  aufgeschoben werden kann – erzeugt zusätzlichen PvP-Anreiz um Kampfzonen.
+
+## 2. Langzeit-Motivation / Meta-Progression
+
+### 2.1 Prestige/Ascension-Mechanik ("Erleuchtung")
+- **Konzept**: Ab einem definierten Machtlevel (z. B. Score-Schwelle aus
+  `RankingService`) kann ein Spieler freiwillig "aufsteigen": Basis wird auf
+  Startwerte zurückgesetzt, im Gegenzug gibt es einen permanenten,
+  kleinen Produktions-/Forschungsbonus ("Spur von Ancient-Wissen") sowie ein
+  sichtbares Prestige-Abzeichen in Ranglisten/Profil. Lore-konform bleibt
+  echte Ancient-Technologie weiterhin selten – der Bonus ist symbolisch/klein,
+  kein Gameplay-Reset-Zwang.
+- **Umsetzung**: `User` um `AscensionLevel`/`AscensionCount` erweitern;
+  `EconomyService`/`FactionModifierService` (dort existiert bereits die
+  Modifikator-Infrastruktur) um einen zusätzlichen, kumulativen
+  Ascension-Multiplikator ergänzen. Reset-Aktion räumt `BuildingLevels`,
+  `ResearchLevels`, Ressourcen, behält aber Nachrichten/Statistik-Historie
+  (Prestige soll sich nicht wie Datenverlust anfühlen).
+- **Balancing**: Bonus pro Ascension klein genug halten (~2–5 %), damit
+  Ascension eine Wahl bleibt und nicht zur Pflicht wird; Cooldown/Mindestlevel
+  verhindert Ascension-Farming in kurzen Zyklen.
+
+### 2.2 Season-Pässe / wöchentliche Storyline
+- **Konzept**: Statt alle 300+ Gate-Adressen aus `GalaxyGeneratorService` von
+  Anfang an gleichwertig verfügbar zu machen, wird ein rotierender
+  "Fokusbereich" (z. B. eine Handvoll neu "aktivierter" Adressen pro Woche)
+  mit eigener Mini-Storyline und Bonusbelohnungen eingeführt. Erzeugt
+  planbaren, wiederkehrenden Content-Drip statt eines einmaligen riesigen
+  Contentbergs.
+- **Umsetzung**: neues Modell `SeasonEvent` (Zeitraum, beteiligte
+  `GateAddress`-IDs, Bonusfaktor auf Missionsbelohnungen, Abschluss-
+  Fortschritt); Anzeige als eigener Reiter/Banner in der Übersicht.
+- **Balancing**: Season-Inhalte sollten kosmetisch/Fortschritts-Boni bringen,
+  keine exklusiven Power-Vorteile, die verpasste Seasons dauerhaft
+  benachteiligen (Fear-of-missing-out vermeiden, das reine Log-in-Zwang erzeugt).
+
+### 2.3 Achievements / Lore-Kodex
+- **Konzept**: Ein sich füllender Kodex (entdeckte Gate-Adressen, besiegte
+  Gegnerfraktionen, abgeschlossene Missionstypen, kontaktierte Kulturen) als
+  Sammelanreiz unabhängig von reiner Score-Progression. Gut geeignet für
+  Spieler, die nicht PvP-fokussiert sind ("Explorer"-Spielertyp).
+- **Umsetzung**: `KnownGateAddress` liefert bereits Rohdaten für einen
+  Entdeckungs-Fortschrittsbalken; zusätzlich neues Modell
+  `AchievementProgress` (UserId, AchievementKey, erreicht am). Trigger-Punkte
+  an bestehenden Stellen einhängen: `GateMissionService`-Abschluss,
+  `SpaceCombatService.Resolve`, `AllianceService`-Beitritt usw.
+- **Balancing**: Kleine kosmetische/Titel-Belohnungen statt Ressourcenboni,
+  damit Achievements nicht zum verdeckten zweiten Wirtschaftssystem werden.
+
+### 2.4 Tägliche/wöchentliche Kontrakte (fraktionsspezifisch)
+- **Konzept**: Kurze, planbare Auftragslisten pro Fraktion (SGC-Aufträge,
+  Jaffa-Ehrenaufträge, Tok'ra-Geheimoperationen, Lucian-Alliance-Deals), die
+  sich täglich/wöchentlich erneuern und kleine, aber verlässliche
+  Belohnungen bringen. Zentraler Hebel für "10 Minuten am Tag reichen, um
+  voranzukommen" – wichtig für Spieler ohne Zeit für Dauer-Online-Strategie.
+- **Umsetzung**: neues Modell `ContractDefinition` (Fraktion, Zieltyp z. B.
+  "X Gate-Missionen abschließen", "Y Ressourcen handeln") plus
+  `ContractProgress` pro Nutzer; Reset-Job täglich/wöchentlich, ähnlich wie
+  bei Season-Events.
+- **Balancing**: Kontrakte dürfen nicht die einzige sinnvolle Ressourcenquelle
+  werden, sonst wird Nicht-Einloggen bestraft statt Einloggen belohnt – als
+  Bonus obendrauf, nicht als Ersatz für Kernwirtschaft designen.
+
+### 2.5 Skilltrees pro Charakterrolle (vorgezogen aus Roadmap-Phase 4)
+- **Konzept**: Auch ohne den 2D-Client aus der Roadmap lässt sich ein
+  reines Text-Skilltree-System für die drei Rollen (Militär/Wissenschaft/
+  Diplomatie) vorziehen, das Missionsboni beeinflusst (z. B. Militär-Skill
+  erhöht `RiskAnalysis`/Kampferfolg, Wissenschaft erhöht `SearchArtifact`/
+  Forschungsgeschwindigkeit, Diplomatie erhöht `DiplomaticContact`-Erfolg und
+  Allianz-Interaktionen).
+- **Umsetzung**: setzt ein leichtgewichtiges `Character`-Modell voraus (in
+  Roadmap Phase 1 ohnehin geplant) – lässt sich aber vorab als reine
+  Punkte-Verteilung auf `User` (ohne Avatar/2D-Bezug) realisieren, sodass
+  Phase 1 später nur noch die visuelle Schicht ergänzt statt die Mechanik neu
+  zu bauen.
+- **Balancing**: Skillpunkte über Aktivität statt Kauf vergeben (z. B. pro
+  abgeschlossener Mission), damit es Progression statt Pay2Win ist.
+
+## 3. Social / Allianzen / PvP
+
+### 3.1 Allianz-Kriege mit klaren Zielen
+- **Ist-Zustand**: `AllianceService`/`AllianceRankingEntry` bilden bereits
+  Mitgliedschaft und Ranglisten ab, aber Sektorkontrolle (`SectorControl`)
+  ist rein individuell, kein Allianz-Bezug.
+- **Konzept**: Allianzen können eine Gate-Adresse/einen Planeten als
+  "Kriegsziel" markieren; gemeinsames Halten von Sektorkontrolle (Summe über
+  alle Mitglieder) über einen Zeitraum X schaltet einen Allianz-weiten
+  temporären Fraktionsbonus frei (z. B. via `FactionModifierService`
+  zeitlich begrenzt erhöht).
+- **Umsetzung**: `SectorControl`/`PlanetInfluence` um Allianz-Aggregation
+  erweitern (Summe der Kontrolle aller Mitglieder einer Allianz auf einem
+  Planeten); neues Modell `AllianceWarGoal` (Alliance, Planet/Zielsektor,
+  Start, benötigte Dauer, Status).
+- **Balancing**: Boni zeitlich befristet und moderat halten, damit kleine
+  Allianzen nicht dauerhaft abgehängt werden – evtl. gestaffelte Ziele nach
+  Allianzgröße.
+
+### 3.2 Mentoren-System für neue Spieler
+- **Konzept**: Erfahrene Allianzmitglieder erhalten Belohnungen (Ressourcen,
+  Kodex-Eintrag, Titel) fürs Betreuen von Neulingen – z. B. wenn ein
+  gementeeter Spieler innerhalb von X Tagen bestimmte Meilensteine erreicht
+  (erste Gate-Mission, erste Sektorkontrolle). Senkt Einstiegshürde für neue
+  Spieler und gibt Veteranen einen nicht-kompetitiven Progressionsanreiz.
+- **Umsetzung**: `AllianceMember` um optionales `MentorUserId` erweitern;
+  Meilenstein-Tracking kann dieselbe Infrastruktur wie Achievements (2.3)
+  nutzen.
+- **Balancing**: Mentor-Belohnung an echten Fortschritt des Schützlings
+  koppeln (nicht nur Beitritt), um Missbrauch durch Zweitaccounts zu
+  begrenzen (z. B. Cap pro Woche/IP-Heuristik, falls vorhanden).
+
+### 3.3 Diplomatie-Layer zwischen Allianzen
+- **Konzept**: Formale Nichtangriffspakte/Handelsabkommen zwischen Allianzen
+  als echte Spielmechanik: aktive Pakte verhindern/erschweren gegenseitige
+  Angriffe (`SpaceCombatService.ValidateAttack` prüft zusätzlich Paktstatus)
+  bzw. reduzieren Marktsteuern (`TradeTaxRule` existiert schon für
+  Handelssteuern) zwischen verbündeten Allianzen.
+- **Umsetzung**: neues Modell `AllianceDiplomacyStatus` (Allianz A, Allianz B,
+  Status: Neutral/Pakt/Krieg, seit wann); Prüfungen in
+  `SpaceCombatService.ValidateAttack` und `PlanetMarketService` ergänzen.
+- **Balancing**: Pakt-Bruch sollte spürbare Konsequenzen haben (z. B.
+  Reputationsverlust, kurzfristiger Vertrauensmalus), sonst ist Diplomatie
+  nur ein kostenloses An/Aus-Feature ohne Gewicht.
+
+## 4. Content-/Lore-getriebene Ideen
+
+### 4.1 Serverweite Ori-/Replikatoren-Events
+- **Konzept**: Periodisches, serverweites Bedrohungsereignis (z. B. eine
+  "Replikatoren-Invasion" auf zufällig gewählten Gate-Adressen), das für
+  seine Dauer PvP-Anreize senkt und Kooperationsanreize erhöht: Spieler aller
+  Fraktionen können gemeinsam an Abwehrmissionen teilnehmen, serverweiter
+  Fortschrittsbalken schaltet bei Erfolg temporäre Boni für alle frei.
+- **Umsetzung**: neues Modell `WorldEvent` (Typ, Start/Ende, Zielwert,
+  aktueller Fortschritt); neue Gate-Missionsvariante "Abwehrmission", die
+  bei Abschluss den globalen Fortschritt erhöht statt nur individuelle
+  Belohnung zu geben. Admin-/Zeitplan-getriggert, ähnlich Season-Events (2.2).
+- **Balancing**: Event darf nicht permanent aktiv sein (Erschöpfung), klare
+  Cooldown-Fenster zwischen Events; Belohnung sollte Teilnahme statt nur
+  "Sieg" belohnen, damit auch kleinere Spieler etwas davon haben.
+
+### 4.2 Zufällige Anomalien auf Gate-Adressen (Ancient/Asgard-Encounter)
+- **Konzept**: Seltene High-Value-Encounter bei `AnalyzeAddress`/`Explore`-
+  Missionen: Ancient-Ruinen oder Asgard-Wracks als sehr seltene
+  Zusatzergebnisse, die kleine, einmalige Boni geben (z. B. Forschungs-
+  Schub, kosmetischer Kodex-Eintrag) statt dauerhafte ZPM-artige Ressourcen –
+  bleibt damit konsistent zur Lore-Leitplanke "Ancient/Asgard/ZPM bleibt selten".
+- **Umsetzung**: in `GateMissionService` bei Missionsauflösung eine niedrige
+  Zufallschance (~1–2 %) auf ein `GateMissionOutcome`-Zusatzflag oder
+  separates `AnomalyEncounter`-Ergebnis einbauen, das einen eigenen
+  Report-Text und einmaligen Bonus erzeugt.
+- **Balancing**: Bewusst nicht wiederholbar pro Adresse (einmal gefunden,
+  danach "erschöpft"), um Farming zu verhindern und den Seltenheitswert zu
+  erhalten.
+
+### 4.3 Fraktionsspezifische Questlines
+- **Konzept**: Eigene, inhaltlich unterschiedliche (nicht nur reskinnte)
+  Missionsreihen pro Startfraktion mit eigenen NPC-Kontakten und
+  Entscheidungen (z. B. Tok'ra-Questline um Infiltration eines Goa'uld-
+  Systems vs. Lucian-Alliance-Questline um Kontrolle einer Schmuggelroute).
+  Stärkt Wiederspielwert bei Fraktionswechsel/Zweitaccount und macht die vier
+  Fraktionen spielerisch differenzierter als nur unterschiedliche Zahlen-Mods.
+- **Umsetzung**: baut auf Kontextsensitive Missionen (1.1) auf; zusätzlich
+  ein leichtgewichtiges Questline-Modell (geordnete Kette von
+  `GateMission`-Vorlagen mit Freischaltbedingungen) statt aller Missionen
+  gleichzeitig verfügbar.
+- **Balancing**: Questline-Abschluss sollte Fortschritt/Lore bringen, keine
+  klar überlegene Ressourcenquelle gegenüber anderen Fraktionen – sonst wird
+  Fraktionswahl zur reinen Powerchoice statt Rollenspiel-Entscheidung.
+
+## Priorisierungsvorschlag
+
+Kein Umbau des Datenmodells nötig, sofort startbar:
+1. **1.5 Trümmerfeld-Recycling** – Datenmodell existiert bereits vollständig,
+   es fehlt nur die Aktion/der Service-Aufruf. Kleinster Aufwand, klarer
+   Mehrwert.
+2. **1.1 Kontextsensitive Gate-Missionen** – nutzt bestehende
+   `FactionModifierService`-Infrastruktur, keine neuen Tabellen nötig.
+
+Mittlerer Aufwand, hoher Bindungseffekt:
+3. **2.4 Tägliche/wöchentliche Kontrakte**
+4. **2.3 Achievements/Lore-Kodex**
+5. **1.3 Einfluss-Zerfall**
+
+Größerer Aufwand / mehr Design-Abstimmung nötig, aber hohe Langzeitwirkung:
+6. **3.1 Allianz-Kriege**, **2.1 Ascension**, **4.1 Weltevents**
