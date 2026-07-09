@@ -46,6 +46,52 @@ namespace StargateGalacticCommand.Tests
             Assert.Contains("keine", report.Summary.ToLowerInvariant());
         }
 
+        [Theory]
+        [InlineData("SGC", GateMissionType.SearchArtifact, 4)]
+        [InlineData("Jaffa", GateMissionType.RiskAnalysis, 4)]
+        [InlineData("Tok’ra", GateMissionType.AnalyzeAddress, 4)]
+        [InlineData("Lucian", GateMissionType.SecureResources, 4)]
+        [InlineData("SGC", GateMissionType.SecureResources, 0)]
+        [InlineData("Jaffa", GateMissionType.SearchArtifact, 0)]
+        public void GetGateMissionScoreBonus_MatchesFactionSpecialtyOnly(string factionShortName, GateMissionType missionType, int expectedBonus)
+        {
+            var modifiers = new FactionModifierService();
+            var faction = new Faction { ShortName = factionShortName };
+
+            Assert.Equal(expectedBonus, modifiers.GetGateMissionScoreBonus(faction, missionType));
+        }
+
+        [Fact]
+        public void CompleteMission_FactionSpecialtyBonus_TurnsPartialSuccessIntoSuccess()
+        {
+            var service = new GateMissionService(new ResourceService());
+            var user = new User { Id = 1, Faction = new Faction { ShortName = "SGC" }, ResearchLevels = new ResearchLevels { GateAddressing = 1 } };
+            var playerBase = new PlayerBase { Id = 1, Faction = user.Faction, Resources = new ResourceStock { Energy = 1000, Supplies = 1000, Personnel = 1000, Intel = 10 }, BuildingLevels = new BuildingLevels { GateControlRoom = 1 } };
+            var team = new MissionTeam { Id = 1, User = user, UserId = user.Id, Name = "Grenzfall-Team", Strength = 6, Science = 6, Diplomacy = 6, Stealth = 6, CarryCapacity = 6, Risk = 5, IsAvailable = true };
+            var mission = service.StartMission(user, playerBase, Address(), team, GateMissionType.SearchArtifact, Now);
+
+            var report = service.CompleteMission(mission, playerBase, null, mission.CompletesAtUtc);
+
+            // Ohne den SGC-Bonus (+4) läge der Score bei 25 (PartialSuccess, factor 0.5); mit Bonus bei 29 (Success, factor 1.0).
+            Assert.True(report.ArtifactLeadFound);
+            Assert.Equal(6, report.IntelFound);
+        }
+
+        [Fact]
+        public void CompleteMission_NoFactionBonus_WhenMissionTypeIsNotTheFactionSpecialty()
+        {
+            var service = new GateMissionService(new ResourceService());
+            var user = new User { Id = 1, Faction = new Faction { ShortName = "Lucian" }, ResearchLevels = new ResearchLevels { GateAddressing = 1 } };
+            var playerBase = new PlayerBase { Id = 1, Faction = user.Faction, Resources = new ResourceStock { Energy = 1000, Supplies = 1000, Personnel = 1000, Intel = 10 }, BuildingLevels = new BuildingLevels { GateControlRoom = 1 } };
+            var team = new MissionTeam { Id = 1, User = user, UserId = user.Id, Name = "Grenzfall-Team", Strength = 6, Science = 6, Diplomacy = 6, Stealth = 6, CarryCapacity = 6, Risk = 5, IsAvailable = true };
+            var mission = service.StartMission(user, playerBase, Address(), team, GateMissionType.SearchArtifact, Now);
+
+            var report = service.CompleteMission(mission, playerBase, null, mission.CompletesAtUtc);
+
+            Assert.False(report.ArtifactLeadFound);
+            Assert.Equal(3, report.IntelFound);
+        }
+
         [Fact]
         public void ApplyFoundColonyResult_CreatesPlanetForKnownAddress()
         {
