@@ -114,6 +114,7 @@ namespace StargateGalacticCommand.Data
             modelBuilder.Entity<FleetMovement>().Property(f => f.Status).HasConversion<int>();
             modelBuilder.Entity<FleetMovement>().HasOne(f => f.OriginBase).WithMany().HasForeignKey(f => f.OriginBaseId).OnDelete(DeleteBehavior.Restrict);
             modelBuilder.Entity<FleetMovement>().HasOne(f => f.TargetBase).WithMany().HasForeignKey(f => f.TargetBaseId).OnDelete(DeleteBehavior.Restrict);
+            modelBuilder.Entity<FleetMovement>().HasOne(f => f.DebrisField).WithMany().HasForeignKey(f => f.DebrisFieldId).OnDelete(DeleteBehavior.Restrict);
             modelBuilder.Entity<FleetReport>().HasOne(r => r.User).WithMany().HasForeignKey(r => r.UserId).OnDelete(DeleteBehavior.Cascade);
             modelBuilder.Entity<EspionageMission>().Property(m => m.MissionType).HasConversion<int>();
             modelBuilder.Entity<EspionageMission>().HasOne(m => m.User).WithMany().HasForeignKey(m => m.UserId).OnDelete(DeleteBehavior.Cascade);

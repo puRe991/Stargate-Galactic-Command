@@ -20,3 +20,17 @@
 <label>Schiff</label><select name="shipType">@foreach (var s in Model.ShipDefinitions.Where(x => x.Available > 0)) { <option value="@s.Type">@s.Name (@s.Available)</option> }</select>
 <label>Anzahl</label><input name="shipCount" type="number" min="1" value="1" />
 <button>Angreifen</button></form>
+<h2>Trümmerfeld bergen</h2>
+<p>Bergungsflotten fliegen zu einem Trümmerfeld, laden Naquadah und Trinium bis zur Frachtkapazität und bringen es zur Heimatbasis zurück. Reicht die Kapazität nicht, bleibt ein Rest für einen weiteren Flug übrig.</p>
+@if (!Model.DebrisFields.Any())
+{
+    <p>Aktuell sind keine Trümmerfelder bekannt.</p>
+}
+else
+{
+    <form method="post" asp-controller="Game" asp-action="StartRecycle">@Html.AntiForgeryToken()
+    <label>Trümmerfeld</label><select name="debrisFieldId">@foreach (var f in Model.DebrisFields) { <option value="@f.Id">@f.PlayerBase.Name (@f.PlayerBase.PlanetSector.Planet.Name Sektor @f.PlayerBase.PlanetSector.Number) – N @f.Naquadah, T @f.Trinium</option> }</select>
+    <label>Schiff</label><select name="shipType">@foreach (var s in Model.ShipDefinitions.Where(x => x.Available > 0)) { <option value="@s.Type">@s.Name (@s.Available)</option> }</select>
+    <label>Anzahl</label><input name="shipCount" type="number" min="1" value="1" />
+    <button>Bergen</button></form>
+}
