@@ -300,8 +300,8 @@ schneiden lassen.
 
 ## 3. Social / Allianzen / PvP
 
-### 3.1 Allianz-Kriege mit klaren Zielen
-- **Ist-Zustand**: `AllianceService`/`AllianceRankingEntry` bilden bereits
+### 3.1 Allianz-Kriege mit klaren Zielen — ✅ umgesetzt
+- **Ist-Zustand (vor Umsetzung)**: `AllianceService`/`AllianceRankingEntry` bilden bereits
   Mitgliedschaft und Ranglisten ab, aber Sektorkontrolle (`SectorControl`)
   ist rein individuell, kein Allianz-Bezug.
 - **Konzept**: Allianzen können eine Gate-Adresse/einen Planeten als
@@ -316,6 +316,31 @@ schneiden lassen.
 - **Balancing**: Boni zeitlich befristet und moderat halten, damit kleine
   Allianzen nicht dauerhaft abgehängt werden – evtl. gestaffelte Ziele nach
   Allianzgröße.
+- **Tatsächliche Umsetzung**: Neues Modell `AllianceWarGoal` (Allianz,
+  Zielplanet, benötigte Sektoranzahl, benötigte durchgehende Haltezeit,
+  Status Active/Achieved/Abandoned, `HoldStreakStartedAtUtc` für die
+  laufende Serie). `AllianceWarService.CalculateRequiredSectors` staffelt
+  den Schwellenwert nach Allianzgröße (`Math.Ceiling(Mitglieder * 0.5)`,
+  Minimum 2) statt eines festen Werts. Fixe Parameter für die erste Version:
+  `RequiredHours = 24`. `EvaluateProgress` läuft bei jedem Seitenaufruf
+  eines Allianzmitglieds über `GameController.EvaluateAllianceWarState`
+  (gleiches "kein Cronjob nötig"-Muster wie bei Sektorverfall/Kontrakten/
+  Achievements): Summe der von *allen* Allianzmitgliedern kontrollierten
+  Sektoren auf dem Zielplaneten wird live gezählt; unterschreitet sie den
+  Schwellenwert, reißt die Serie ab (`HoldStreakStartedAtUtc = null`) statt
+  nur den Fortschritt zu pausieren – bewusst kompromisslos, damit "Halten"
+  wörtlich genommen wird. Bewusste Vereinfachung ggü. Konzept: Die
+  Belohnung ist eine **einmalige Ressourcengutschrift** pro Mitgliedsbasis
+  (`AllianceWarService.VictoryRewardPerMember`) statt eines zeitlich
+  befristeten Produktionsmultiplikators über `FactionModifierService` – das
+  hätte Änderungen an `EconomyService` und all seinen Aufrufstellen
+  erfordert. Nur Gründer/Offiziere dürfen Kriegsziele erklären oder
+  aufgeben (`GameController.DeclareWarGoal`/`AbandonWarGoal`, Prüfung wie in
+  `AllianceService.Accept`). Neuer Abschnitt auf der Allianzen-Seite zeigt
+  aktives Ziel, Fortschritt und Serienstatus. Abgedeckt durch 10 neue Tests
+  in `AllianceWarServiceTests`; Vollzyklus (Allianz gründen → Kriegsziel
+  erklären → Fortschrittsanzeige "0/2 Sektoren") manuell gegen die laufende
+  App verifiziert.
 
 ### 3.2 Mentoren-System für neue Spieler
 - **Konzept**: Erfahrene Allianzmitglieder erhalten Belohnungen (Ressourcen,
@@ -403,4 +428,4 @@ Mittlerer Aufwand, hoher Bindungseffekt:
 5. **1.3 Einfluss-Zerfall** ✅
 
 Größerer Aufwand / mehr Design-Abstimmung nötig, aber hohe Langzeitwirkung:
-6. **3.1 Allianz-Kriege**, **2.1 Ascension**, **4.1 Weltevents**
+6. **3.1 Allianz-Kriege** ✅, **2.1 Ascension**, **4.1 Weltevents**

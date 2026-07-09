@@ -60,6 +60,10 @@ namespace StargateGalacticCommand.Web.Models
         public IList<User> MessageablePlayers { get; set; }
         public IList<ContractStatusViewModel> ContractStatuses { get; set; }
         public IList<AchievementStatusViewModel> AchievementStatuses { get; set; }
+        public AllianceWarGoal ActiveWarGoal { get; set; }
+        public int WarGoalCurrentSectors { get; set; }
+        public bool CanManageWarGoal { get; set; }
+        public IList<Planet> WarGoalPlanetOptions { get; set; }
     }
 
     public class AchievementStatusViewModel

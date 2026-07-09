@@ -15,4 +15,36 @@ else
 @if (Model.OwnAlliance != null)
 {
 <section><h2>Offene Bewerbungen</h2>@foreach (var app in Model.AllianceApplications.Where(a => a.AllianceId == Model.OwnAlliance.Id)) { <form method="post" asp-action="AcceptAllianceApplication"><input type="hidden" name="applicationId" value="@app.Id" />@app.User.UserName: @app.Message <button type="submit">Annehmen</button></form> }</section>
+<section>
+    <h2>Kriegsziel</h2>
+    <p>Hält die Allianz gemeinsam genug Sektoren auf einem Planeten durchgehend, schaltet sich ein einmaliger Ressourcenbonus für alle Mitglieder frei.</p>
+    @if (Model.ActiveWarGoal == null)
+    {
+        <p>Kein aktives Kriegsziel.</p>
+        @if (Model.CanManageWarGoal)
+        {
+            <form method="post" asp-action="DeclareWarGoal">
+                <label>Zielplanet</label>
+                <select name="planetId">@foreach (var p in Model.WarGoalPlanetOptions) { <option value="@p.Id">@p.Name</option> }</select>
+                <button type="submit">Kriegsziel erklären</button>
+            </form>
+        }
+    }
+    else
+    {
+        <p>
+            Ziel: @Model.ActiveWarGoal.Planet.Name –
+            @Model.WarGoalCurrentSectors / @Model.ActiveWarGoal.RequiredSectors Sektoren kontrolliert,
+            @(Model.ActiveWarGoal.RequiredHours)h durchgehend nötig
+            @(Model.ActiveWarGoal.HoldStreakStartedAtUtc.HasValue ? " (Serie läuft seit " + Model.ActiveWarGoal.HoldStreakStartedAtUtc.Value.ToString("u") + ")" : " (Zielwert aktuell nicht erreicht)")
+        </p>
+        @if (Model.CanManageWarGoal)
+        {
+            <form method="post" asp-action="AbandonWarGoal">
+                <input type="hidden" name="warGoalId" value="@Model.ActiveWarGoal.Id" />
+                <button type="submit">Kriegsziel aufgeben</button>
+            </form>
+        }
+    }
+</section>
 }
