@@ -77,8 +77,8 @@ schneiden lassen.
   Spionagestufe sollten die Täuschung mit steigender Wahrscheinlichkeit
   durchschauen, sonst wird Spionage komplett entwertet.
 
-### 1.3 Dynamische Sektorkontrolle: Einfluss-Zerfall
-- **Ist-Zustand**: `SectorControl` speichert nur `ControlledAtUtc`, kein
+### 1.3 Dynamische Sektorkontrolle: Einfluss-Zerfall — ✅ umgesetzt
+- **Ist-Zustand (vor Umsetzung)**: `SectorControl` speichert nur `ControlledAtUtc`, kein
   Verfallsmechanismus; `SectorClaim` hat `StartedAtUtc`/`CompletesAtUtc` für
   den *Erwerb*, aber Kontrolle danach ist statisch/dauerhaft in
   `LocalSectorService`.
@@ -97,6 +97,27 @@ schneiden lassen.
   permanent-online Spieler (1x/Tag einloggen) Kontrolle halten können –
   verhindert Abwertung zu reinem Log-in-Zwang, aber auch dauerhaftes
   Ersteinnehmer-Privileg.
+- **Tatsächliche Umsetzung**: `SectorControl.LastReinforcedAtUtc` neu
+  ergänzt, gesetzt bei Erstübernahme (`LocalSectorService.CompleteClaim`)
+  und bei Eroberung durch lokalen Kampf (`LocalCombatService.Resolve`).
+  `LocalSectorService.CalculateSectorInfluenceWeight` liefert vollen Wert
+  (1.0) innerhalb von `DecayGracePeriodHours` (24h) seit letzter Präsenz,
+  fällt danach linear bis `DecayReleaseAfterHours` (96h/4 Tage) auf 0 ab –
+  `CalculateInfluence` gewichtet jeden kontrollierten Sektor damit statt
+  ihn pauschal mit vollen 15 Punkten zu zählen. Bei Erreichen der
+  Freigabefrist wird der Sektor beim nächsten Laden der Planetenseite
+  automatisch neutral (`GameController.GameView` entfernt abgelaufene
+  `SectorControl`-Einträge, bevor die Übersicht gebaut wird) und ist damit
+  wieder frei beanspruchbar. Neue leichtgewichtige Aktion „Präsenz
+  bestätigen“ (`GameController.ReinforceSector` /
+  `LocalSectorService.Reinforce`) setzt `LastReinforcedAtUtc` zurück; nur
+  der kontrollierende Spieler darf sie auslösen. Planetenseite zeigt pro
+  Sektor eine neue „Präsenz“-Spalte mit Countdown bis zur Freigabe. Der
+  passive Produktionsbonus (`CalculateBonus`) bleibt bewusst ungedämpft und
+  fällt erst komplett weg, sobald der Sektor tatsächlich freigegeben wird –
+  nur der Einfluss-/Ranglistenwert zerfällt graduell, um die Wirtschaft
+  nicht mit einem zweiten, unabhängigen Verfallstimer zu verkomplizieren.
+  Abgedeckt durch 6 neue/angepasste Tests in `LocalSectorServiceTests`.
 
 ### 1.4 Handelsrouten statt Einzeltrades
 - **Ist-Zustand**: `PlanetMarketOrder`/`PlanetMarketService` bilden
@@ -379,7 +400,7 @@ Kein Umbau des Datenmodells nötig, sofort startbar:
 Mittlerer Aufwand, hoher Bindungseffekt:
 3. **2.4 Tägliche/wöchentliche Kontrakte** ✅
 4. **2.3 Achievements/Lore-Kodex** ✅
-5. **1.3 Einfluss-Zerfall**
+5. **1.3 Einfluss-Zerfall** ✅
 
 Größerer Aufwand / mehr Design-Abstimmung nötig, aber hohe Langzeitwirkung:
 6. **3.1 Allianz-Kriege**, **2.1 Ascension**, **4.1 Weltevents**

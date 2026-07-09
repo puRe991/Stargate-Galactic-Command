@@ -1,6 +1,15 @@
 @model OverviewViewModel
+@using StargateGalacticCommand.Core.Services
 @{
     ViewData["Title"] = "Planet";
+    string DecayStatus(PlanetSector s)
+    {
+        if (s.SectorControl == null) return "";
+        double hoursSinceReinforced = (Model.NowUtc - s.SectorControl.LastReinforcedAtUtc).TotalHours;
+        if (hoursSinceReinforced <= LocalSectorService.DecayGracePeriodHours) return "Präsenz aktiv";
+        double hoursLeft = LocalSectorService.DecayReleaseAfterHours - hoursSinceReinforced;
+        return hoursLeft > 0 ? "Einfluss verfällt, Freigabe in " + Math.Ceiling(hoursLeft) + " h" : "wird freigegeben";
+    }
 }
 
 <section class="panel">
@@ -27,6 +36,7 @@
                 <th>Name</th>
                 <th>Typ</th>
                 <th>Status</th>
+                <th>Präsenz</th>
                 <th>Risiko</th>
                 <th>Aktion</th>
             </tr>
@@ -40,6 +50,7 @@
                     <td>@s.Name</td>
                     <td>@s.SectorType</td>
                     <td>@(s.PlayerBase != null ? "Basis" : s.SectorControl != null ? "kontrolliert" : claim != null ? "Beanspruchung läuft bis " + claim.CompletesAtUtc.ToString("u") : "neutral")</td>
+                    <td>@DecayStatus(s)</td>
                     <td>@(s.PlayerBase != null || s.SectorType == SectorType.StargateZone || s.SectorType == SectorType.SettlementSector ? "geschützt" : s.SectorControl == null ? "niedrig" : "mittel")</td>
                     <td>
                         @if (s.PlayerBase == null && s.SectorControl == null && claim == null && s.SectorType != SectorType.SettlementSector && s.SectorType != SectorType.StargateZone)
@@ -54,6 +65,13 @@
                             <form asp-action="CompleteSectorClaim" method="post">
                                 <input type="hidden" name="claimId" value="@claim.Id" />
                                 <button type="submit">Abschließen</button>
+                            </form>
+                        }
+                        else if (s.SectorControl != null && s.SectorControl.UserId == Model.User.Id)
+                        {
+                            <form asp-action="ReinforceSector" method="post">
+                                <input type="hidden" name="sectorId" value="@s.Id" />
+                                <button type="submit">Präsenz bestätigen</button>
                             </form>
                         }
                         else if (s.PlayerBase == null && s.SectorType != SectorType.SettlementSector && s.SectorType != SectorType.StargateZone && (s.SectorControl == null || s.SectorControl.UserId != Model.User.Id))

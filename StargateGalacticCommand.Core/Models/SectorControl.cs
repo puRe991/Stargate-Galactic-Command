@@ -10,5 +10,6 @@ namespace StargateGalacticCommand.Core.Models
         public int UserId { get; set; }
         public User User { get; set; }
         public DateTime ControlledAtUtc { get; set; }
+        public DateTime LastReinforcedAtUtc { get; set; }
     }
 }

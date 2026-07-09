@@ -63,8 +63,8 @@ namespace StargateGalacticCommand.Core.Services
             foreach (var r in rounds) { if (mission.Id != 0) r.LocalCombatMissionId = mission.Id; }
             if (mission.AttackerWon)
             {
-                if (sector.SectorControl == null) sector.SectorControl = new SectorControl { PlanetSectorId = sector.Id, UserId = mission.AttackerUserId, ControlledAtUtc = nowUtc };
-                else { sector.SectorControl.UserId = mission.AttackerUserId; sector.SectorControl.ControlledAtUtc = nowUtc; }
+                if (sector.SectorControl == null) sector.SectorControl = new SectorControl { PlanetSectorId = sector.Id, UserId = mission.AttackerUserId, ControlledAtUtc = nowUtc, LastReinforcedAtUtc = nowUtc };
+                else { sector.SectorControl.UserId = mission.AttackerUserId; sector.SectorControl.ControlledAtUtc = nowUtc; sector.SectorControl.LastReinforcedAtUtc = nowUtc; }
             }
             string body = string.Join("\n", rounds.Select(r => $"R{r.RoundNumber}: Angriff {r.AttackerPower}, Verteidigung {r.DefenderPower}, Verluste A/D {r.AttackerLosses}/{r.DefenderLosses}")) + $"\nErgebnis: {(mission.AttackerWon ? "Sektorkontrolle gesichert" : "Angriff abgewehrt")}. Hauptbasen und Lager bleiben geschützt.";
             return new SectorBattleReport { UserId = mission.AttackerUserId, LocalCombatMission = mission, PlanetSectorId = sector.Id, CreatedAtUtc = nowUtc, Title = "Lokaler Sektorkampf", Body = body, AttackerWon = mission.AttackerWon };

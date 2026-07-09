@@ -37,10 +37,62 @@ namespace StargateGalacticCommand.Tests
         [Fact]
         public void CalculateInfluence_CombinesBaseSectorsResearchAndActions()
         {
+            var now = new DateTime(2026, 1, 1, 0, 0, 0, DateTimeKind.Utc);
             var playerBase = new PlayerBase { BuildingLevels = new BuildingLevels { CommandCenter = 2, NaquadahRefinery = 3 } };
             var user = new User { ResearchLevels = new ResearchLevels { GateAddressing = 1 } };
-            int score = new LocalSectorService().CalculateInfluence(playerBase, user, new[] { new PlanetSector(), new PlanetSector() }, new[] { new SectorClaim() });
+            var sectors = new[] { new PlanetSector { SectorControl = new SectorControl { LastReinforcedAtUtc = now } }, new PlanetSector { SectorControl = new SectorControl { LastReinforcedAtUtc = now } } };
+            int score = new LocalSectorService().CalculateInfluence(playerBase, user, sectors, new[] { new SectorClaim() }, now);
             Assert.Equal(57, score);
+        }
+
+        [Fact]
+        public void CalculateSectorInfluenceWeight_IsFullWithinGracePeriod()
+        {
+            var now = new DateTime(2026, 1, 5, 0, 0, 0, DateTimeKind.Utc);
+            var control = new SectorControl { LastReinforcedAtUtc = now.AddHours(-LocalSectorService.DecayGracePeriodHours) };
+            Assert.Equal(1.0, new LocalSectorService().CalculateSectorInfluenceWeight(control, now));
+        }
+
+        [Fact]
+        public void CalculateSectorInfluenceWeight_DecaysLinearlyBetweenGraceAndRelease()
+        {
+            var now = new DateTime(2026, 1, 5, 0, 0, 0, DateTimeKind.Utc);
+            int midpointHours = (LocalSectorService.DecayGracePeriodHours + LocalSectorService.DecayReleaseAfterHours) / 2;
+            var control = new SectorControl { LastReinforcedAtUtc = now.AddHours(-midpointHours) };
+            Assert.Equal(0.5, new LocalSectorService().CalculateSectorInfluenceWeight(control, now), 2);
+        }
+
+        [Fact]
+        public void CalculateSectorInfluenceWeight_IsZeroAtOrAfterRelease()
+        {
+            var now = new DateTime(2026, 1, 5, 0, 0, 0, DateTimeKind.Utc);
+            var control = new SectorControl { LastReinforcedAtUtc = now.AddHours(-LocalSectorService.DecayReleaseAfterHours) };
+            Assert.Equal(0.0, new LocalSectorService().CalculateSectorInfluenceWeight(control, now));
+        }
+
+        [Fact]
+        public void IsExpired_TrueOnlyAtOrAfterReleaseThreshold()
+        {
+            var now = new DateTime(2026, 1, 5, 0, 0, 0, DateTimeKind.Utc);
+            var service = new LocalSectorService();
+            var stillHeld = new SectorControl { LastReinforcedAtUtc = now.AddHours(-(LocalSectorService.DecayReleaseAfterHours - 1)) };
+            var expired = new SectorControl { LastReinforcedAtUtc = now.AddHours(-LocalSectorService.DecayReleaseAfterHours) };
+
+            Assert.False(service.IsExpired(stillHeld, now));
+            Assert.True(service.IsExpired(expired, now));
+        }
+
+        [Fact]
+        public void Reinforce_UpdatesTimestampForControllingUserOnly()
+        {
+            var now = new DateTime(2026, 1, 5, 0, 0, 0, DateTimeKind.Utc);
+            var control = new SectorControl { UserId = 1, LastReinforcedAtUtc = now.AddDays(-2) };
+            var service = new LocalSectorService();
+
+            Assert.Throws<InvalidOperationException>(() => service.Reinforce(control, 2, now));
+
+            service.Reinforce(control, 1, now);
+            Assert.Equal(now, control.LastReinforcedAtUtc);
         }
 
         [Fact]

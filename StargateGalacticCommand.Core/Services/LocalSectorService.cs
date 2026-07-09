@@ -8,6 +8,8 @@ namespace StargateGalacticCommand.Core.Services
     public class LocalSectorService
     {
         public const int ClaimDurationMinutes = 30;
+        public const int DecayGracePeriodHours = 24;
+        public const int DecayReleaseAfterHours = 96;
 
         public bool CanClaim(PlanetSector sector)
         {
@@ -30,8 +32,31 @@ namespace StargateGalacticCommand.Core.Services
             if (claim.PlanetSector == null) throw new ArgumentException("Beanspruchung hat keinen Sektor.", "claim");
             if (claim.PlanetSector.SectorControl != null) throw new InvalidOperationException("Dieser Sektor ist bereits kontrolliert.");
             claim.IsCompleted = true;
-            claim.PlanetSector.SectorControl = new SectorControl { PlanetSectorId = claim.PlanetSectorId, UserId = claim.UserId, ControlledAtUtc = nowUtc };
+            claim.PlanetSector.SectorControl = new SectorControl { PlanetSectorId = claim.PlanetSectorId, UserId = claim.UserId, ControlledAtUtc = nowUtc, LastReinforcedAtUtc = nowUtc };
             return new LocalActionReport { UserId = claim.UserId, PlanetSectorId = claim.PlanetSectorId, CreatedAtUtc = nowUtc, Title = "Sektor gesichert", Body = claim.PlanetSector.Name + " steht jetzt unter deiner Kontrolle." };
+        }
+
+        // Ohne Nachweis-Aktivität sinkt der Sektorbonus schrittweise und wird nach der Freigabefrist neutral, statt dauerhaft beim Ersteinnehmer zu bleiben.
+        public double CalculateSectorInfluenceWeight(SectorControl control, DateTime nowUtc)
+        {
+            if (control == null) return 0.0;
+            double hoursSinceReinforced = (nowUtc - control.LastReinforcedAtUtc).TotalHours;
+            if (hoursSinceReinforced <= DecayGracePeriodHours) return 1.0;
+            if (hoursSinceReinforced >= DecayReleaseAfterHours) return 0.0;
+            double decayWindow = DecayReleaseAfterHours - DecayGracePeriodHours;
+            return 1.0 - (hoursSinceReinforced - DecayGracePeriodHours) / decayWindow;
+        }
+
+        public bool IsExpired(SectorControl control, DateTime nowUtc)
+        {
+            return control != null && (nowUtc - control.LastReinforcedAtUtc).TotalHours >= DecayReleaseAfterHours;
+        }
+
+        public void Reinforce(SectorControl control, int userId, DateTime nowUtc)
+        {
+            if (control == null) throw new ArgumentNullException("control");
+            if (control.UserId != userId) throw new InvalidOperationException("Nur der kontrollierende Spieler kann die Präsenz bestätigen.");
+            control.LastReinforcedAtUtc = nowUtc;
         }
 
         public SectorBonus CalculateBonus(IEnumerable<PlanetSector> controlledSectors)
@@ -50,12 +75,13 @@ namespace StargateGalacticCommand.Core.Services
             return bonus;
         }
 
-        public int CalculateInfluence(PlayerBase playerBase, User user, IEnumerable<PlanetSector> controlledSectors, IEnumerable<SectorClaim> runningClaims)
+        public int CalculateInfluence(PlayerBase playerBase, User user, IEnumerable<PlanetSector> controlledSectors, IEnumerable<SectorClaim> runningClaims, DateTime nowUtc)
         {
             int score = Math.Max(0, playerBase == null || playerBase.BuildingLevels == null ? 0 : playerBase.BuildingLevels.CommandCenter) * 10;
             if (playerBase != null && playerBase.BuildingLevels != null) score += playerBase.BuildingLevels.NaquadahRefinery + playerBase.BuildingLevels.TriniumMine + playerBase.BuildingLevels.SupplyDepot + playerBase.BuildingLevels.EnergyGenerator + playerBase.BuildingLevels.ResearchLab + playerBase.BuildingLevels.GateControlRoom + playerBase.BuildingLevels.SensorStation;
             if (user != null && user.ResearchLevels != null) score += user.ResearchLevels.NaquadahEnergyTechnology + user.ResearchLevels.Sensorics + user.ResearchLevels.GateAddressing;
-            score += (controlledSectors == null ? 0 : controlledSectors.Count()) * 15;
+            double sectorInfluence = controlledSectors == null ? 0.0 : controlledSectors.Sum(s => 15 * CalculateSectorInfluenceWeight(s?.SectorControl, nowUtc));
+            score += (int)Math.Round(sectorInfluence);
             score += (runningClaims == null ? 0 : runningClaims.Count(c => !c.IsCompleted)) * 3;
             return score;
         }
