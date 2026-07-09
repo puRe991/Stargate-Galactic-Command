@@ -34,12 +34,13 @@ namespace StargateGalacticCommand.Web.Controllers
         private readonly RankingService _ranking;
         private readonly MessageService _messages;
         private readonly ContractService _contracts;
+        private readonly AchievementService _achievements;
 
         private static readonly TimeSpan OnlineWindow = TimeSpan.FromMinutes(15);
 
-        public GameController(GameDbContext db, EconomyService economy, BuildingCatalogService catalog, BuildQueueService buildQueue, ResourceService resources, ResearchCatalogService researchCatalog, ResearchQueueService researchQueue, FactionModifierService factionModifiers, GateMissionService gateMissions, LocalSectorService localSectors, PlanetMarketService planetMarket, ShipyardService shipyard, FleetService fleets, EspionageService espionage, LocalCombatService localCombat, AllianceService alliances, SpaceCombatService spaceCombat, RankingService ranking, MessageService messages, ContractService contracts)
+        public GameController(GameDbContext db, EconomyService economy, BuildingCatalogService catalog, BuildQueueService buildQueue, ResourceService resources, ResearchCatalogService researchCatalog, ResearchQueueService researchQueue, FactionModifierService factionModifiers, GateMissionService gateMissions, LocalSectorService localSectors, PlanetMarketService planetMarket, ShipyardService shipyard, FleetService fleets, EspionageService espionage, LocalCombatService localCombat, AllianceService alliances, SpaceCombatService spaceCombat, RankingService ranking, MessageService messages, ContractService contracts, AchievementService achievements)
         {
-            _db = db; _economy = economy; _catalog = catalog; _buildQueue = buildQueue; _resources = resources; _researchCatalog = researchCatalog; _researchQueue = researchQueue; _factionModifiers = factionModifiers; _gateMissions = gateMissions; _localSectors = localSectors; _planetMarket = planetMarket; _shipyard = shipyard; _fleets = fleets; _espionage = espionage; _localCombat = localCombat; _alliances = alliances; _spaceCombat = spaceCombat; _ranking = ranking; _messages = messages; _contracts = contracts;
+            _db = db; _economy = economy; _catalog = catalog; _buildQueue = buildQueue; _resources = resources; _researchCatalog = researchCatalog; _researchQueue = researchQueue; _factionModifiers = factionModifiers; _gateMissions = gateMissions; _localSectors = localSectors; _planetMarket = planetMarket; _shipyard = shipyard; _fleets = fleets; _espionage = espionage; _localCombat = localCombat; _alliances = alliances; _spaceCombat = spaceCombat; _ranking = ranking; _messages = messages; _contracts = contracts; _achievements = achievements;
         }
 
         public IActionResult Overview() { return GameView("Overview"); }
@@ -63,6 +64,7 @@ namespace StargateGalacticCommand.Web.Controllers
         public IActionResult Rankings() { return GameView("Rankings"); }
         public IActionResult Galaxy() { return GameView("Galaxy"); }
         public IActionResult Contracts() { return GameView("Contracts"); }
+        public IActionResult Codex() { return GameView("Codex"); }
         public IActionResult Mailbox(int? to)
         {
             ViewData["PrefilledRecipientId"] = to;
@@ -649,7 +651,8 @@ namespace StargateGalacticCommand.Web.Controllers
             var messageablePlayers = _db.Users.Where(u => !u.IsNpc && u.Id != user.Id).OrderBy(u => u.UserName).ToList();
             int unreadReportCount = _db.Reports.Count(r => r.UserId == user.Id && !r.IsRead);
             int unreadMessageCount = inboxMessages.Count(m => !m.ReadAtUtc.HasValue);
-            var model = new OverviewViewModel { User = user, Base = playerBase, Planet = planet, Hourly = _economy.CalculateHourlyProduction(playerBase.BuildingLevels, user.ResearchLevels, user.Faction, sectorBonus), Sectors = planet.Sectors.OrderBy(s => s.Number).ToList(), Reports = _db.Reports.Where(r => r.UserId == user.Id).OrderByDescending(r => r.CreatedAtUtc).ToList(), Buildings = buildings, ActiveBuild = playerBase.BuildQueue.OrderBy(q => q.CompletesAtUtc).FirstOrDefault(), BuildQueue = playerBase.BuildQueue.OrderBy(q => q.CompletesAtUtc).ToList(), NowUtc = now, Researches = BuildResearchViewModels(user, playerBase), ActiveResearch = user.ResearchQueue.OrderBy(q => q.CompletesAtUtc).FirstOrDefault(), DefenseModifier = _factionModifiers.GetDefenseMultiplier(user.Faction), KnownGateAddresses = _db.KnownGateAddresses.Include(k => k.GateAddress).Where(k => k.UserId == user.Id).ToList(), MissionTeams = _db.MissionTeams.Where(t => t.UserId == user.Id).ToList(), ActiveGateMissions = _db.GateMissions.Include(m => m.GateAddress).Include(m => m.MissionTeam).Where(m => m.UserId == user.Id && !m.IsCompleted).ToList(), GateMissionReports = _db.GateMissionReports.Include(r => r.GateMission).ThenInclude(m => m.GateAddress).Where(r => r.UserId == user.Id).OrderByDescending(r => r.CreatedAtUtc).ToList(), ActiveSectorClaims = activeSectorClaims, ControlledSectors = controlledSectors, SectorBonus = sectorBonus, PlanetInfluences = BuildPlanetInfluences(planet.Id), OwnInfluence = _localSectors.CalculateInfluence(playerBase, user, controlledSectors, activeSectorClaims.Where(c => c.UserId == user.Id)), ActiveMarketOrders = _db.PlanetMarketOrders.Include(o => o.SellerUser).Where(o => o.PlanetId == planet.Id && o.CompletedAtUtc == null && o.CancelledAtUtc == null && !o.ReservedReturned && o.ExpiresAtUtc > now).OrderBy(o => o.ExpiresAtUtc).ToList(), OwnMarketOrders = _db.PlanetMarketOrders.Where(o => o.PlanetId == planet.Id && o.SellerUserId == user.Id).OrderByDescending(o => o.CreatedAtUtc).ToList(), TradeReports = _db.TradeReports.Where(r => r.UserId == user.Id).OrderByDescending(r => r.CreatedAtUtc).ToList(), ShipDefinitions = BuildShipViewModels(user, playerBase), ActiveShipBuild = playerBase.ShipyardQueue.OrderBy(q => q.CompletesAtUtc).FirstOrDefault(), FleetTargets = _db.PlayerBases.Include(b=>b.User).Include(b=>b.PlanetSector).ThenInclude(s=>s.Planet).Where(b=>b.Id!=playerBase.Id).ToList(), ActiveFleets = _db.FleetMovements.Include(f=>f.TargetBase).ThenInclude(b=>b.PlanetSector).Where(f=>f.UserId==user.Id && f.Status!=FleetMovementStatus.Completed).ToList(), FleetReports = _db.FleetReports.Where(r=>r.UserId==user.Id).OrderByDescending(r=>r.CreatedAtUtc).ToList(), OrbitPresences = BuildOrbitPresences(planet.Id), EspionageTargets = _db.PlayerBases.Include(b=>b.User).Include(b=>b.Faction).Include(b=>b.PlanetSector).ThenInclude(s=>s.Planet).Where(b=>b.Id!=playerBase.Id).ToList(), IntelligenceReports = _db.IntelligenceReports.Where(r=>r.UserId==user.Id && !r.IsWarning).OrderByDescending(r=>r.CreatedAtUtc).ToList(), SpyWarnings = _db.IntelligenceReports.Where(r=>r.UserId==user.Id && r.IsWarning).OrderByDescending(r=>r.CreatedAtUtc).ToList(), ActiveLocalCombats = _db.LocalCombatMissions.Include(m=>m.PlanetSector).Where(m=>m.PlanetSector.PlanetId==planet.Id && !m.CompletedAtUtc.HasValue).OrderBy(m=>m.ResolvesAtUtc).ToList(), SectorBattleReports = _db.SectorBattleReports.Include(r=>r.PlanetSector).Where(r=>r.UserId==user.Id).OrderByDescending(r=>r.CreatedAtUtc).ToList() , OwnAlliance = _db.AllianceMembers.Include(m=>m.Alliance).ThenInclude(a=>a.Members).ThenInclude(m=>m.User).Where(m=>m.UserId==user.Id).Select(m=>m.Alliance).FirstOrDefault(), Alliances = _db.Alliances.Include(a=>a.Members).ThenInclude(m=>m.User).OrderBy(a=>a.Tag).ToList(), AllianceApplications = _db.AllianceApplications.Include(a=>a.User).Where(a=>a.AcceptedAtUtc==null&&a.RejectedAtUtc==null).ToList(), ActiveSpaceCombats = _db.SpaceCombatMissions.Include(m=>m.TargetBase).Where(m=>m.AttackerUserId==user.Id&&!m.CompletedAtUtc.HasValue).ToList(), SpaceCombatReports = _db.SpaceCombatReports.Where(r=>r.UserId==user.Id).OrderByDescending(r=>r.CreatedAtUtc).ToList(), DebrisFields = _db.DebrisFields.Include(d=>d.PlayerBase).ThenInclude(b=>b.PlanetSector).ThenInclude(s=>s.Planet).Where(d=>!d.IsRecycled).OrderByDescending(d=>d.CreatedAtUtc).ToList(), ProtectionStatus = protectionStatus, PlayerRankings = playerRankings, AllianceRankings = allianceRankings, GalaxyEntries = galaxyEntries, InboxMessages = inboxMessages, SentMessages = sentMessages, MessageablePlayers = messageablePlayers, UnreadReportCount = unreadReportCount, UnreadMessageCount = unreadMessageCount, ContractStatuses = BuildContractStatuses(user, now) };
+            var model = new OverviewViewModel { User = user, Base = playerBase, Planet = planet, Hourly = _economy.CalculateHourlyProduction(playerBase.BuildingLevels, user.ResearchLevels, user.Faction, sectorBonus), Sectors = planet.Sectors.OrderBy(s => s.Number).ToList(), Reports = _db.Reports.Where(r => r.UserId == user.Id).OrderByDescending(r => r.CreatedAtUtc).ToList(), Buildings = buildings, ActiveBuild = playerBase.BuildQueue.OrderBy(q => q.CompletesAtUtc).FirstOrDefault(), BuildQueue = playerBase.BuildQueue.OrderBy(q => q.CompletesAtUtc).ToList(), NowUtc = now, Researches = BuildResearchViewModels(user, playerBase), ActiveResearch = user.ResearchQueue.OrderBy(q => q.CompletesAtUtc).FirstOrDefault(), DefenseModifier = _factionModifiers.GetDefenseMultiplier(user.Faction), KnownGateAddresses = _db.KnownGateAddresses.Include(k => k.GateAddress).Where(k => k.UserId == user.Id).ToList(), MissionTeams = _db.MissionTeams.Where(t => t.UserId == user.Id).ToList(), ActiveGateMissions = _db.GateMissions.Include(m => m.GateAddress).Include(m => m.MissionTeam).Where(m => m.UserId == user.Id && !m.IsCompleted).ToList(), GateMissionReports = _db.GateMissionReports.Include(r => r.GateMission).ThenInclude(m => m.GateAddress).Where(r => r.UserId == user.Id).OrderByDescending(r => r.CreatedAtUtc).ToList(), ActiveSectorClaims = activeSectorClaims, ControlledSectors = controlledSectors, SectorBonus = sectorBonus, PlanetInfluences = BuildPlanetInfluences(planet.Id), OwnInfluence = _localSectors.CalculateInfluence(playerBase, user, controlledSectors, activeSectorClaims.Where(c => c.UserId == user.Id)), ActiveMarketOrders = _db.PlanetMarketOrders.Include(o => o.SellerUser).Where(o => o.PlanetId == planet.Id && o.CompletedAtUtc == null && o.CancelledAtUtc == null && !o.ReservedReturned && o.ExpiresAtUtc > now).OrderBy(o => o.ExpiresAtUtc).ToList(), OwnMarketOrders = _db.PlanetMarketOrders.Where(o => o.PlanetId == planet.Id && o.SellerUserId == user.Id).OrderByDescending(o => o.CreatedAtUtc).ToList(), TradeReports = _db.TradeReports.Where(r => r.UserId == user.Id).OrderByDescending(r => r.CreatedAtUtc).ToList(), ShipDefinitions = BuildShipViewModels(user, playerBase), ActiveShipBuild = playerBase.ShipyardQueue.OrderBy(q => q.CompletesAtUtc).FirstOrDefault(), FleetTargets = _db.PlayerBases.Include(b=>b.User).Include(b=>b.PlanetSector).ThenInclude(s=>s.Planet).Where(b=>b.Id!=playerBase.Id).ToList(), ActiveFleets = _db.FleetMovements.Include(f=>f.TargetBase).ThenInclude(b=>b.PlanetSector).Where(f=>f.UserId==user.Id && f.Status!=FleetMovementStatus.Completed).ToList(), FleetReports = _db.FleetReports.Where(r=>r.UserId==user.Id).OrderByDescending(r=>r.CreatedAtUtc).ToList(), OrbitPresences = BuildOrbitPresences(planet.Id), EspionageTargets = _db.PlayerBases.Include(b=>b.User).Include(b=>b.Faction).Include(b=>b.PlanetSector).ThenInclude(s=>s.Planet).Where(b=>b.Id!=playerBase.Id).ToList(), IntelligenceReports = _db.IntelligenceReports.Where(r=>r.UserId==user.Id && !r.IsWarning).OrderByDescending(r=>r.CreatedAtUtc).ToList(), SpyWarnings = _db.IntelligenceReports.Where(r=>r.UserId==user.Id && r.IsWarning).OrderByDescending(r=>r.CreatedAtUtc).ToList(), ActiveLocalCombats = _db.LocalCombatMissions.Include(m=>m.PlanetSector).Where(m=>m.PlanetSector.PlanetId==planet.Id && !m.CompletedAtUtc.HasValue).OrderBy(m=>m.ResolvesAtUtc).ToList(), SectorBattleReports = _db.SectorBattleReports.Include(r=>r.PlanetSector).Where(r=>r.UserId==user.Id).OrderByDescending(r=>r.CreatedAtUtc).ToList() , OwnAlliance = _db.AllianceMembers.Include(m=>m.Alliance).ThenInclude(a=>a.Members).ThenInclude(m=>m.User).Where(m=>m.UserId==user.Id).Select(m=>m.Alliance).FirstOrDefault(), Alliances = _db.Alliances.Include(a=>a.Members).ThenInclude(m=>m.User).OrderBy(a=>a.Tag).ToList(), AllianceApplications = _db.AllianceApplications.Include(a=>a.User).Where(a=>a.AcceptedAtUtc==null&&a.RejectedAtUtc==null).ToList(), ActiveSpaceCombats = _db.SpaceCombatMissions.Include(m=>m.TargetBase).Where(m=>m.AttackerUserId==user.Id&&!m.CompletedAtUtc.HasValue).ToList(), SpaceCombatReports = _db.SpaceCombatReports.Where(r=>r.UserId==user.Id).OrderByDescending(r=>r.CreatedAtUtc).ToList(), DebrisFields = _db.DebrisFields.Include(d=>d.PlayerBase).ThenInclude(b=>b.PlanetSector).ThenInclude(s=>s.Planet).Where(d=>!d.IsRecycled).OrderByDescending(d=>d.CreatedAtUtc).ToList(), ProtectionStatus = protectionStatus, PlayerRankings = playerRankings, AllianceRankings = allianceRankings, GalaxyEntries = galaxyEntries, InboxMessages = inboxMessages, SentMessages = sentMessages, MessageablePlayers = messageablePlayers, UnreadReportCount = unreadReportCount, UnreadMessageCount = unreadMessageCount, ContractStatuses = BuildContractStatuses(user, now), AchievementStatuses = BuildAchievementStatuses(user, now) };
+            _db.SaveChanges();
             return View(view, model);
         }
 
@@ -774,6 +777,55 @@ namespace StargateGalacticCommand.Web.Controllers
                 int progress = Math.Min(definition.GoalAmount, CountContractProgress(definition.GoalType, user.Id, periodStart));
                 return new ContractStatusViewModel { Key = definition.Key, DisplayName = definition.GetDisplayName(user.Faction), Description = definition.Description, IsWeekly = definition.IsWeekly, Progress = progress, Goal = definition.GoalAmount, IsComplete = progress >= definition.GoalAmount, IsClaimed = claim?.ClaimedAtUtc != null, Reward = definition.Reward };
             }).ToList();
+        }
+
+        private int CountAchievementProgress(AchievementGoalType goalType, int userId)
+        {
+            switch (goalType)
+            {
+                case AchievementGoalType.DiscoveredAddresses:
+                    return _db.KnownGateAddresses.Count(k => k.UserId == userId);
+                case AchievementGoalType.SpaceCombatVictories:
+                    return _db.SpaceCombatReports.Include(r => r.SpaceCombatMission).Count(r => r.UserId == userId && r.SpaceCombatMission.AttackerUserId == userId && r.AttackerWon);
+                case AchievementGoalType.DistinctMissionTypesCompleted:
+                    return _db.GateMissionReports.Include(r => r.GateMission).Where(r => r.UserId == userId && r.Outcome != GateMissionOutcome.WoundedOrLosses).Select(r => r.GateMission.MissionType).Distinct().Count();
+                case AchievementGoalType.AllianceMembership:
+                    return _db.AllianceMembers.Any(m => m.UserId == userId) ? 1 : 0;
+                case AchievementGoalType.ColoniesFounded:
+                    return _db.GateMissionReports.Include(r => r.GateMission).Count(r => r.UserId == userId && r.GateMission.MissionType == GateMissionType.FoundColony && r.Outcome != GateMissionOutcome.WoundedOrLosses);
+                case AchievementGoalType.MarketTrades:
+                    return _db.TradeReports.Count(r => r.UserId == userId && (r.Title == "Marktangebot gekauft" || r.Title == "Marktangebot verkauft"));
+                default:
+                    return 0;
+            }
+        }
+
+        private System.Collections.Generic.IList<AchievementStatusViewModel> BuildAchievementStatuses(User user, DateTime now)
+        {
+            var progresses = _db.AchievementProgresses.Where(p => p.UserId == user.Id).ToList();
+            var countsByGoalType = new System.Collections.Generic.Dictionary<AchievementGoalType, int>();
+            var result = new System.Collections.Generic.List<AchievementStatusViewModel>();
+            foreach (var definition in _achievements.GetAll())
+            {
+                if (!countsByGoalType.TryGetValue(definition.GoalType, out var current))
+                {
+                    current = CountAchievementProgress(definition.GoalType, user.Id);
+                    countsByGoalType[definition.GoalType] = current;
+                }
+                var progress = progresses.FirstOrDefault(p => p.AchievementKey == definition.Key);
+                if (progress == null)
+                {
+                    progress = new AchievementProgress { UserId = user.Id, AchievementKey = definition.Key };
+                    _db.AchievementProgresses.Add(progress);
+                    progresses.Add(progress);
+                }
+                if (_achievements.TryUnlock(definition, progress, current, now))
+                {
+                    _db.Reports.Add(new Report { UserId = user.Id, Title = "Kodex-Eintrag freigeschaltet: " + definition.Name, Body = definition.Description, CreatedAtUtc = now });
+                }
+                result.Add(new AchievementStatusViewModel { Key = definition.Key, Name = definition.Name, Description = definition.Description, Goal = definition.GoalAmount, Progress = Math.Min(current, definition.GoalAmount), IsUnlocked = progress.UnlockedAtUtc.HasValue, UnlockedAtUtc = progress.UnlockedAtUtc });
+            }
+            return result;
         }
 
         private System.Collections.Generic.IList<ResearchViewModel> BuildResearchViewModels(User user, PlayerBase playerBase)

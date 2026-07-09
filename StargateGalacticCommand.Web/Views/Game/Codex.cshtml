@@ -1,0 +1,19 @@
+@model StargateGalacticCommand.Web.Models.OverviewViewModel
+@{ ViewData["Title"] = "Kodex"; }
+<h1>Kodex</h1>
+<p>Der Kodex sammelt Meilensteine deiner Karriere – Erkundung, Kämpfe, Diplomatie und Handel. Einträge schalten sich automatisch frei, sobald du das Ziel erreichst; es gibt keine Ressourcenbelohnung, nur den Eintrag selbst.</p>
+<table>
+<thead><tr><th>Status</th><th>Titel</th><th>Beschreibung</th><th>Fortschritt</th><th>Freigeschaltet am</th></tr></thead>
+<tbody>
+@foreach (var a in Model.AchievementStatuses)
+{
+    <tr class="@(a.IsUnlocked ? "achievement-unlocked" : "achievement-locked")">
+        <td>@(a.IsUnlocked ? "★" : "—")</td>
+        <td>@a.Name</td>
+        <td>@a.Description</td>
+        <td>@a.Progress / @a.Goal</td>
+        <td>@(a.IsUnlocked ? a.UnlockedAtUtc.Value.ToString("u") : "")</td>
+    </tr>
+}
+</tbody>
+</table>
