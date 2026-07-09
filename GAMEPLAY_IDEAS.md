@@ -204,7 +204,7 @@ schneiden lassen.
 - **Balancing**: Kleine kosmetische/Titel-Belohnungen statt Ressourcenboni,
   damit Achievements nicht zum verdeckten zweiten Wirtschaftssystem werden.
 
-### 2.4 Tägliche/wöchentliche Kontrakte (fraktionsspezifisch)
+### 2.4 Tägliche/wöchentliche Kontrakte (fraktionsspezifisch) — ✅ umgesetzt
 - **Konzept**: Kurze, planbare Auftragslisten pro Fraktion (SGC-Aufträge,
   Jaffa-Ehrenaufträge, Tok'ra-Geheimoperationen, Lucian-Alliance-Deals), die
   sich täglich/wöchentlich erneuern und kleine, aber verlässliche
@@ -217,6 +217,28 @@ schneiden lassen.
 - **Balancing**: Kontrakte dürfen nicht die einzige sinnvolle Ressourcenquelle
   werden, sonst wird Nicht-Einloggen bestraft statt Einloggen belohnt – als
   Bonus obendrauf, nicht als Ersatz für Kernwirtschaft designen.
+- **Tatsächliche Umsetzung**: Statt eines separaten `AchievementProgress`-artigen
+  Zähler-Modells, der bei jeder Aktion in jedem Service hochgezählt werden
+  müsste, wird der Fortschritt **live aus bereits bestehenden Report-Tabellen
+  berechnet** (`GateMissionReports`, `FleetReports`, `TradeReports` mit
+  `CreatedAtUtc >= Periodenbeginn`) – kein einziger bestehender Service
+  musste angefasst werden. `ContractProgress` speichert dadurch nur, *ob*
+  ein Kontrakt für einen Zeitraum bereits abgeholt wurde, nicht den
+  Zählerstand selbst. Katalog mit vier Kontrakten in `ContractService`
+  (Muster wie `ResearchCatalogService`: statische `ContractDefinition`-Liste,
+  keine DB-Tabelle): `DailyGateMissions` (3 Gate-Missionen), `DailyFleetMissions`
+  (2 Flottenmissionen), `DailyTrade` (1 Markttransaktion), `WeeklyGateMissions`
+  (15 Gate-Missionen/Woche). `ContractDefinition.GetDisplayName(Faction)`
+  liefert die fraktionsspezifischen Namen (SGC-Erkundungsauftrag,
+  Jaffa-Ehrenauftrag, Tok'ra-Geheimoperation, Lucian-Deal) für denselben
+  zugrundeliegenden Kontrakt statt eigener Kontrakte pro Fraktion – kleinerer
+  Scope, gleiche Wirkung. Neue Seite „Kontrakte“ (`Contracts.cshtml`) mit
+  Abhol-Button pro Kontrakt (`GameController.ClaimContract`), Navigation
+  ergänzt. Abgedeckt durch 9 neue Tests (`ContractServiceTests`); Vollzyklus
+  Registrierung → Kontrakte-Seite → Fraktionsname → Ablehnung bei
+  unerreichtem Ziel manuell gegen die laufende App verifiziert. Automatischer
+  Reset ist implizit durch die periodenbasierte Berechnung gelöst (kein
+  Cronjob nötig, da `PeriodStartUtc` bei jedem Aufruf neu berechnet wird).
 
 ### 2.5 Skilltrees pro Charakterrolle (vorgezogen aus Roadmap-Phase 4)
 - **Konzept**: Auch ohne den 2D-Client aus der Roadmap lässt sich ein
@@ -333,7 +355,7 @@ Kein Umbau des Datenmodells nötig, sofort startbar:
    `FactionModifierService`-Infrastruktur, keine neuen Tabellen nötig.
 
 Mittlerer Aufwand, hoher Bindungseffekt:
-3. **2.4 Tägliche/wöchentliche Kontrakte**
+3. **2.4 Tägliche/wöchentliche Kontrakte** ✅
 4. **2.3 Achievements/Lore-Kodex**
 5. **1.3 Einfluss-Zerfall**
 

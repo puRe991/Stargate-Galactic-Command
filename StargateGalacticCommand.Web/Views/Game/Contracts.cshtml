@@ -1,0 +1,31 @@
+@model StargateGalacticCommand.Web.Models.OverviewViewModel
+@{ ViewData["Title"] = "Kontrakte"; }
+<h1>Kontrakte</h1>
+<p>Tägliche und wöchentliche Kontrakte erneuern sich automatisch und geben zuverlässige Belohnungen obendrauf zur normalen Wirtschaft.</p>
+@if (TempData["Message"] != null) { <div class="notice success">@TempData["Message"]</div> }
+@if (TempData["Error"] != null) { <div class="notice error">@TempData["Error"]</div> }
+<table>
+<thead><tr><th>Kontrakt</th><th>Beschreibung</th><th>Zeitraum</th><th>Fortschritt</th><th>Belohnung</th><th></th></tr></thead>
+<tbody>
+@foreach (var c in Model.ContractStatuses)
+{
+    <tr>
+        <td>@c.DisplayName</td>
+        <td>@c.Description</td>
+        <td>@(c.IsWeekly ? "Wöchentlich" : "Täglich")</td>
+        <td>@c.Progress / @c.Goal</td>
+        <td>N @c.Reward.Naquadah, T @c.Reward.Trinium, V @c.Reward.Supplies, E @c.Reward.Energy, P @c.Reward.Personnel, Intel @c.Reward.Intel</td>
+        <td>
+        @if (c.IsClaimed)
+        {
+            <span>abgeschlossen</span>
+        }
+        else
+        {
+            <form method="post" asp-controller="Game" asp-action="ClaimContract">@Html.AntiForgeryToken()<input type="hidden" name="contractKey" value="@c.Key" /><button type="submit" disabled="@(!c.IsComplete)">Belohnung abholen</button></form>
+        }
+        </td>
+    </tr>
+}
+</tbody>
+</table>
