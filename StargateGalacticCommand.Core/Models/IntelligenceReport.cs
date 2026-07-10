@@ -14,5 +14,6 @@ namespace StargateGalacticCommand.Core.Models
         public int DetailDepth { get; set; }
         public bool IsWarning { get; set; }
         public bool WasDetected { get; set; }
+        public bool IsSuspectedDecoy { get; set; }
     }
 }

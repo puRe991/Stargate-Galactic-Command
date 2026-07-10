@@ -1,5 +1,23 @@
 @model OverviewViewModel
+@using StargateGalacticCommand.Core.Services
 @{ ViewData["Title"] = "Geheimdienst"; }
+@if (TempData["Message"] != null) { <div class="notice success">@TempData["Message"]</div> }
+@if (TempData["Error"] != null) { <div class="notice error">@TempData["Error"]</div> }
 <section class="panel"><h1>Geheimdienst</h1><p>Spionage nutzt Intel, Sensorstationen und Forschung. Direkte Angriffe sind in Version 0.0.9 deaktiviert.</p><form asp-action="StartEspionage" method="post"><label>Ziel</label><select name="targetBaseId">@foreach(var b in Model.EspionageTargets){<option value="@b.Id">@b.Name - @b.User.UserName (@b.Faction.Name, @b.PlanetSector.Planet.Name/Sektor @b.PlanetSector.Number)</option>}</select><label>Spionageart</label><select name="missionType"><option value="SensorRecon">Sensorische Aufklärung</option><option value="GateObservation">Gate-nahe Beobachtung</option><option value="AgentInfiltration">Agentenbasierte Infiltration</option><option value="MarketObservation">Marktbeobachtung</option><option value="SectorRecon">Sektoraufklärung</option></select><label>Intel-Einsatz</label><input type="number" name="intelSpent" min="5" max="500" value="50" /><button type="submit">Mission starten</button></form><p>Verfügbares Intel: @Model.Base.Resources.Intel. Voraussetzungen: Sensorstation Level 1; Tarntechnologie für Gate-Beobachtung und Infiltration.</p></section>
-<section class="panel"><h2>Berichte</h2><table><thead><tr><th>Zeit</th><th>Titel</th><th>Tiefe</th><th>Entdeckt</th><th>Inhalt</th></tr></thead><tbody>@foreach(var r in Model.IntelligenceReports){<tr><td>@r.CreatedAtUtc.ToString("u")</td><td>@r.Title</td><td>@r.DetailDepth</td><td>@(r.WasDetected ? "ja" : "nein")</td><td>@r.Body</td></tr>}</tbody></table></section>
+<section class="panel">
+    <h2>Köderprofil (Gegenspionage)</h2>
+    <p>Ab Gegenspionagestufe „Hardened“ kann ein Köder scharfe Angreifer mit erfundenen Werten täuschen. Jedes Aufladen kostet @EspionageService.DecoyChargeIntelCost Intel und liefert genau einen Einsatz (max. @EspionageService.MaxDecoyCharges gleichzeitig); erfahrene Spione (hohe Sensorik/Tarntechnologie) durchschauen die Täuschung häufiger.</p>
+    <p>Verbleibende Einsätze: @(Model.OwnDecoyProfile?.Charges ?? 0)</p>
+    <form asp-action="ArmDecoy" method="post">
+        <input type="number" name="fakeNaquadah" min="0" placeholder="Naquadah" value="@(Model.OwnDecoyProfile?.FakeNaquadah ?? 0)" />
+        <input type="number" name="fakeTrinium" min="0" placeholder="Trinium" value="@(Model.OwnDecoyProfile?.FakeTrinium ?? 0)" />
+        <input type="number" name="fakeSupplies" min="0" placeholder="Versorgung" value="@(Model.OwnDecoyProfile?.FakeSupplies ?? 0)" />
+        <input type="number" name="fakeEnergy" min="0" placeholder="Energie" value="@(Model.OwnDecoyProfile?.FakeEnergy ?? 0)" />
+        <input type="number" name="fakePersonnel" min="0" placeholder="Personal" value="@(Model.OwnDecoyProfile?.FakePersonnel ?? 0)" />
+        <input type="number" name="fakeIntel" min="0" placeholder="Intel" value="@(Model.OwnDecoyProfile?.FakeIntel ?? 0)" />
+        <input type="number" name="fakeShipTotal" min="0" placeholder="Schiffe (Gesamt)" value="@(Model.OwnDecoyProfile?.FakeShipTotal ?? 0)" />
+        <button type="submit">Köder aufladen</button>
+    </form>
+</section>
+<section class="panel"><h2>Berichte</h2><table><thead><tr><th>Zeit</th><th>Titel</th><th>Tiefe</th><th>Entdeckt</th><th>Verdächtig</th><th>Inhalt</th></tr></thead><tbody>@foreach(var r in Model.IntelligenceReports){<tr><td>@r.CreatedAtUtc.ToString("u")</td><td>@r.Title</td><td>@r.DetailDepth</td><td>@(r.WasDetected ? "ja" : "nein")</td><td>@(r.IsSuspectedDecoy ? "⚠" : "")</td><td>@r.Body</td></tr>}</tbody></table></section>
 <section class="panel"><h2>Eigene Spionagewarnungen</h2><table><thead><tr><th>Zeit</th><th>Titel</th><th>Text</th></tr></thead><tbody>@foreach(var r in Model.SpyWarnings){<tr><td>@r.CreatedAtUtc.ToString("u")</td><td>@r.Title</td><td>@r.Body</td></tr>}</tbody></table></section>
