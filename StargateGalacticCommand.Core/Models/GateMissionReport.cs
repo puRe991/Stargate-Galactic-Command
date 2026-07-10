@@ -18,6 +18,7 @@ namespace StargateGalacticCommand.Core.Models
         public bool ArtifactLeadFound { get; set; }
         public int PersonnelLost { get; set; }
         public GateAnomalyType? AnomalyType { get; set; }
+        public bool IsSeasonFocusBonus { get; set; }
         public DateTime CreatedAtUtc { get; set; }
     }
 }

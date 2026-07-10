@@ -35,6 +35,7 @@ namespace StargateGalacticCommand.Web
             services.AddScoped<ResearchCatalogService>();
             services.AddScoped<ResearchQueueService>();
             services.AddScoped<FactionModifierService>();
+            services.AddScoped<SeasonService>();
             services.AddScoped<GateMissionService>();
             services.AddScoped<LocalSectorService>();
             services.AddScoped<LocalCombatService>();
