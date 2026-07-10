@@ -65,6 +65,31 @@ absehbarer Zeit.
 - Lasttests für SignalR-Hubs, Instanzierung pro Mission
 - Performance-Tuning des 2D-Clients, Responsive/Mobile
 
+## Phase 6 — Steam-Release-Fähigkeit
+
+Voraussetzung für einen Release auf Steam als MMO. Baut auf einer
+abgeschlossenen Phase 5 auf (Echtzeit-Grundlage + PostgreSQL müssen stehen,
+bevor produktiv gehostet wird).
+
+- **Hosting & Betrieb:** Containerisierung (Dockerfile), CI/CD-Pipeline,
+  produktives Hosting mit PostgreSQL statt SQLite, Monitoring/Logging,
+  Backup-Strategie
+- **Steamworks-Integration:** Steam-App-ID, Steamworks SDK-Anbindung,
+  Steam-Login/Auth statt (oder zusätzlich zu) eigenem Account-System,
+  Steam-Achievements & -Leaderboards, SteamPipe-Build-Pipeline für Uploads
+- **Eigenständiger Client:** Der 2D-Client aus Phase 1–4 muss als
+  installierbare Anwendung (z. B. Electron-Wrapper oder natives Build)
+  lauffähig sein, nicht nur als Browser-Route
+- **Sicherheit & Anti-Abuse:** Rate-Limiting und Lockout auf Login/Auth,
+  Schutz gegen Ressourcen-/Kampf-Exploits, Moderationswerkzeuge für Chat
+  und Spielerverhalten, Reporting-System
+- **Fehlende Grundsysteme für MMO-Anspruch:** Live-Chat (aktuell nur
+  asynchrone Mailbox über `MessageService`), Diplomatie-Layer zwischen
+  Allianzen, Mentoring/Onboarding für neue Spieler
+- **Store-Vorbereitung:** Store-Page-Assets, Alterskennzeichnung,
+  Lokalisierung (mind. Englisch, aktuell nur Deutsch), Preismodell
+  (F2P/Buy-to-play/Abo) und ggf. Anti-Cheat-Lösung für PvP-Bereiche
+
 ## Lore-Leitplanken (unverändert)
 
 - Das Stargate-Programm bleibt geheim.
