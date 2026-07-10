@@ -458,7 +458,7 @@ schneiden lassen.
   erklären → Fortschrittsanzeige "0/2 Sektoren") manuell gegen die laufende
   App verifiziert.
 
-### 3.2 Mentoren-System für neue Spieler
+### 3.2 Mentoren-System für neue Spieler — ✅ umgesetzt
 - **Konzept**: Erfahrene Allianzmitglieder erhalten Belohnungen (Ressourcen,
   Kodex-Eintrag, Titel) fürs Betreuen von Neulingen – z. B. wenn ein
   gementeeter Spieler innerhalb von X Tagen bestimmte Meilensteine erreicht
@@ -470,6 +470,29 @@ schneiden lassen.
 - **Balancing**: Mentor-Belohnung an echten Fortschritt des Schützlings
   koppeln (nicht nur Beitritt), um Missbrauch durch Zweitaccounts zu
   begrenzen (z. B. Cap pro Woche/IP-Heuristik, falls vorhanden).
+- **Tatsächliche Umsetzung**: `AllianceMember` erweitert um `MentorUserId`
+  sowie zwei separate Belohnungs-Zeitstempel (`MentorMissionRewardGrantedAtUtc`,
+  `MentorSectorRewardGrantedAtUtc`) statt eines generischen
+  Achievement-Eintrags – so lassen sich beide Meilensteine unabhängig
+  voneinander genau einmal auszahlen. Ein neues Mitglied kann sich innerhalb
+  von `MentorService.MentorshipWindowDays` (14 Tage) nach Beitritt selbst
+  einen Mentor aus der eigenen Allianz aussuchen (bewusst keine
+  Offiziers-Freigabe nötig, um die Hürde niedrig zu halten). Die
+  Meilenstein-Prüfung läuft – wie Kontrakte/Achievements/Handelsrouten –
+  ohne Cronjob live bei jedem Seitenaufruf des **Mentors**
+  (`GameController.EvaluateMentorRewards`), berechnet direkt aus bestehenden
+  Tabellen (`GateMissionReports`, `SectorControls`) ob der Schützling den
+  jeweiligen Meilenstein erreicht hat; die Ressourcenbelohnung fließt auf die
+  Basis des Mentors, ein Bericht wird erstellt. Die Bindung an das
+  14-Tage-Fenster und an echten (nicht simulierbaren) Fortschritt der
+  Schützlings-Tabellen deckt den Balancing-Hinweis gegen Zweitaccount-Farming
+  ab, ohne eine zusätzliche IP-Heuristik zu benötigen. Neue Sektion
+  „Mentoren-System" auf der Allianzen-Seite zeigt bestehende
+  Mentor-Zuordnungen und erlaubt die Mentorwahl. Abgedeckt durch 11 neue
+  Tests in `MentorServiceTests`. **Bewusst nicht umgesetzt**: Kodex-Eintrag/
+  Titel als zusätzliche Mentor-Belohnung – die Ressourcenbelohnung deckt den
+  Kernanreiz ab; ein Kodex-Eintrag ließe sich später als weiterer Eintrag in
+  2.3 ergänzen, ohne dieses Feature zu ändern.
 
 ### 3.3 Diplomatie-Layer zwischen Allianzen
 - **Konzept**: Formale Nichtangriffspakte/Handelsabkommen zwischen Allianzen
@@ -594,6 +617,6 @@ Größerer Aufwand / mehr Design-Abstimmung nötig, aber hohe Langzeitwirkung:
 Alle sechs priorisierten Punkte sind damit umgesetzt. Danach zusätzlich
 umgesetzt: **4.2 Ancient/Asgard-Anomalien** ✅, **1.2 Espionage-Köder** ✅,
 **1.4 Handelsrouten** ✅, **2.2 Season-Pässe** ✅, **2.5 Rollen-Skilltrees**
-✅. Verbleibend aus dem Gesamt-Backlog (nicht priorisiert): 3.2
-(Mentoren-System), 3.3 (Diplomatie-Layer), 4.3 (Fraktionsspezifische
+✅, **3.2 Mentoren-System** ✅. Verbleibend aus dem Gesamt-Backlog (nicht
+priorisiert): 3.3 (Diplomatie-Layer), 4.3 (Fraktionsspezifische
 Questlines).
