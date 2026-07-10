@@ -180,7 +180,7 @@ schneiden lassen.
 
 ## 2. Langzeit-Motivation / Meta-Progression
 
-### 2.1 Prestige/Ascension-Mechanik ("Erleuchtung")
+### 2.1 Prestige/Ascension-Mechanik ("Erleuchtung") — ✅ umgesetzt
 - **Konzept**: Ab einem definierten Machtlevel (z. B. Score-Schwelle aus
   `RankingService`) kann ein Spieler freiwillig "aufsteigen": Basis wird auf
   Startwerte zurückgesetzt, im Gegenzug gibt es einen permanenten,
@@ -197,6 +197,34 @@ schneiden lassen.
 - **Balancing**: Bonus pro Ascension klein genug halten (~2–5 %), damit
   Ascension eine Wahl bleibt und nicht zur Pflicht wird; Cooldown/Mindestlevel
   verhindert Ascension-Farming in kurzen Zyklen.
+- **Tatsächliche Umsetzung**: `User.AscensionCount`/`LastAscendedAtUtc` neu
+  ergänzt. `AscensionService.CalculateProductionBonus` gibt `+3 %` pro
+  Erleuchtung, gedeckelt bei 10 Erleuchtungen (max. `+30 %`) – am unteren
+  Ende der empfohlenen Spanne, damit es eine Wahl bleibt. Voraussetzungen
+  (`ValidateCanAscend`): Basis-Score (`RankingService.CalculateBaseScore`)
+  von mindestens 15.000 *und* 24 h seit der letzten Erleuchtung, verhindert
+  Kurzzyklus-Farming. Reset (`AscensionService.Ascend`) setzt Forschung,
+  Gebäude, Schiffe und Ressourcen auf Startwerte zurück, lässt aber Berichte,
+  Kodex-Fortschritt, Kontrakt-Fortschritt, bekannte Gate-Adressen,
+  Missionsteams und Allianzmitgliedschaft unangetastet – bewusst nicht
+  zurückgesetzt: Sektorkontrolle (eigener Scope-Schnitt, siehe unten). Statt
+  `FactionModifierService` (das ist reine Fraktionslogik ohne User-Bezug)
+  ist der Bonus direkt in `EconomyService.CalculateHourlyProduction`
+  eingebaut: eine neue 5-Parameter-Überladung
+  (`..., int ascensionCount`) multipliziert alle Ressourcentypen zusätzlich
+  mit dem Ascension-Faktor, während `ApplyOfflineProduction` ihn automatisch
+  aus `playerBase.User.AscensionCount` zieht – dadurch übernehmen **alle**
+  bestehenden Aufrufstellen der Offline-Produktion den Bonus automatisch,
+  ohne dass eine einzige der rund zehn Stellen im `GameController` angepasst
+  werden musste (nur der reine Anzeige-Aufruf in der Übersicht wurde
+  ergänzt). Sichtbares Prestige-Abzeichen (✦ pro Erleuchtung) in der
+  Rangliste über neues Feld `PlayerRankingEntry.AscensionCount`. Neue
+  Übersichts-Sektion „Erleuchtung“ mit Score-Fortschritt, Bonusanzeige und
+  Bestätigungsdialog vor dem Reset. Abgedeckt durch 12 neue Tests
+  (`AscensionServiceTests` + Ergänzung in `EconomyServiceTests`);
+  Ablehnung bei zu niedrigem Score manuell gegen die laufende App
+  verifiziert (echte Erfolgsfreischaltung würde einen künstlich
+  hochgespielten Account erfordern, daher nicht end-to-end getestet).
 
 ### 2.2 Season-Pässe / wöchentliche Storyline
 - **Konzept**: Statt alle 300+ Gate-Adressen aus `GalaxyGeneratorService` von
@@ -428,4 +456,4 @@ Mittlerer Aufwand, hoher Bindungseffekt:
 5. **1.3 Einfluss-Zerfall** ✅
 
 Größerer Aufwand / mehr Design-Abstimmung nötig, aber hohe Langzeitwirkung:
-6. **3.1 Allianz-Kriege** ✅, **2.1 Ascension**, **4.1 Weltevents**
+6. **3.1 Allianz-Kriege** ✅, **2.1 Ascension** ✅, **4.1 Weltevents**
