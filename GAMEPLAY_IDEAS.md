@@ -377,7 +377,7 @@ schneiden lassen.
   Reset ist implizit durch die periodenbasierte Berechnung gelöst (kein
   Cronjob nötig, da `PeriodStartUtc` bei jedem Aufruf neu berechnet wird).
 
-### 2.5 Skilltrees pro Charakterrolle (vorgezogen aus Roadmap-Phase 4)
+### 2.5 Skilltrees pro Charakterrolle (vorgezogen aus Roadmap-Phase 4) — ✅ umgesetzt
 - **Konzept**: Auch ohne den 2D-Client aus der Roadmap lässt sich ein
   reines Text-Skilltree-System für die drei Rollen (Militär/Wissenschaft/
   Diplomatie) vorziehen, das Missionsboni beeinflusst (z. B. Militär-Skill
@@ -391,6 +391,28 @@ schneiden lassen.
   zu bauen.
 - **Balancing**: Skillpunkte über Aktivität statt Kauf vergeben (z. B. pro
   abgeschlossener Mission), damit es Progression statt Pay2Win ist.
+- **Tatsächliche Umsetzung**: Neues 1:1-Modell `CharacterSkills` (UserId,
+  MilitaryLevel/ScienceLevel/DiplomacyLevel je 0–10, UnspentPoints); wird
+  lazy erzeugt beim ersten Skillpunkt-Erwerb (gleiches Muster wie
+  `DecoyProfile`). `SkillTreeService` kapselt Punktevergabe/-investition
+  sowie die Bonusformeln. Jede abgeschlossene Gate-Mission (unabhängig vom
+  Ausgang) gibt genau einen Skillpunkt – reine Aktivitätsbelohnung, kein
+  Kauf. Investierte Punkte wirken additiv: +1 Score pro Stufe auf die
+  jeweils zugeordnete Gate-Missionsart (`GateMissionService.CompleteMission`,
+  analog zur Fraktionsspezialisierung aus 1.1) sowie +3 % Forschungs-
+  geschwindigkeit pro Wissenschaftsstufe (bis zu +30 % bei Stufe 10,
+  `ResearchQueueService.StartResearch`, multiplikativ mit dem bestehenden
+  Fraktionsbonus). Neue Sektion „Charakter-Fertigkeiten" auf der
+  Forschungsseite zeigt Stufen und freie Punkte mit Investitionsbuttons pro
+  Baum. **Bewusst nicht umgesetzt**: der in der Konzeptbeschreibung erwähnte
+  Kampferfolgs-Bonus (Raumschlacht/Bodenkampf) und die
+  Allianz-Interaktionsboni der Diplomatie-Fertigkeit – beide würden tiefe
+  Eingriffe in die bereits sehr dichten `SpaceCombatService`/
+  `LocalCombatService`/`AllianceService`-Dateien erfordern, ohne die im
+  Konzept explizit genannten Kernwirkungen (Missionserfolg,
+  Forschungsgeschwindigkeit) zu berühren; als separates Folge-Ticket
+  dokumentiert. Abgedeckt durch neue `SkillTreeServiceTests` sowie
+  Ergänzungen in `GateMissionServiceTests` und `ResearchServiceTests`.
 
 ## 3. Social / Allianzen / PvP
 
@@ -571,7 +593,7 @@ Größerer Aufwand / mehr Design-Abstimmung nötig, aber hohe Langzeitwirkung:
 
 Alle sechs priorisierten Punkte sind damit umgesetzt. Danach zusätzlich
 umgesetzt: **4.2 Ancient/Asgard-Anomalien** ✅, **1.2 Espionage-Köder** ✅,
-**1.4 Handelsrouten** ✅, **2.2 Season-Pässe** ✅. Verbleibend aus dem
-Gesamt-Backlog (nicht priorisiert): 2.5 (Rollen-Skilltrees), 3.2
+**1.4 Handelsrouten** ✅, **2.2 Season-Pässe** ✅, **2.5 Rollen-Skilltrees**
+✅. Verbleibend aus dem Gesamt-Backlog (nicht priorisiert): 3.2
 (Mentoren-System), 3.3 (Diplomatie-Layer), 4.3 (Fraktionsspezifische
 Questlines).

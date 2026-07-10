@@ -54,6 +54,7 @@ namespace StargateGalacticCommand.Data
         public DbSet<WorldEventContribution> WorldEventContributions { get; set; }
         public DbSet<DecoyProfile> DecoyProfiles { get; set; }
         public DbSet<TradeRoute> TradeRoutes { get; set; }
+        public DbSet<CharacterSkills> CharacterSkills { get; set; }
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
@@ -184,6 +185,8 @@ namespace StargateGalacticCommand.Data
             modelBuilder.Entity<ContractProgress>().HasIndex(p => new { p.UserId, p.ContractKey, p.PeriodStartUtc }).IsUnique();
             modelBuilder.Entity<AchievementProgress>().HasOne(p => p.User).WithMany().HasForeignKey(p => p.UserId).OnDelete(DeleteBehavior.Cascade);
             modelBuilder.Entity<AchievementProgress>().HasIndex(p => new { p.UserId, p.AchievementKey }).IsUnique();
+            modelBuilder.Entity<CharacterSkills>().HasIndex(s => s.UserId).IsUnique();
+            modelBuilder.Entity<CharacterSkills>().HasOne(s => s.User).WithMany().HasForeignKey(s => s.UserId).OnDelete(DeleteBehavior.Cascade);
         }
     }
 }

@@ -9,15 +9,17 @@ namespace StargateGalacticCommand.Core.Services
         private readonly ResearchCatalogService _catalog;
         private readonly ResourceService _resources;
         private readonly FactionModifierService _modifiers;
+        private readonly SkillTreeService _skillTree;
 
-        public ResearchQueueService(ResearchCatalogService catalog, ResourceService resources, FactionModifierService modifiers)
+        public ResearchQueueService(ResearchCatalogService catalog, ResourceService resources, FactionModifierService modifiers, SkillTreeService skillTree = null)
         {
             _catalog = catalog ?? throw new ArgumentNullException("catalog");
             _resources = resources ?? throw new ArgumentNullException("resources");
             _modifiers = modifiers ?? throw new ArgumentNullException("modifiers");
+            _skillTree = skillTree ?? new SkillTreeService();
         }
 
-        public ResearchQueueItem StartResearch(User user, PlayerBase playerBase, ResearchType type, DateTime nowUtc)
+        public ResearchQueueItem StartResearch(User user, PlayerBase playerBase, ResearchType type, DateTime nowUtc, CharacterSkills skills = null)
         {
             Validate(user, playerBase);
             CompleteFinishedResearch(user, nowUtc);
@@ -33,7 +35,8 @@ namespace StargateGalacticCommand.Core.Services
             int currentLevel = user.ResearchLevels.GetLevel(type);
             var cost = _catalog.CalculateCost(type, currentLevel);
             _resources.Spend(playerBase.Resources, cost);
-            int seconds = _catalog.CalculateResearchSeconds(type, currentLevel, playerBase.BuildingLevels.ResearchLab, _modifiers.GetResearchSpeedMultiplier(user.Faction));
+            double speedMultiplier = _modifiers.GetResearchSpeedMultiplier(user.Faction) * _skillTree.GetResearchSpeedMultiplier(skills);
+            int seconds = _catalog.CalculateResearchSeconds(type, currentLevel, playerBase.BuildingLevels.ResearchLab, speedMultiplier);
             var item = new ResearchQueueItem { UserId = user.Id, User = user, ResearchType = type, TargetLevel = currentLevel + 1, StartedAtUtc = nowUtc, CompletesAtUtc = nowUtc.AddSeconds(seconds) };
             user.ResearchQueue.Add(item);
             return item;
