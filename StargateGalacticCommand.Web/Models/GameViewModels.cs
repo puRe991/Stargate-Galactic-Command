@@ -80,6 +80,7 @@ namespace StargateGalacticCommand.Web.Models
         public string SeasonLabel { get; set; }
         public IList<int> SeasonFocusAddressIds { get; set; }
         public CharacterSkills CharacterSkills { get; set; }
+        public IList<AllianceDiplomacyStatus> DiplomacyStatuses { get; set; }
     }
 
     public class AchievementStatusViewModel

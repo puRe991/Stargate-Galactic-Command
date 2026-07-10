@@ -1,4 +1,5 @@
 @model StargateGalacticCommand.Web.Models.OverviewViewModel
+@using StargateGalacticCommand.Core.Models
 @{ ViewData["Title"] = "Allianzen"; }
 <h1>Allianzen</h1>
 @if (TempData["Error"] != null) { <div class="alert">@TempData["Error"]</div> }
@@ -69,6 +70,46 @@ else
                 <button type="submit">Kriegsziel aufgeben</button>
             </form>
         }
+    }
+</section>
+<section>
+    <h2>Diplomatie</h2>
+    <p>Nichtangriffspakte verhindern gegenseitige Weltraumangriffe und reduzieren die Markt-Gebühr bei Handel zwischen den beiden Allianzen um @((StargateGalacticCommand.Core.Services.DiplomacyService.PactMarketFeeReduction).ToString("P0")). Ein gebrochener Pakt sperrt die brechende Allianz für @StargateGalacticCommand.Core.Services.DiplomacyService.PactBreakCooldownDays Tage von einem neuen Vorschlag an dieselbe Allianz.</p>
+    @if (!Model.DiplomacyStatuses.Any())
+    {
+        <p>Keine diplomatischen Beziehungen.</p>
+    }
+    else
+    {
+        <table><thead><tr><th>Allianz</th><th>Status</th><th>Seit</th><th>Aktion</th></tr></thead><tbody>
+        @foreach (var d in Model.DiplomacyStatuses)
+        {
+            var other = d.AllianceAId == Model.OwnAlliance.Id ? d.AllianceB : d.AllianceA;
+            <tr>
+                <td>[@other.Tag] @other.Name</td>
+                <td>@(d.Status == AllianceDiplomacyStatusType.Proposed ? "Vorschlag" : d.Status == AllianceDiplomacyStatusType.Pact ? "Pakt" : "Krieg")</td>
+                <td>@d.SinceUtc.ToString("u")</td>
+                <td>
+                    @if (Model.CanManageWarGoal && d.Status == AllianceDiplomacyStatusType.Proposed && d.ProposedByAllianceId != Model.OwnAlliance.Id)
+                    {
+                        <form method="post" asp-action="AcceptPact" style="display:inline"><input type="hidden" name="diplomacyStatusId" value="@d.Id" /><button type="submit">Pakt annehmen</button></form>
+                    }
+                    @if (Model.CanManageWarGoal && d.Status != AllianceDiplomacyStatusType.War)
+                    {
+                        <form method="post" asp-action="DeclareAllianceWar" style="display:inline"><input type="hidden" name="targetAllianceId" value="@other.Id" /><button type="submit">Krieg erklären</button></form>
+                    }
+                </td>
+            </tr>
+        }
+        </tbody></table>
+    }
+    @if (Model.CanManageWarGoal)
+    {
+        <form method="post" asp-action="ProposePact">
+            <label>Allianz für Paktvorschlag</label>
+            <select name="targetAllianceId">@foreach (var a in Model.Alliances.Where(a => a.Id != Model.OwnAlliance.Id)) { <option value="@a.Id">[@a.Tag] @a.Name</option> }</select>
+            <button type="submit">Pakt vorschlagen</button>
+        </form>
     }
 </section>
 }

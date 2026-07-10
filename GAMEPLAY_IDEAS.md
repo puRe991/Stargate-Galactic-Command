@@ -494,7 +494,7 @@ schneiden lassen.
   Kernanreiz ab; ein Kodex-Eintrag ließe sich später als weiterer Eintrag in
   2.3 ergänzen, ohne dieses Feature zu ändern.
 
-### 3.3 Diplomatie-Layer zwischen Allianzen
+### 3.3 Diplomatie-Layer zwischen Allianzen — ✅ umgesetzt
 - **Konzept**: Formale Nichtangriffspakte/Handelsabkommen zwischen Allianzen
   als echte Spielmechanik: aktive Pakte verhindern/erschweren gegenseitige
   Angriffe (`SpaceCombatService.ValidateAttack` prüft zusätzlich Paktstatus)
@@ -506,6 +506,33 @@ schneiden lassen.
 - **Balancing**: Pakt-Bruch sollte spürbare Konsequenzen haben (z. B.
   Reputationsverlust, kurzfristiger Vertrauensmalus), sonst ist Diplomatie
   nur ein kostenloses An/Aus-Feature ohne Gewicht.
+- **Tatsächliche Umsetzung**: Neues Modell `AllianceDiplomacyStatus`
+  (`AllianceAId`/`AllianceBId` kanonisch sortiert für eine eindeutige
+  Paarbeziehung, `Status` Proposed/Pact/War, `ProposedByAllianceId`,
+  `SinceUtc`, sowie `BrokenByAllianceId`/`LastBrokenAtUtc` für den
+  Balancing-Hinweis). Ein Pakt erfordert einen Vorschlag einer Allianz
+  (Gründer/Offizier) und die Annahme durch die *andere* Allianz – symmetrisch
+  zum bestehenden `AllianceApplication`-Muster. `SpaceCombatService.
+  ValidateAttack`/`StartAttack` bekamen einen zusätzlichen
+  `alliancesUnderPact`-Parameter, der bei aktivem Pakt den Angriff blockiert
+  (geprüft vom Controller über die Allianzmitgliedschaften beider Spieler,
+  kein Kopplung von `SpaceCombatService` an Diplomatie-Datenmodelle nötig).
+  `PlanetMarketService.CalculateFeeRate`/`BuyOrder` bekamen einen optionalen
+  Reduktionsfaktor (`DiplomacyService.PactMarketFeeReduction`, 10 %), der bei
+  aktivem Pakt zwischen den Allianzen von Käufer und Verkäufer greift –
+  gleiches additive Muster wie die bestehenden Fraktions-/Handelsposten-
+  Rabatte. Die Balancing-Vorgabe wird über `PactBreakCooldownDays` (7 Tage)
+  umgesetzt: erklärt eine Allianz während eines aktiven Pakts den Krieg, wird
+  sie als Paktbrecher markiert und kann derselben Allianz erst nach Ablauf
+  der Frist erneut einen Pakt vorschlagen. Neue Sektion „Diplomatie" auf der
+  Allianzen-Seite zeigt bestehende Beziehungen und erlaubt Vorschlag/Annahme/
+  Kriegserklärung (nur Gründer/Offiziere). **Bewusst nicht umgesetzt**: Pakt-
+  Prüfung in `LocalCombatService` (Bodenkampf um Sektoren) – die Kernaussage
+  des Konzepts ("gegenseitige Angriffe verhindern") ist über den primären
+  PvP-Pfad (`SpaceCombatService`) bereits abgedeckt; eine Erweiterung auf
+  Sektorkämpfe ließe sich später isoliert ergänzen. Abgedeckt durch 16 neue
+  Tests in `DiplomacyServiceTests` sowie je einen Integrationstest in
+  `AllianceAndSpaceCombatServiceTests` und `PlanetMarketServiceTests`.
 
 ## 4. Content-/Lore-getriebene Ideen
 
@@ -617,6 +644,6 @@ Größerer Aufwand / mehr Design-Abstimmung nötig, aber hohe Langzeitwirkung:
 Alle sechs priorisierten Punkte sind damit umgesetzt. Danach zusätzlich
 umgesetzt: **4.2 Ancient/Asgard-Anomalien** ✅, **1.2 Espionage-Köder** ✅,
 **1.4 Handelsrouten** ✅, **2.2 Season-Pässe** ✅, **2.5 Rollen-Skilltrees**
-✅, **3.2 Mentoren-System** ✅. Verbleibend aus dem Gesamt-Backlog (nicht
-priorisiert): 3.3 (Diplomatie-Layer), 4.3 (Fraktionsspezifische
+✅, **3.2 Mentoren-System** ✅, **3.3 Diplomatie-Layer** ✅. Verbleibend aus
+dem Gesamt-Backlog (nicht priorisiert): 4.3 (Fraktionsspezifische
 Questlines).
