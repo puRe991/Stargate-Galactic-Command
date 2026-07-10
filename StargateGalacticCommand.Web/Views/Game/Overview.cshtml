@@ -10,6 +10,32 @@
 @if (TempData["Error"] != null) { <div class="notice error">@TempData["Error"]</div> }
 <section class="panel"><h1>@ViewData["Title"]</h1><table><tr><th>Spieler</th><td>@Model.User.UserName</td></tr><tr><th>Fraktion</th><td>@Model.User.Faction.Name</td></tr><tr><th>Basis</th><td>@Model.Base.Name</td></tr><tr><th>Planet</th><td>@Model.Planet.Name (@Model.Planet.Galaxy, @Model.Planet.Type, Stargate @(Model.Planet.StargateActive ? "aktiv" : "inaktiv"), @Model.Planet.Status)</td></tr><tr><th>Sektor</th><td>@Model.Base.PlanetSector.Number - @Model.Base.PlanetSector.Name</td></tr></table></section>
 <section class="panel">
+    <h2>Weltbedrohung</h2>
+    @if (Model.ActiveWorldEvent == null)
+    {
+        <p>Aktuell ist keine serverweite Bedrohung aktiv.</p>
+    }
+    else
+    {
+        <p><strong>@Model.ActiveWorldEventName</strong> – @Model.ActiveWorldEventDescription</p>
+        <table>
+            <tr><th>Fortschritt (alle Spieler)</th><td>@Model.ActiveWorldEvent.CurrentProgress / @Model.ActiveWorldEvent.GoalProgress</td></tr>
+            <tr><th>Zeitfenster endet</th><td>@Model.ActiveWorldEvent.EndsAtUtc.ToString("u")</td></tr>
+            <tr><th>Eigener Beitrag</th><td>@Model.MyWorldEventContribution</td></tr>
+        </table>
+        @if (Model.CanContributeToWorldEvent)
+        {
+            <form asp-controller="Game" asp-action="ContributeToWorldEvent" method="post">
+                <button type="submit">Verteidigungsbeitrag leisten (@WorldEventService.ContributionCost.Supplies VG, @WorldEventService.ContributionCost.Personnel Personal)</button>
+            </form>
+        }
+        else
+        {
+            <p class="hint">@Model.WorldEventBlockedReason</p>
+        }
+    }
+</section>
+<section class="panel">
     <h2>Erleuchtung</h2>
     <p>Ein freiwilliger Neuanfang: Gebäude, Forschung, Schiffe und Ressourcen werden auf den Ausgangsstand zurückgesetzt, dafür bleibt ein permanenter Produktionsbonus erhalten. Berichte, Kodex-Fortschritt, Kontrakte und Allianzmitgliedschaft bleiben unangetastet.</p>
     <table>

@@ -50,6 +50,8 @@ namespace StargateGalacticCommand.Data
         public DbSet<ContractProgress> ContractProgresses { get; set; }
         public DbSet<AchievementProgress> AchievementProgresses { get; set; }
         public DbSet<AllianceWarGoal> AllianceWarGoals { get; set; }
+        public DbSet<WorldEvent> WorldEvents { get; set; }
+        public DbSet<WorldEventContribution> WorldEventContributions { get; set; }
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
@@ -149,6 +151,11 @@ namespace StargateGalacticCommand.Data
             modelBuilder.Entity<AllianceWarGoal>().Property(g => g.Status).HasConversion<int>();
             modelBuilder.Entity<AllianceWarGoal>().HasOne(g => g.Alliance).WithMany().HasForeignKey(g => g.AllianceId).OnDelete(DeleteBehavior.Cascade);
             modelBuilder.Entity<AllianceWarGoal>().HasOne(g => g.Planet).WithMany().HasForeignKey(g => g.PlanetId).OnDelete(DeleteBehavior.Restrict);
+            modelBuilder.Entity<WorldEvent>().Property(e => e.Type).HasConversion<int>();
+            modelBuilder.Entity<WorldEvent>().Property(e => e.Status).HasConversion<int>();
+            modelBuilder.Entity<WorldEventContribution>().HasOne(c => c.WorldEvent).WithMany().HasForeignKey(c => c.WorldEventId).OnDelete(DeleteBehavior.Cascade);
+            modelBuilder.Entity<WorldEventContribution>().HasOne(c => c.User).WithMany().HasForeignKey(c => c.UserId).OnDelete(DeleteBehavior.Cascade);
+            modelBuilder.Entity<WorldEventContribution>().HasIndex(c => new { c.WorldEventId, c.UserId }).IsUnique();
             modelBuilder.Entity<SpaceCombatMission>().Property(m => m.MissionType).HasConversion<int>();
             modelBuilder.Entity<SpaceCombatMission>().Property(m => m.ShipType).HasConversion<int>();
             modelBuilder.Entity<SpaceCombatMission>().HasOne(m => m.OriginBase).WithMany().HasForeignKey(m => m.OriginBaseId).OnDelete(DeleteBehavior.Restrict);

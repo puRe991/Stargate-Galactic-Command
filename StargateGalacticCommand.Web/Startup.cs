@@ -48,6 +48,7 @@ namespace StargateGalacticCommand.Web
             services.AddScoped<AchievementService>();
             services.AddScoped<AllianceWarService>();
             services.AddScoped<AscensionService>();
+            services.AddScoped<WorldEventService>();
         }
 
         public void Configure(IApplicationBuilder app, IWebHostEnvironment env, GameDbContext dbContext, GateMissionService gateMissionService)

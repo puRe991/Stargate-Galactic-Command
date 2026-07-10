@@ -37,12 +37,13 @@ namespace StargateGalacticCommand.Web.Controllers
         private readonly AchievementService _achievements;
         private readonly AllianceWarService _allianceWar;
         private readonly AscensionService _ascension;
+        private readonly WorldEventService _worldEvents;
 
         private static readonly TimeSpan OnlineWindow = TimeSpan.FromMinutes(15);
 
-        public GameController(GameDbContext db, EconomyService economy, BuildingCatalogService catalog, BuildQueueService buildQueue, ResourceService resources, ResearchCatalogService researchCatalog, ResearchQueueService researchQueue, FactionModifierService factionModifiers, GateMissionService gateMissions, LocalSectorService localSectors, PlanetMarketService planetMarket, ShipyardService shipyard, FleetService fleets, EspionageService espionage, LocalCombatService localCombat, AllianceService alliances, SpaceCombatService spaceCombat, RankingService ranking, MessageService messages, ContractService contracts, AchievementService achievements, AllianceWarService allianceWar, AscensionService ascension)
+        public GameController(GameDbContext db, EconomyService economy, BuildingCatalogService catalog, BuildQueueService buildQueue, ResourceService resources, ResearchCatalogService researchCatalog, ResearchQueueService researchQueue, FactionModifierService factionModifiers, GateMissionService gateMissions, LocalSectorService localSectors, PlanetMarketService planetMarket, ShipyardService shipyard, FleetService fleets, EspionageService espionage, LocalCombatService localCombat, AllianceService alliances, SpaceCombatService spaceCombat, RankingService ranking, MessageService messages, ContractService contracts, AchievementService achievements, AllianceWarService allianceWar, AscensionService ascension, WorldEventService worldEvents)
         {
-            _db = db; _economy = economy; _catalog = catalog; _buildQueue = buildQueue; _resources = resources; _researchCatalog = researchCatalog; _researchQueue = researchQueue; _factionModifiers = factionModifiers; _gateMissions = gateMissions; _localSectors = localSectors; _planetMarket = planetMarket; _shipyard = shipyard; _fleets = fleets; _espionage = espionage; _localCombat = localCombat; _alliances = alliances; _spaceCombat = spaceCombat; _ranking = ranking; _messages = messages; _contracts = contracts; _achievements = achievements; _allianceWar = allianceWar; _ascension = ascension;
+            _db = db; _economy = economy; _catalog = catalog; _buildQueue = buildQueue; _resources = resources; _researchCatalog = researchCatalog; _researchQueue = researchQueue; _factionModifiers = factionModifiers; _gateMissions = gateMissions; _localSectors = localSectors; _planetMarket = planetMarket; _shipyard = shipyard; _fleets = fleets; _espionage = espionage; _localCombat = localCombat; _alliances = alliances; _spaceCombat = spaceCombat; _ranking = ranking; _messages = messages; _contracts = contracts; _achievements = achievements; _allianceWar = allianceWar; _ascension = ascension; _worldEvents = worldEvents;
         }
 
         public IActionResult Overview() { return GameView("Overview"); }
@@ -188,6 +189,32 @@ namespace StargateGalacticCommand.Web.Controllers
                 _ascension.Ascend(user, playerBase, _economy.CreateStartingResources(), _economy.CreateStartingBuildings(), now);
                 _db.Reports.Add(new Report { UserId = userId, Title = "Erleuchtung erreicht", Body = "Basis und Forschung wurden auf den Ausgangsstand zurückgesetzt. Permanenter Produktionsbonus: " + Math.Round(_ascension.CalculateProductionBonus(user.AscensionCount) * 100, 0) + " %. Eine Spur alten Wissens bleibt zurück, echte Ancient-Technologie bleibt weiterhin selten.", CreatedAtUtc = now });
                 TempData["Message"] = "Erleuchtung abgeschlossen. Neuer Produktionsbonus aktiv.";
+            }
+            catch (Exception ex) when (ex is InvalidOperationException || ex is ArgumentException) { TempData["Error"] = ex.Message; }
+            _db.SaveChanges();
+            return RedirectToAction("Overview");
+        }
+
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public IActionResult ContributeToWorldEvent()
+        {
+            int userId = CurrentUserId();
+            var playerBase = LoadCurrentBase(userId);
+            var now = DateTime.UtcNow;
+            try
+            {
+                var worldEvent = _db.WorldEvents.SingleOrDefault(e => e.Status == WorldEventStatus.Active);
+                if (worldEvent == null) throw new InvalidOperationException("Aktuell läuft kein Weltevent.");
+                var contribution = _db.WorldEventContributions.SingleOrDefault(c => c.WorldEventId == worldEvent.Id && c.UserId == userId);
+                if (contribution == null)
+                {
+                    contribution = new WorldEventContribution { WorldEventId = worldEvent.Id, UserId = userId };
+                    _db.WorldEventContributions.Add(contribution);
+                }
+                _worldEvents.Contribute(worldEvent, contribution, playerBase, now);
+                GrantWorldEventRewards(worldEvent, now);
+                TempData["Message"] = worldEvent.Status == WorldEventStatus.Succeeded ? "Verteidigungsbeitrag geleistet. Das Weltevent wurde erfolgreich abgewehrt!" : "Verteidigungsbeitrag geleistet.";
             }
             catch (Exception ex) when (ex is InvalidOperationException || ex is ArgumentException) { TempData["Error"] = ex.Message; }
             _db.SaveChanges();
@@ -747,7 +774,8 @@ namespace StargateGalacticCommand.Web.Controllers
             int currentBaseScore = _ranking.CalculateBaseScore(playerBase);
             string ascensionBlockedReason = null;
             try { _ascension.ValidateCanAscend(currentBaseScore, user.LastAscendedAtUtc, now); } catch (InvalidOperationException ex) { ascensionBlockedReason = ex.Message; }
-            var model = new OverviewViewModel { User = user, Base = playerBase, Planet = planet, Hourly = _economy.CalculateHourlyProduction(playerBase.BuildingLevels, user.ResearchLevels, user.Faction, sectorBonus, user.AscensionCount), Sectors = planet.Sectors.OrderBy(s => s.Number).ToList(), Reports = _db.Reports.Where(r => r.UserId == user.Id).OrderByDescending(r => r.CreatedAtUtc).ToList(), Buildings = buildings, ActiveBuild = playerBase.BuildQueue.OrderBy(q => q.CompletesAtUtc).FirstOrDefault(), BuildQueue = playerBase.BuildQueue.OrderBy(q => q.CompletesAtUtc).ToList(), NowUtc = now, Researches = BuildResearchViewModels(user, playerBase), ActiveResearch = user.ResearchQueue.OrderBy(q => q.CompletesAtUtc).FirstOrDefault(), DefenseModifier = _factionModifiers.GetDefenseMultiplier(user.Faction), KnownGateAddresses = _db.KnownGateAddresses.Include(k => k.GateAddress).Where(k => k.UserId == user.Id).ToList(), MissionTeams = _db.MissionTeams.Where(t => t.UserId == user.Id).ToList(), ActiveGateMissions = _db.GateMissions.Include(m => m.GateAddress).Include(m => m.MissionTeam).Where(m => m.UserId == user.Id && !m.IsCompleted).ToList(), GateMissionReports = _db.GateMissionReports.Include(r => r.GateMission).ThenInclude(m => m.GateAddress).Where(r => r.UserId == user.Id).OrderByDescending(r => r.CreatedAtUtc).ToList(), ActiveSectorClaims = activeSectorClaims, ControlledSectors = controlledSectors, SectorBonus = sectorBonus, PlanetInfluences = BuildPlanetInfluences(planet.Id), OwnInfluence = _localSectors.CalculateInfluence(playerBase, user, controlledSectors, activeSectorClaims.Where(c => c.UserId == user.Id), now), ActiveMarketOrders = _db.PlanetMarketOrders.Include(o => o.SellerUser).Where(o => o.PlanetId == planet.Id && o.CompletedAtUtc == null && o.CancelledAtUtc == null && !o.ReservedReturned && o.ExpiresAtUtc > now).OrderBy(o => o.ExpiresAtUtc).ToList(), OwnMarketOrders = _db.PlanetMarketOrders.Where(o => o.PlanetId == planet.Id && o.SellerUserId == user.Id).OrderByDescending(o => o.CreatedAtUtc).ToList(), TradeReports = _db.TradeReports.Where(r => r.UserId == user.Id).OrderByDescending(r => r.CreatedAtUtc).ToList(), ShipDefinitions = BuildShipViewModels(user, playerBase), ActiveShipBuild = playerBase.ShipyardQueue.OrderBy(q => q.CompletesAtUtc).FirstOrDefault(), FleetTargets = _db.PlayerBases.Include(b=>b.User).Include(b=>b.PlanetSector).ThenInclude(s=>s.Planet).Where(b=>b.Id!=playerBase.Id).ToList(), ActiveFleets = _db.FleetMovements.Include(f=>f.TargetBase).ThenInclude(b=>b.PlanetSector).Where(f=>f.UserId==user.Id && f.Status!=FleetMovementStatus.Completed).ToList(), FleetReports = _db.FleetReports.Where(r=>r.UserId==user.Id).OrderByDescending(r=>r.CreatedAtUtc).ToList(), OrbitPresences = BuildOrbitPresences(planet.Id), EspionageTargets = _db.PlayerBases.Include(b=>b.User).Include(b=>b.Faction).Include(b=>b.PlanetSector).ThenInclude(s=>s.Planet).Where(b=>b.Id!=playerBase.Id).ToList(), IntelligenceReports = _db.IntelligenceReports.Where(r=>r.UserId==user.Id && !r.IsWarning).OrderByDescending(r=>r.CreatedAtUtc).ToList(), SpyWarnings = _db.IntelligenceReports.Where(r=>r.UserId==user.Id && r.IsWarning).OrderByDescending(r=>r.CreatedAtUtc).ToList(), ActiveLocalCombats = _db.LocalCombatMissions.Include(m=>m.PlanetSector).Where(m=>m.PlanetSector.PlanetId==planet.Id && !m.CompletedAtUtc.HasValue).OrderBy(m=>m.ResolvesAtUtc).ToList(), SectorBattleReports = _db.SectorBattleReports.Include(r=>r.PlanetSector).Where(r=>r.UserId==user.Id).OrderByDescending(r=>r.CreatedAtUtc).ToList() , OwnAlliance = _db.AllianceMembers.Include(m=>m.Alliance).ThenInclude(a=>a.Members).ThenInclude(m=>m.User).Where(m=>m.UserId==user.Id).Select(m=>m.Alliance).FirstOrDefault(), Alliances = _db.Alliances.Include(a=>a.Members).ThenInclude(m=>m.User).OrderBy(a=>a.Tag).ToList(), AllianceApplications = _db.AllianceApplications.Include(a=>a.User).Where(a=>a.AcceptedAtUtc==null&&a.RejectedAtUtc==null).ToList(), ActiveSpaceCombats = _db.SpaceCombatMissions.Include(m=>m.TargetBase).Where(m=>m.AttackerUserId==user.Id&&!m.CompletedAtUtc.HasValue).ToList(), SpaceCombatReports = _db.SpaceCombatReports.Where(r=>r.UserId==user.Id).OrderByDescending(r=>r.CreatedAtUtc).ToList(), DebrisFields = _db.DebrisFields.Include(d=>d.PlayerBase).ThenInclude(b=>b.PlanetSector).ThenInclude(s=>s.Planet).Where(d=>!d.IsRecycled).OrderByDescending(d=>d.CreatedAtUtc).ToList(), ProtectionStatus = protectionStatus, PlayerRankings = playerRankings, AllianceRankings = allianceRankings, GalaxyEntries = galaxyEntries, InboxMessages = inboxMessages, SentMessages = sentMessages, MessageablePlayers = messageablePlayers, UnreadReportCount = unreadReportCount, UnreadMessageCount = unreadMessageCount, ContractStatuses = BuildContractStatuses(user, now), AchievementStatuses = BuildAchievementStatuses(user, now), ActiveWarGoal = activeWarGoal, WarGoalCurrentSectors = warGoalCurrentSectors, CanManageWarGoal = canManageWarGoal, WarGoalPlanetOptions = warGoalPlanetOptions, AscensionCount = user.AscensionCount, AscensionBonusPercent = _ascension.CalculateProductionBonus(user.AscensionCount) * 100, CurrentBaseScore = currentBaseScore, CanAscendNow = ascensionBlockedReason == null, AscensionBlockedReason = ascensionBlockedReason };
+            EvaluateWorldEventState(user, now, out var activeWorldEvent, out var myWorldEventContribution, out var canContributeToWorldEvent, out var worldEventBlockedReason);
+            var model = new OverviewViewModel { User = user, Base = playerBase, Planet = planet, Hourly = _economy.CalculateHourlyProduction(playerBase.BuildingLevels, user.ResearchLevels, user.Faction, sectorBonus, user.AscensionCount), Sectors = planet.Sectors.OrderBy(s => s.Number).ToList(), Reports = _db.Reports.Where(r => r.UserId == user.Id).OrderByDescending(r => r.CreatedAtUtc).ToList(), Buildings = buildings, ActiveBuild = playerBase.BuildQueue.OrderBy(q => q.CompletesAtUtc).FirstOrDefault(), BuildQueue = playerBase.BuildQueue.OrderBy(q => q.CompletesAtUtc).ToList(), NowUtc = now, Researches = BuildResearchViewModels(user, playerBase), ActiveResearch = user.ResearchQueue.OrderBy(q => q.CompletesAtUtc).FirstOrDefault(), DefenseModifier = _factionModifiers.GetDefenseMultiplier(user.Faction), KnownGateAddresses = _db.KnownGateAddresses.Include(k => k.GateAddress).Where(k => k.UserId == user.Id).ToList(), MissionTeams = _db.MissionTeams.Where(t => t.UserId == user.Id).ToList(), ActiveGateMissions = _db.GateMissions.Include(m => m.GateAddress).Include(m => m.MissionTeam).Where(m => m.UserId == user.Id && !m.IsCompleted).ToList(), GateMissionReports = _db.GateMissionReports.Include(r => r.GateMission).ThenInclude(m => m.GateAddress).Where(r => r.UserId == user.Id).OrderByDescending(r => r.CreatedAtUtc).ToList(), ActiveSectorClaims = activeSectorClaims, ControlledSectors = controlledSectors, SectorBonus = sectorBonus, PlanetInfluences = BuildPlanetInfluences(planet.Id), OwnInfluence = _localSectors.CalculateInfluence(playerBase, user, controlledSectors, activeSectorClaims.Where(c => c.UserId == user.Id), now), ActiveMarketOrders = _db.PlanetMarketOrders.Include(o => o.SellerUser).Where(o => o.PlanetId == planet.Id && o.CompletedAtUtc == null && o.CancelledAtUtc == null && !o.ReservedReturned && o.ExpiresAtUtc > now).OrderBy(o => o.ExpiresAtUtc).ToList(), OwnMarketOrders = _db.PlanetMarketOrders.Where(o => o.PlanetId == planet.Id && o.SellerUserId == user.Id).OrderByDescending(o => o.CreatedAtUtc).ToList(), TradeReports = _db.TradeReports.Where(r => r.UserId == user.Id).OrderByDescending(r => r.CreatedAtUtc).ToList(), ShipDefinitions = BuildShipViewModels(user, playerBase), ActiveShipBuild = playerBase.ShipyardQueue.OrderBy(q => q.CompletesAtUtc).FirstOrDefault(), FleetTargets = _db.PlayerBases.Include(b=>b.User).Include(b=>b.PlanetSector).ThenInclude(s=>s.Planet).Where(b=>b.Id!=playerBase.Id).ToList(), ActiveFleets = _db.FleetMovements.Include(f=>f.TargetBase).ThenInclude(b=>b.PlanetSector).Where(f=>f.UserId==user.Id && f.Status!=FleetMovementStatus.Completed).ToList(), FleetReports = _db.FleetReports.Where(r=>r.UserId==user.Id).OrderByDescending(r=>r.CreatedAtUtc).ToList(), OrbitPresences = BuildOrbitPresences(planet.Id), EspionageTargets = _db.PlayerBases.Include(b=>b.User).Include(b=>b.Faction).Include(b=>b.PlanetSector).ThenInclude(s=>s.Planet).Where(b=>b.Id!=playerBase.Id).ToList(), IntelligenceReports = _db.IntelligenceReports.Where(r=>r.UserId==user.Id && !r.IsWarning).OrderByDescending(r=>r.CreatedAtUtc).ToList(), SpyWarnings = _db.IntelligenceReports.Where(r=>r.UserId==user.Id && r.IsWarning).OrderByDescending(r=>r.CreatedAtUtc).ToList(), ActiveLocalCombats = _db.LocalCombatMissions.Include(m=>m.PlanetSector).Where(m=>m.PlanetSector.PlanetId==planet.Id && !m.CompletedAtUtc.HasValue).OrderBy(m=>m.ResolvesAtUtc).ToList(), SectorBattleReports = _db.SectorBattleReports.Include(r=>r.PlanetSector).Where(r=>r.UserId==user.Id).OrderByDescending(r=>r.CreatedAtUtc).ToList() , OwnAlliance = _db.AllianceMembers.Include(m=>m.Alliance).ThenInclude(a=>a.Members).ThenInclude(m=>m.User).Where(m=>m.UserId==user.Id).Select(m=>m.Alliance).FirstOrDefault(), Alliances = _db.Alliances.Include(a=>a.Members).ThenInclude(m=>m.User).OrderBy(a=>a.Tag).ToList(), AllianceApplications = _db.AllianceApplications.Include(a=>a.User).Where(a=>a.AcceptedAtUtc==null&&a.RejectedAtUtc==null).ToList(), ActiveSpaceCombats = _db.SpaceCombatMissions.Include(m=>m.TargetBase).Where(m=>m.AttackerUserId==user.Id&&!m.CompletedAtUtc.HasValue).ToList(), SpaceCombatReports = _db.SpaceCombatReports.Where(r=>r.UserId==user.Id).OrderByDescending(r=>r.CreatedAtUtc).ToList(), DebrisFields = _db.DebrisFields.Include(d=>d.PlayerBase).ThenInclude(b=>b.PlanetSector).ThenInclude(s=>s.Planet).Where(d=>!d.IsRecycled).OrderByDescending(d=>d.CreatedAtUtc).ToList(), ProtectionStatus = protectionStatus, PlayerRankings = playerRankings, AllianceRankings = allianceRankings, GalaxyEntries = galaxyEntries, InboxMessages = inboxMessages, SentMessages = sentMessages, MessageablePlayers = messageablePlayers, UnreadReportCount = unreadReportCount, UnreadMessageCount = unreadMessageCount, ContractStatuses = BuildContractStatuses(user, now), AchievementStatuses = BuildAchievementStatuses(user, now), ActiveWarGoal = activeWarGoal, WarGoalCurrentSectors = warGoalCurrentSectors, CanManageWarGoal = canManageWarGoal, WarGoalPlanetOptions = warGoalPlanetOptions, AscensionCount = user.AscensionCount, AscensionBonusPercent = _ascension.CalculateProductionBonus(user.AscensionCount) * 100, CurrentBaseScore = currentBaseScore, CanAscendNow = ascensionBlockedReason == null, AscensionBlockedReason = ascensionBlockedReason, ActiveWorldEvent = activeWorldEvent, ActiveWorldEventName = activeWorldEvent == null ? null : _worldEvents.GetName(activeWorldEvent.Type), ActiveWorldEventDescription = activeWorldEvent == null ? null : _worldEvents.GetDescription(activeWorldEvent.Type), MyWorldEventContribution = myWorldEventContribution, CanContributeToWorldEvent = canContributeToWorldEvent, WorldEventBlockedReason = worldEventBlockedReason };
             _db.SaveChanges();
             return View(view, model);
         }
@@ -946,6 +974,64 @@ namespace StargateGalacticCommand.Web.Controllers
                 }
             }
             activeGoal = goal;
+        }
+
+        // Safe to call whenever worldEvent.Status == Succeeded, even repeatedly across requests: RewardGrantedAtUtc guards each contributor against a second payout.
+        private void GrantWorldEventRewards(WorldEvent worldEvent, DateTime now)
+        {
+            if (worldEvent.Status != WorldEventStatus.Succeeded) return;
+            var contributions = _db.WorldEventContributions.Where(c => c.WorldEventId == worldEvent.Id && c.TotalAmount > 0 && c.RewardGrantedAtUtc == null).ToList();
+            foreach (var contribution in contributions)
+            {
+                var contributorBase = _db.PlayerBases.Include(b => b.Resources).FirstOrDefault(b => b.UserId == contribution.UserId);
+                if (contributorBase == null) continue;
+                if (_worldEvents.TryGrantParticipationReward(worldEvent, contribution, contributorBase.Resources, now))
+                {
+                    _db.Reports.Add(new Report { UserId = contribution.UserId, Title = "Weltevent abgewehrt: " + _worldEvents.GetName(worldEvent.Type), Body = "Die gemeinsame Verteidigung war erfolgreich. Danke für deinen Beitrag von " + contribution.TotalAmount + " Punkten – Belohnung wurde gutgeschrieben.", CreatedAtUtc = now });
+                }
+            }
+        }
+
+        private void EvaluateWorldEventState(User user, DateTime now, out WorldEvent activeEvent, out int myContribution, out bool canContribute, out string blockedReason)
+        {
+            var worldEvent = _db.WorldEvents.SingleOrDefault(e => e.Status == WorldEventStatus.Active);
+            if (worldEvent != null && _worldEvents.ResolveIfExpired(worldEvent, now))
+            {
+                GrantWorldEventRewards(worldEvent, now);
+            }
+            if (worldEvent == null || worldEvent.Status != WorldEventStatus.Active)
+            {
+                var lastResolved = _db.WorldEvents.Where(e => e.ResolvedAtUtc != null).OrderByDescending(e => e.ResolvedAtUtc).FirstOrDefault();
+                var newEvent = _worldEvents.TryStartEvent(null, lastResolved, now);
+                if (newEvent != null)
+                {
+                    _db.WorldEvents.Add(newEvent);
+                    worldEvent = newEvent;
+                }
+                else
+                {
+                    worldEvent = null;
+                }
+            }
+
+            var resolvedActiveEvent = worldEvent != null && worldEvent.Status == WorldEventStatus.Active ? worldEvent : null;
+            activeEvent = resolvedActiveEvent;
+            myContribution = 0; canContribute = false; blockedReason = "Aktuell läuft kein Weltevent.";
+            if (resolvedActiveEvent == null) return;
+
+            var contribution = _db.WorldEventContributions.SingleOrDefault(c => c.WorldEventId == resolvedActiveEvent.Id && c.UserId == user.Id);
+            myContribution = contribution?.TotalAmount ?? 0;
+            if (contribution?.LastContributedAtUtc != null)
+            {
+                double hoursSinceLast = (now - contribution.LastContributedAtUtc.Value).TotalHours;
+                if (hoursSinceLast < WorldEventService.ContributionCooldownHours)
+                {
+                    blockedReason = "Nächster Beitrag in " + Math.Ceiling(WorldEventService.ContributionCooldownHours - hoursSinceLast) + "h möglich.";
+                    return;
+                }
+            }
+            canContribute = true;
+            blockedReason = null;
         }
 
         private System.Collections.Generic.IList<ResearchViewModel> BuildResearchViewModels(User user, PlayerBase playerBase)

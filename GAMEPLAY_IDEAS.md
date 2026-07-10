@@ -398,7 +398,7 @@ schneiden lassen.
 
 ## 4. Content-/Lore-getriebene Ideen
 
-### 4.1 Serverweite Ori-/Replikatoren-Events
+### 4.1 Serverweite Ori-/Replikatoren-Events — ✅ umgesetzt
 - **Konzept**: Periodisches, serverweites Bedrohungsereignis (z. B. eine
   "Replikatoren-Invasion" auf zufällig gewählten Gate-Adressen), das für
   seine Dauer PvP-Anreize senkt und Kooperationsanreize erhöht: Spieler aller
@@ -411,6 +411,32 @@ schneiden lassen.
 - **Balancing**: Event darf nicht permanent aktiv sein (Erschöpfung), klare
   Cooldown-Fenster zwischen Events; Belohnung sollte Teilnahme statt nur
   "Sieg" belohnen, damit auch kleinere Spieler etwas davon haben.
+- **Tatsächliche Umsetzung**: Kein Admin-/Zeitplan-Trigger nötig – gleiches
+  "kein Cronjob"-Muster wie bei allen anderen Live-Feature dieser Session:
+  `WorldEventService.TryStartEvent` wird bei jedem Seitenaufruf eines
+  beliebigen Spielers geprüft (`GameController.EvaluateWorldEventState`) und
+  startet automatisch ein neues Event, sobald keines aktiv ist und die
+  Cooldown-Frist (`CooldownHoursBetweenEvents` = 24h) seit dem letzten
+  Ereignisende verstrichen ist; Typ alterniert deterministisch zwischen
+  `ReplicatorInvasion` und `OriIncursion` statt zufällig. Statt einer neuen
+  Gate-Missionsvariante (hätte `GateMissionService` angefasst) gibt es eine
+  eigenständige "Verteidigungsbeitrag"-Aktion
+  (`GameController.ContributeToWorldEvent`): kostet Versorgungsgüter +
+  Personal, erhöht den globalen Fortschritt um einen festen Betrag, mit
+  eigenem Cooldown pro Spieler (`ContributionCooldownHours` = 4h) gegen
+  Spam. Läuft das Zeitfenster (`EventDurationHours` = 48h) ab, bevor das
+  Ziel (`GoalProgress` = 300) erreicht ist, endet das Event als `Failed`
+  ohne Bestrafung – wird das Ziel erreicht, als `Succeeded`. Belohnung
+  (`ParticipationReward`) geht an **jeden**, der mindestens einmal
+  beigetragen hat (nicht nur an "Gewinner"), exakt wie im Balancing-Hinweis
+  gefordert; `WorldEventContribution.RewardGrantedAtUtc` verhindert
+  Doppelauszahlung auch wenn mehrere Spieler gleichzeitig die
+  Abschluss-Prüfung auslösen. Neue Sektion „Weltbedrohung“ auf der
+  Übersichtsseite zeigt Fortschritt, Zeitfenster und eigenen Beitrag.
+  Abgedeckt durch 15 neue Tests (`WorldEventServiceTests`); Vollzyklus
+  (Event startet automatisch beim ersten Seitenaufruf → Beitrag leisten →
+  Cooldown-Sperre beim zweiten Versuch) manuell gegen die laufende App
+  verifiziert.
 
 ### 4.2 Zufällige Anomalien auf Gate-Adressen (Ancient/Asgard-Encounter)
 - **Konzept**: Seltene High-Value-Encounter bei `AnalyzeAddress`/`Explore`-
@@ -456,4 +482,10 @@ Mittlerer Aufwand, hoher Bindungseffekt:
 5. **1.3 Einfluss-Zerfall** ✅
 
 Größerer Aufwand / mehr Design-Abstimmung nötig, aber hohe Langzeitwirkung:
-6. **3.1 Allianz-Kriege** ✅, **2.1 Ascension** ✅, **4.1 Weltevents**
+6. **3.1 Allianz-Kriege** ✅, **2.1 Ascension** ✅, **4.1 Weltevents** ✅
+
+Alle sechs priorisierten Punkte sind damit umgesetzt. Verbleibend aus dem
+Gesamt-Backlog (nicht priorisiert): 1.2 (Espionage-Köder), 1.4
+(Handelsrouten), 2.2 (Season-Pässe), 2.5 (Rollen-Skilltrees), 3.2
+(Mentoren-System), 3.3 (Diplomatie-Layer), 4.2 (Ancient/Asgard-Anomalien),
+4.3 (Fraktionsspezifische Questlines).

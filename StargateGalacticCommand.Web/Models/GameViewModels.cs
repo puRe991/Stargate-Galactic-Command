@@ -69,6 +69,12 @@ namespace StargateGalacticCommand.Web.Models
         public int CurrentBaseScore { get; set; }
         public bool CanAscendNow { get; set; }
         public string AscensionBlockedReason { get; set; }
+        public WorldEvent ActiveWorldEvent { get; set; }
+        public string ActiveWorldEventName { get; set; }
+        public string ActiveWorldEventDescription { get; set; }
+        public int MyWorldEventContribution { get; set; }
+        public bool CanContributeToWorldEvent { get; set; }
+        public string WorldEventBlockedReason { get; set; }
     }
 
     public class AchievementStatusViewModel
