@@ -27,6 +27,18 @@ namespace StargateGalacticCommand.Tests
         }
 
         [Fact]
+        public void ApplyOfflineProduction_AppliesAscensionBonusWhenUserIsLoaded()
+        {
+            var service = new EconomyService();
+            var start = new DateTime(2026, 1, 1, 0, 0, 0, DateTimeKind.Utc);
+            var user = new User { AscensionCount = 1 };
+            var playerBase = new PlayerBase { User = user, Resources = service.CreateStartingResources(), BuildingLevels = new BuildingLevels { CommandCenter = 1, NaquadahRefinery = 2 }, LastResourceUpdateUtc = start };
+            service.ApplyOfflineProduction(playerBase, start.AddHours(2));
+            // Ohne Bonus wären es 620 (siehe ApplyOfflineProduction_AddsResourcesForElapsedTime); der Ascension-Bonus (+3 %) erhöht den stündlichen Ertrag von 60 auf 61.
+            Assert.Equal(622, playerBase.Resources.Naquadah);
+        }
+
+        [Fact]
         public void ApplyOfflineProduction_DoesNotChangeResourcesWhenNoTimeElapsed()
         {
             var service = new EconomyService();

@@ -6,12 +6,16 @@ namespace StargateGalacticCommand.Core.Services
     public class EconomyService
     {
         private readonly FactionModifierService _factionModifiers;
+        private readonly AscensionService _ascension;
 
-        public EconomyService() : this(new FactionModifierService()) { }
+        public EconomyService() : this(new FactionModifierService(), new AscensionService()) { }
 
-        public EconomyService(FactionModifierService factionModifiers)
+        public EconomyService(FactionModifierService factionModifiers) : this(factionModifiers, new AscensionService()) { }
+
+        public EconomyService(FactionModifierService factionModifiers, AscensionService ascension)
         {
             _factionModifiers = factionModifiers ?? throw new ArgumentNullException(nameof(factionModifiers));
+            _ascension = ascension ?? throw new ArgumentNullException(nameof(ascension));
         }
 
         public const int StartNaquadah = 500, StartTrinium = 500, StartSupplies = 750, StartEnergy = 100, StartPersonnel = 50, StartIntel = 0;
@@ -38,6 +42,11 @@ namespace StargateGalacticCommand.Core.Services
 
         public ResourceProduction CalculateHourlyProduction(BuildingLevels levels, ResearchLevels researchLevels, Faction faction, SectorBonus sectorBonus)
         {
+            return CalculateHourlyProduction(levels, researchLevels, faction, sectorBonus, 0);
+        }
+
+        public ResourceProduction CalculateHourlyProduction(BuildingLevels levels, ResearchLevels researchLevels, Faction faction, SectorBonus sectorBonus, int ascensionCount)
+        {
             if (levels == null) throw new ArgumentNullException("levels");
             double naquadahMultiplier = 1;
             double triniumMultiplier = 1;
@@ -53,14 +62,15 @@ namespace StargateGalacticCommand.Core.Services
                 personnelMultiplier = 1 + Math.Max(0, sectorBonus.PersonnelMultiplier);
                 intelMultiplier *= 1 + Math.Max(0, sectorBonus.IntelMultiplier);
             }
+            double ascensionMultiplier = 1 + _ascension.CalculateProductionBonus(ascensionCount);
             return new ResourceProduction
             {
-                Naquadah = ScaleProduction(30 * Math.Max(0, levels.NaquadahRefinery), naquadahMultiplier),
-                Trinium = ScaleProduction(25 * Math.Max(0, levels.TriniumMine), triniumMultiplier),
-                Supplies = ScaleProduction(35 * Math.Max(0, levels.SupplyDepot), suppliesMultiplier),
-                Energy = ScaleProduction(20 * Math.Max(0, levels.EnergyGenerator), energyMultiplier),
-                Personnel = ScaleProduction(2 * Math.Max(0, levels.CommandCenter), personnelMultiplier),
-                Intel = ScaleProduction(1 * Math.Max(0, levels.SensorStation), intelMultiplier)
+                Naquadah = ScaleProduction(30 * Math.Max(0, levels.NaquadahRefinery), naquadahMultiplier * ascensionMultiplier),
+                Trinium = ScaleProduction(25 * Math.Max(0, levels.TriniumMine), triniumMultiplier * ascensionMultiplier),
+                Supplies = ScaleProduction(35 * Math.Max(0, levels.SupplyDepot), suppliesMultiplier * ascensionMultiplier),
+                Energy = ScaleProduction(20 * Math.Max(0, levels.EnergyGenerator), energyMultiplier * ascensionMultiplier),
+                Personnel = ScaleProduction(2 * Math.Max(0, levels.CommandCenter), personnelMultiplier * ascensionMultiplier),
+                Intel = ScaleProduction(1 * Math.Max(0, levels.SensorStation), intelMultiplier * ascensionMultiplier)
             };
         }
 
@@ -77,7 +87,7 @@ namespace StargateGalacticCommand.Core.Services
             if (nowUtc <= playerBase.LastResourceUpdateUtc) return;
 
             double hours = (nowUtc - playerBase.LastResourceUpdateUtc).TotalHours;
-            ResourceProduction hourly = CalculateHourlyProduction(playerBase.BuildingLevels, playerBase.User == null ? null : playerBase.User.ResearchLevels, playerBase.Faction, sectorBonus);
+            ResourceProduction hourly = CalculateHourlyProduction(playerBase.BuildingLevels, playerBase.User == null ? null : playerBase.User.ResearchLevels, playerBase.Faction, sectorBonus, playerBase.User == null ? 0 : playerBase.User.AscensionCount);
             playerBase.Resources.Naquadah = AddCapped(playerBase.Resources.Naquadah, hourly.Naquadah, hours);
             playerBase.Resources.Trinium = AddCapped(playerBase.Resources.Trinium, hourly.Trinium, hours);
             playerBase.Resources.Supplies = AddCapped(playerBase.Resources.Supplies, hourly.Supplies, hours);

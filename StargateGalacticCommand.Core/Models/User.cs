@@ -15,6 +15,8 @@ namespace StargateGalacticCommand.Core.Models
         public DateTime CreatedAtUtc { get; set; }
         public bool IsNpc { get; set; }
         public DateTime? LastSeenAtUtc { get; set; }
+        public int AscensionCount { get; set; }
+        public DateTime? LastAscendedAtUtc { get; set; }
         public ICollection<PlayerBase> Bases { get; set; }
         public ICollection<Report> Reports { get; set; }
         public ResearchLevels ResearchLevels { get; set; }

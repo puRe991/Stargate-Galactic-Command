@@ -36,7 +36,8 @@ namespace StargateGalacticCommand.Core.Services
                     AllianceTag = allianceTagByUserId != null && allianceTagByUserId.TryGetValue(g.Key, out var tag) ? tag : null,
                     BaseCount = g.Count(),
                     Score = g.Sum(CalculateBaseScore),
-                    IsOnline = g.First().User.LastSeenAtUtc.HasValue && g.First().User.LastSeenAtUtc.Value >= now - onlineWindow
+                    IsOnline = g.First().User.LastSeenAtUtc.HasValue && g.First().User.LastSeenAtUtc.Value >= now - onlineWindow,
+                    AscensionCount = g.First().User.AscensionCount
                 })
                 .OrderByDescending(e => e.Score)
                 .ToList();

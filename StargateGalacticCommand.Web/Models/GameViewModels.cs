@@ -64,6 +64,11 @@ namespace StargateGalacticCommand.Web.Models
         public int WarGoalCurrentSectors { get; set; }
         public bool CanManageWarGoal { get; set; }
         public IList<Planet> WarGoalPlanetOptions { get; set; }
+        public int AscensionCount { get; set; }
+        public double AscensionBonusPercent { get; set; }
+        public int CurrentBaseScore { get; set; }
+        public bool CanAscendNow { get; set; }
+        public string AscensionBlockedReason { get; set; }
     }
 
     public class AchievementStatusViewModel

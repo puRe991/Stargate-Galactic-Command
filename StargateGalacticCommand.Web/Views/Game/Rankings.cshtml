@@ -7,7 +7,7 @@
 <section class="panel">
     <h2>Kommandeure</h2>
     <table>
-        <thead><tr><th>#</th><th>Status</th><th>Spieler</th><th>Fraktion</th><th>Allianz</th><th>Basen</th><th>Score</th></tr></thead>
+        <thead><tr><th>#</th><th>Status</th><th>Spieler</th><th>Fraktion</th><th>Allianz</th><th>Basen</th><th>Score</th><th>Erleuchtung</th></tr></thead>
         <tbody>
         @{ int rank = 0; }
         @foreach (var p in Model.PlayerRankings)
@@ -21,6 +21,7 @@
                 <td>@(p.AllianceTag ?? "-")</td>
                 <td>@p.BaseCount</td>
                 <td>@p.Score</td>
+                <td>@(p.AscensionCount > 0 ? string.Concat(Enumerable.Repeat("✦", p.AscensionCount)) : "")</td>
             </tr>
         }
         </tbody>
