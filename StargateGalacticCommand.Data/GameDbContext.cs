@@ -58,6 +58,7 @@ namespace StargateGalacticCommand.Data
         public DbSet<CharacterSkills> CharacterSkills { get; set; }
         public DbSet<AllianceDiplomacyStatus> AllianceDiplomacyStatuses { get; set; }
         public DbSet<QuestlineStepProgress> QuestlineStepProgresses { get; set; }
+        public DbSet<LoginAttempt> LoginAttempts { get; set; }
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
@@ -206,6 +207,8 @@ namespace StargateGalacticCommand.Data
             modelBuilder.Entity<AllianceDiplomacyStatus>().HasOne(d => d.AllianceB).WithMany().HasForeignKey(d => d.AllianceBId).OnDelete(DeleteBehavior.Restrict);
             modelBuilder.Entity<QuestlineStepProgress>().HasOne(p => p.User).WithMany().HasForeignKey(p => p.UserId).OnDelete(DeleteBehavior.Cascade);
             modelBuilder.Entity<QuestlineStepProgress>().HasIndex(p => new { p.UserId, p.StepKey }).IsUnique();
+            modelBuilder.Entity<LoginAttempt>().HasIndex(a => new { a.ServerId, a.UsernameKey, a.AttemptedAtUtc });
+            modelBuilder.Entity<LoginAttempt>().HasIndex(a => new { a.ServerId, a.IpHash, a.AttemptedAtUtc });
         }
     }
 }
