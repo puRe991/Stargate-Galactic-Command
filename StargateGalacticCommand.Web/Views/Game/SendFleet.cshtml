@@ -1,6 +1,8 @@
 @model StargateGalacticCommand.Web.Models.OverviewViewModel
 @{ ViewData["Title"] = "Flotte senden"; }
 <h1>Flotte senden</h1>
+@if (TempData["Message"] != null) { <div class="notice success">@TempData["Message"]</div> }
+@if (TempData["Error"] != null) { <div class="notice error">@TempData["Error"]</div> }
 <form method="post" asp-controller="Game" asp-action="StartFleet">@Html.AntiForgeryToken()
 <label>Ziel</label><select name="targetBaseId">@foreach (var b in Model.FleetTargets) { <option value="@b.Id">@b.Name (@b.User.UserName, @b.PlanetSector.Planet.Name Sektor @b.PlanetSector.Number)</option> }</select>
 <label>Mission</label><select name="missionType"><option value="Transport">Transport</option><option value="Station">Stationieren</option></select>
@@ -33,4 +35,44 @@ else
     <label>Schiff</label><select name="shipType">@foreach (var s in Model.ShipDefinitions.Where(x => x.Available > 0)) { <option value="@s.Type">@s.Name (@s.Available)</option> }</select>
     <label>Anzahl</label><input name="shipCount" type="number" min="1" value="1" />
     <button>Bergen</button></form>
+}
+<h2>Handelsroute einrichten</h2>
+<p>Eine Handelsroute liefert automatisch alle N Stunden die festgelegte Ladung an das Ziel, ohne dass jeder Transport einzeln bestätigt werden muss. Die eingesetzten Schiffe müssen bis zum nächsten Fälligkeitstermin zurückgekehrt sein, sonst wird der Zyklus übersprungen und beim nächsten Seitenaufruf erneut versucht. Maximal @StargateGalacticCommand.Core.Services.TradeRouteService.MaxActiveRoutesPerUser aktive Routen gleichzeitig.</p>
+<form method="post" asp-controller="Game" asp-action="CreateTradeRoute">@Html.AntiForgeryToken()
+<label>Ziel</label><select name="targetBaseId">@foreach (var b in Model.FleetTargets) { <option value="@b.Id">@b.Name (@b.User.UserName, @b.PlanetSector.Planet.Name Sektor @b.PlanetSector.Number)</option> }</select>
+<label>Schiff</label><select name="shipType">@foreach (var s in Model.ShipDefinitions.Where(x => x.Available > 0)) { <option value="@s.Type">@s.Name (@s.Available)</option> }</select>
+<label>Anzahl</label><input name="shipCount" type="number" min="1" value="1" />
+<label>Naquadah</label><input name="naquadah" type="number" min="0" value="0" /><label>Trinium</label><input name="trinium" type="number" min="0" value="0" /><label>Supplies</label><input name="supplies" type="number" min="0" value="0" /><label>Energie</label><input name="energy" type="number" min="0" value="0" /><label>Personal</label><input name="personnel" type="number" min="0" value="0" />
+<label>Intervall (Stunden)</label><input name="intervalHours" type="number" min="@StargateGalacticCommand.Core.Services.TradeRouteService.MinIntervalHours" max="@StargateGalacticCommand.Core.Services.TradeRouteService.MaxIntervalHours" value="6" />
+<button>Route einrichten</button></form>
+<h3>Eigene Handelsrouten</h3>
+@if (!Model.TradeRoutes.Any())
+{
+    <p>Keine Handelsrouten eingerichtet.</p>
+}
+else
+{
+    <table><thead><tr><th>Ziel</th><th>Ladung</th><th>Intervall</th><th>Status</th><th>Nächster Transport</th><th>Aktion</th></tr></thead><tbody>
+    @foreach (var r in Model.TradeRoutes)
+    {
+        <tr>
+            <td>@r.TargetBase.Name</td>
+            <td>N @r.Naquadah, T @r.Trinium, V @r.Supplies, E @r.Energy, P @r.Personnel (@r.ShipCount x @r.ShipType)</td>
+            <td>@(r.IntervalHours)h</td>
+            <td>@(r.IsActive ? "aktiv" : "pausiert")</td>
+            <td>@r.NextDueAtUtc.ToString("u")</td>
+            <td>
+                @if (r.IsActive)
+                {
+                    <form method="post" asp-controller="Game" asp-action="PauseTradeRoute">@Html.AntiForgeryToken()<input type="hidden" name="routeId" value="@r.Id" /><button type="submit">Pausieren</button></form>
+                }
+                else
+                {
+                    <form method="post" asp-controller="Game" asp-action="ResumeTradeRoute">@Html.AntiForgeryToken()<input type="hidden" name="routeId" value="@r.Id" /><button type="submit">Fortsetzen</button></form>
+                }
+                <form method="post" asp-controller="Game" asp-action="DeleteTradeRoute">@Html.AntiForgeryToken()<input type="hidden" name="routeId" value="@r.Id" /><button type="submit">Löschen</button></form>
+            </td>
+        </tr>
+    }
+    </tbody></table>
 }

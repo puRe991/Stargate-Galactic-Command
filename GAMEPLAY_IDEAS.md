@@ -143,8 +143,8 @@ schneiden lassen.
   nicht mit einem zweiten, unabhängigen Verfallstimer zu verkomplizieren.
   Abgedeckt durch 6 neue/angepasste Tests in `LocalSectorServiceTests`.
 
-### 1.4 Handelsrouten statt Einzeltrades
-- **Ist-Zustand**: `PlanetMarketOrder`/`PlanetMarketService` bilden
+### 1.4 Handelsrouten statt Einzeltrades — ✅ umgesetzt (ohne Abfangrisiko)
+- **Ist-Zustand (vor Umsetzung)**: `PlanetMarketOrder`/`PlanetMarketService` bilden
   Einzelangebote mit `ExpiresAtUtc` ab – jeder Trade ist ein manueller,
   einmaliger Vorgang.
 - **Konzept**: "Handelsroute" als wiederkehrender, automatisierter Auftrag
@@ -165,6 +165,31 @@ schneiden lassen.
   Übersicht-Laden fällige Routen abwickelt.
 - **Balancing**: Eskorte (Schiffe/Verteidigung) sollte Abfangchance senken,
   damit Route-Sicherheit eine echte Entscheidung ist, nicht nur ein Passiv-Feature.
+- **Tatsächliche Umsetzung**: Neues Modell `TradeRoute` (Quelle, Ziel,
+  Ressourcenmengen, Schiffstyp/-anzahl, Intervall, aktiv/pausiert,
+  `NextDueAtUtc`). Kein Scheduler/Cronjob nötig – gleiches Muster wie bei
+  allen anderen Live-Features: `GameController.ExecuteDueTradeRoutes` prüft
+  bei jedem Laden der eigenen Basisseiten fällige Routen und stößt bei
+  Fälligkeit ganz regulär `FleetService.Start` mit `FleetMissionType.
+  Transport` an – eine Handelsroute ist technisch ein sich selbst
+  wiederholender Transportflug, keine neue Transportmechanik. Sind die
+  eingesetzten Schiffe noch unterwegs oder reichen die Ressourcen nicht,
+  wird der Zyklus übersprungen (`NextDueAtUtc` bleibt unverändert) und beim
+  nächsten Laden automatisch erneut versucht – kein verlorener Zyklus.
+  Maximal `MaxActiveRoutesPerUser` (5) aktive Routen gleichzeitig, Intervall
+  zwischen 2 und 168 Stunden. Neuer Abschnitt „Handelsroute einrichten“ auf
+  der Seite „Flotte senden“ mit Verwaltung (Pausieren/Fortsetzen/Löschen).
+  **Bewusst nicht umgesetzt**: das Abfangrisiko durch andere Spieler (Lucian
+  Alliance/Piraterie). Das würde eine neue Kampfmechanik erfordern, die
+  Flotten *während des Fluges* abfängt – im Unterschied zu allen bisherigen
+  Kampfsystemen dieses Projekts, die ausschließlich stationäre Basen/Sektoren
+  als Ziel kennen. Eigenes, deutlich größeres Ticket. Abgedeckt durch 8 neue
+  Tests (`TradeRouteServiceTests`); Vollzyklus (Route zwischen zwei
+  Spielerbasen einrichten, Anzeige, Pausieren, Fortsetzen, Löschen, sowie
+  der stille Fehlschlag bei fehlenden Schiffen ohne Serverfehler) manuell
+  gegen die laufende App mit zwei Testaccounts verifiziert. Dabei auch eine
+  vorbestehende Lücke behoben, dass „Flotte senden“ ebenfalls keine
+  `TempData`-Meldungen anzeigte.
 
 ### 1.5 Trümmerfeld-Recycling (Bergungsflotten) — ✅ umgesetzt
 - **Ist-Zustand (vor Umsetzung)**: `DebrisField` wird bereits nach jedem `SpaceCombatService`-
@@ -528,8 +553,8 @@ Größerer Aufwand / mehr Design-Abstimmung nötig, aber hohe Langzeitwirkung:
 6. **3.1 Allianz-Kriege** ✅, **2.1 Ascension** ✅, **4.1 Weltevents** ✅
 
 Alle sechs priorisierten Punkte sind damit umgesetzt. Danach zusätzlich
-umgesetzt: **4.2 Ancient/Asgard-Anomalien** ✅, **1.2 Espionage-Köder** ✅.
-Verbleibend aus dem Gesamt-Backlog (nicht priorisiert): 1.4
-(Handelsrouten), 2.2 (Season-Pässe), 2.5 (Rollen-Skilltrees), 3.2
+umgesetzt: **4.2 Ancient/Asgard-Anomalien** ✅, **1.2 Espionage-Köder** ✅,
+**1.4 Handelsrouten** ✅. Verbleibend aus dem Gesamt-Backlog (nicht
+priorisiert): 2.2 (Season-Pässe), 2.5 (Rollen-Skilltrees), 3.2
 (Mentoren-System), 3.3 (Diplomatie-Layer), 4.3 (Fraktionsspezifische
 Questlines).

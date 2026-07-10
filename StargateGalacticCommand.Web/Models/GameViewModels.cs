@@ -76,6 +76,7 @@ namespace StargateGalacticCommand.Web.Models
         public bool CanContributeToWorldEvent { get; set; }
         public string WorldEventBlockedReason { get; set; }
         public DecoyProfile OwnDecoyProfile { get; set; }
+        public IList<TradeRoute> TradeRoutes { get; set; }
     }
 
     public class AchievementStatusViewModel

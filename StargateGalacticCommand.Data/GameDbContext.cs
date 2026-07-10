@@ -53,6 +53,7 @@ namespace StargateGalacticCommand.Data
         public DbSet<WorldEvent> WorldEvents { get; set; }
         public DbSet<WorldEventContribution> WorldEventContributions { get; set; }
         public DbSet<DecoyProfile> DecoyProfiles { get; set; }
+        public DbSet<TradeRoute> TradeRoutes { get; set; }
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
@@ -130,6 +131,10 @@ namespace StargateGalacticCommand.Data
             modelBuilder.Entity<EspionageMission>().HasOne(m => m.TargetBase).WithMany().HasForeignKey(m => m.TargetBaseId).OnDelete(DeleteBehavior.Restrict);
             modelBuilder.Entity<DecoyProfile>().HasIndex(d => d.PlayerBaseId).IsUnique();
             modelBuilder.Entity<DecoyProfile>().HasOne(d => d.PlayerBase).WithMany().HasForeignKey(d => d.PlayerBaseId).OnDelete(DeleteBehavior.Cascade);
+            modelBuilder.Entity<TradeRoute>().Property(r => r.ShipType).HasConversion<int>();
+            modelBuilder.Entity<TradeRoute>().HasOne(r => r.User).WithMany().HasForeignKey(r => r.UserId).OnDelete(DeleteBehavior.Cascade);
+            modelBuilder.Entity<TradeRoute>().HasOne(r => r.OriginBase).WithMany().HasForeignKey(r => r.OriginBaseId).OnDelete(DeleteBehavior.Restrict);
+            modelBuilder.Entity<TradeRoute>().HasOne(r => r.TargetBase).WithMany().HasForeignKey(r => r.TargetBaseId).OnDelete(DeleteBehavior.Restrict);
             modelBuilder.Entity<IntelligenceReport>().HasOne(r => r.EspionageMission).WithMany().HasForeignKey(r => r.EspionageMissionId).OnDelete(DeleteBehavior.SetNull);
             modelBuilder.Entity<LocalCombatMission>().Property(m => m.Objective).HasConversion<int>();
             modelBuilder.Entity<LocalCombatMission>().HasOne(m => m.AttackerUser).WithMany().HasForeignKey(m => m.AttackerUserId).OnDelete(DeleteBehavior.Restrict);
