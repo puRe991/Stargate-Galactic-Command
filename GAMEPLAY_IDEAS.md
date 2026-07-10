@@ -55,8 +55,8 @@ schneiden lassen.
   Schmuggeloperation, …) sind bewusst nicht Teil dieser ersten Umsetzung –
   eigenes, größeres Ticket.
 
-### 1.2 Espionage-Gegenmaßnahmen: Köder & Falschinformationen
-- **Ist-Zustand**: `CounterIntelligenceLevel` (`Low`/`Guarded`/`Hardened`/
+### 1.2 Espionage-Gegenmaßnahmen: Köder & Falschinformationen — ✅ umgesetzt
+- **Ist-Zustand (vor Umsetzung)**: `CounterIntelligenceLevel` (`Low`/`Guarded`/`Hardened`/
   `Lockdown`) existiert bereits und wird in `EspionageService` als reiner
   Abwehr-Multiplikator genutzt (Spionageerfolg sinkt, `SpyDefenseResult`
   meldet ggf. Enttarnung des Spions).
@@ -76,6 +76,30 @@ schneiden lassen.
 - **Balancing**: Aufdeckbar machen – wiederholte Angriffe mit hoher eigener
   Spionagestufe sollten die Täuschung mit steigender Wahrscheinlichkeit
   durchschauen, sonst wird Spionage komplett entwertet.
+- **Tatsächliche Umsetzung**: Eigene Tabelle `DecoyProfile` (1:1 an
+  `PlayerBase`) statt JSON-Feld, mit Fake-Ressourcenwerten und einem
+  Fake-Schiffs-Gesamtwert sowie einem verbrauchbaren `Charges`-Zähler
+  (max. 3). `EspionageService.ArmDecoy` "lädt" pro Aufruf genau einen
+  Einsatz gegen `DecoyChargeIntelCost` (40 Intel) auf – kein Dauerbuff,
+  exakt wie gefordert. `EspionageMission` bekommt ein neues Feld
+  `TargetCounterIntelligenceLevel`, das bereits bei `StartMission`
+  gesetzt wird (der Wert wurde vorher berechnet, aber verworfen). In
+  `CreateReport` greift die Täuschung nur, wenn der Köder aktiv ist,
+  Charges > 0 sind und die Stufe mindestens `Hardened` ist;
+  `CalculateDeceptionChance` startet bei 60 % und sinkt um 3 Prozentpunkte
+  pro Sensorik-/Tarntechnologie-Punkt des Angreifers (Boden bei 10 %) –
+  erfüllt den Balancing-Hinweis direkt als Formel statt als vage Absicht.
+  Bei Erfolg wird der Bericht mit den Köderwerten befüllt und
+  `IntelligenceReport.IsSuspectedDecoy = true` gesetzt; der **Angreifer**
+  sieht im Bericht einen vagen Hinweis auf mögliche Falschinformation
+  (nicht der Verteidiger – die Bluff-Mechanik funktioniert nur, wenn der
+  Spion selbst im Unklaren bleibt, welche Werte manipuliert wurden). Neuer
+  Abschnitt „Köderprofil“ auf der Geheimdienst-Seite zum Aufladen; dabei
+  auch eine vorbestehende Lücke behoben, dass diese Seite `TempData`-
+  Meldungen (Erfolg/Fehler) bisher gar nicht anzeigte. Abgedeckt durch 7
+  neue Tests (`EspionageServiceTests`); Köder-Aufladen-Formular und
+  korrekt sichtbare Fehlermeldung bei zu wenig Intel manuell gegen die
+  laufende App verifiziert.
 
 ### 1.3 Dynamische Sektorkontrolle: Einfluss-Zerfall — ✅ umgesetzt
 - **Ist-Zustand (vor Umsetzung)**: `SectorControl` speichert nur `ControlledAtUtc`, kein
@@ -503,8 +527,9 @@ Mittlerer Aufwand, hoher Bindungseffekt:
 Größerer Aufwand / mehr Design-Abstimmung nötig, aber hohe Langzeitwirkung:
 6. **3.1 Allianz-Kriege** ✅, **2.1 Ascension** ✅, **4.1 Weltevents** ✅
 
-Alle sechs priorisierten Punkte sind damit umgesetzt. Verbleibend aus dem
-Gesamt-Backlog (nicht priorisiert): 1.2 (Espionage-Köder), 1.4
+Alle sechs priorisierten Punkte sind damit umgesetzt. Danach zusätzlich
+umgesetzt: **4.2 Ancient/Asgard-Anomalien** ✅, **1.2 Espionage-Köder** ✅.
+Verbleibend aus dem Gesamt-Backlog (nicht priorisiert): 1.4
 (Handelsrouten), 2.2 (Season-Pässe), 2.5 (Rollen-Skilltrees), 3.2
-(Mentoren-System), 3.3 (Diplomatie-Layer), 4.2 (Ancient/Asgard-Anomalien),
-4.3 (Fraktionsspezifische Questlines).
+(Mentoren-System), 3.3 (Diplomatie-Layer), 4.3 (Fraktionsspezifische
+Questlines).

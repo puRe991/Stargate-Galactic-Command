@@ -10,6 +10,12 @@ namespace StargateGalacticCommand.Core.Services
         private readonly ResourceService _resources;
         public EspionageService(ResourceService resources) { _resources = resources ?? throw new ArgumentNullException("resources"); }
 
+        public const int DecoyChargeIntelCost = 40;
+        public const int MaxDecoyCharges = 3;
+        public const double BaseDeceptionChance = 0.6;
+        public const double DeceptionChancePerAttackerSkillPoint = 0.03;
+        public const double MinDeceptionChance = 0.1;
+
         public EspionageMission StartMission(User user, PlayerBase source, PlayerBase target, EspionageMissionType type, int intelSpent, DateTime now)
         {
             if (user == null) throw new ArgumentNullException("user");
@@ -26,19 +32,62 @@ namespace StargateGalacticCommand.Core.Services
             _resources.Spend(source.Resources, new BuildCost { Intel = intelSpent });
             var risk = CalculateDetectionRisk(user, source, target, type, intelSpent);
             var depth = CalculateReportDepth(user, source, target, type, intelSpent);
-            return new EspionageMission { UserId = user.Id, User = user, SourceBaseId = source.Id, SourceBase = source, TargetBaseId = target.Id, TargetBase = target, MissionType = type, IntelSpent = intelSpent, ReportDepth = depth, DetectionRiskPercent = risk.DetectionRiskPercent, WasDetected = risk.WasDetected, CreatedAtUtc = now };
+            return new EspionageMission { UserId = user.Id, User = user, SourceBaseId = source.Id, SourceBase = source, TargetBaseId = target.Id, TargetBase = target, MissionType = type, IntelSpent = intelSpent, ReportDepth = depth, DetectionRiskPercent = risk.DetectionRiskPercent, WasDetected = risk.WasDetected, TargetCounterIntelligenceLevel = risk.Level, CreatedAtUtc = now };
         }
 
-        public IntelligenceReport CreateReport(EspionageMission mission, IEnumerable<PlanetSector> targetControlledSectors, IEnumerable<PlanetMarketOrder> targetMarketOrders, IEnumerable<FleetMovement> targetFleets, DateTime now)
+        // Arming a decoy is a consumable countermeasure (see GAMEPLAY_IDEAS.md 1.2), not a passive stat: each charge is spent from Intel and used up on a single successful deception.
+        public DecoyProfile ArmDecoy(PlayerBase playerBase, DecoyProfile existing, ResourceStock fakeValues, int fakeShipTotal, DateTime now)
+        {
+            if (playerBase == null) throw new ArgumentNullException("playerBase");
+            if (fakeValues == null) throw new ArgumentNullException("fakeValues");
+            _resources.Spend(playerBase.Resources, new BuildCost { Intel = DecoyChargeIntelCost });
+            var profile = existing ?? new DecoyProfile { PlayerBaseId = playerBase.Id, PlayerBase = playerBase };
+            profile.IsActive = true;
+            profile.FakeNaquadah = Math.Max(0, fakeValues.Naquadah);
+            profile.FakeTrinium = Math.Max(0, fakeValues.Trinium);
+            profile.FakeSupplies = Math.Max(0, fakeValues.Supplies);
+            profile.FakeEnergy = Math.Max(0, fakeValues.Energy);
+            profile.FakePersonnel = Math.Max(0, fakeValues.Personnel);
+            profile.FakeIntel = Math.Max(0, fakeValues.Intel);
+            profile.FakeShipTotal = Math.Max(0, fakeShipTotal);
+            profile.Charges = Math.Min(MaxDecoyCharges, profile.Charges + 1);
+            profile.LastArmedAtUtc = now;
+            return profile;
+        }
+
+        // Higher attacker sensor/stealth skill sees through the bluff more often, so decoys can't fully neutralize espionage (balancing note in GAMEPLAY_IDEAS.md 1.2).
+        public double CalculateDeceptionChance(User attacker)
+        {
+            int skill = attacker == null || attacker.ResearchLevels == null ? 0 : attacker.ResearchLevels.Sensorics + attacker.ResearchLevels.StealthTechnology;
+            double chance = BaseDeceptionChance - skill * DeceptionChancePerAttackerSkillPoint;
+            return Math.Max(MinDeceptionChance, Math.Min(BaseDeceptionChance, chance));
+        }
+
+        public IntelligenceReport CreateReport(EspionageMission mission, IEnumerable<PlanetSector> targetControlledSectors, IEnumerable<PlanetMarketOrder> targetMarketOrders, IEnumerable<FleetMovement> targetFleets, DateTime now, DecoyProfile decoy = null, Random random = null)
         {
             if (mission == null) throw new ArgumentNullException("mission");
             var t = mission.TargetBase ?? throw new InvalidOperationException("Mission target missing.");
+            var displayedResources = t.Resources;
+            int displayedShipTotal = TotalShipCount(t.Ships);
+            bool decoyTriggered = false;
+            if (decoy != null && decoy.IsActive && decoy.Charges > 0 && mission.TargetCounterIntelligenceLevel >= CounterIntelligenceLevel.Hardened)
+            {
+                var rnd = random ?? Random.Shared;
+                if (rnd.NextDouble() < CalculateDeceptionChance(mission.User))
+                {
+                    decoyTriggered = true;
+                    decoy.Charges--;
+                    displayedResources = new ResourceStock { Naquadah = decoy.FakeNaquadah, Trinium = decoy.FakeTrinium, Supplies = decoy.FakeSupplies, Energy = decoy.FakeEnergy, Personnel = decoy.FakePersonnel, Intel = decoy.FakeIntel };
+                    displayedShipTotal = decoy.FakeShipTotal;
+                }
+            }
             var parts = new List<string> { "Detailtiefe " + mission.ReportDepth + ": Basis " + t.Name + ", Fraktion " + (t.Faction != null ? t.Faction.Name : "unbekannt") + "." };
-            if (mission.ReportDepth == 1) parts.Add("Ressourcen grob: " + CoarseResources(t.Resources) + ".");
+            if (mission.ReportDepth == 1) parts.Add("Ressourcen grob: " + CoarseResources(displayedResources) + ".");
             if (mission.ReportDepth >= 2) parts.Add("Gebäude grob: Sensorstation " + Coarse(t.BuildingLevels.SensorStation) + ", Verteidigung " + Coarse(t.BuildingLevels.DefenseRing) + ". Sektoren: " + (targetControlledSectors == null ? 0 : targetControlledSectors.Count()) + ".");
-            if (mission.ReportDepth >= 3) parts.Add("Ressourcen genau: NQ " + t.Resources.Naquadah + ", TR " + t.Resources.Trinium + ", Vorräte " + t.Resources.Supplies + ", Energie " + t.Resources.Energy + ", Personal " + t.Resources.Personnel + ", Intel " + t.Resources.Intel + ". Gebäudelevel: Sensor " + t.BuildingLevels.SensorStation + ", Verteidigung " + t.BuildingLevels.DefenseRing + ", Gate " + t.BuildingLevels.GateControlRoom + ". Laufende Aktivitäten wurden erfasst, falls sichtbar.");
-            if (mission.ReportDepth >= 4) parts.Add("Flotten/Schiffe: " + ShipSummary(t.Ships) + ". Lokale Marktaktivitäten: " + (targetMarketOrders == null ? 0 : targetMarketOrders.Count()) + ". Gate-Aktivität: Kontrollraum Level " + t.BuildingLevels.GateControlRoom + ". Aktive Flottenbewegungen: " + (targetFleets == null ? 0 : targetFleets.Count()) + ".");
-            return new IntelligenceReport { UserId = mission.UserId, EspionageMission = mission, CreatedAtUtc = now, DetailDepth = mission.ReportDepth, WasDetected = mission.WasDetected, Title = "Geheimdienstbericht: " + mission.MissionType, Body = string.Join(" ", parts) };
+            if (mission.ReportDepth >= 3) parts.Add("Ressourcen genau: NQ " + displayedResources.Naquadah + ", TR " + displayedResources.Trinium + ", Vorräte " + displayedResources.Supplies + ", Energie " + displayedResources.Energy + ", Personal " + displayedResources.Personnel + ", Intel " + displayedResources.Intel + ". Gebäudelevel: Sensor " + t.BuildingLevels.SensorStation + ", Verteidigung " + t.BuildingLevels.DefenseRing + ", Gate " + t.BuildingLevels.GateControlRoom + ". Laufende Aktivitäten wurden erfasst, falls sichtbar.");
+            if (mission.ReportDepth >= 4) parts.Add("Flotten/Schiffe: " + displayedShipTotal + " erfasst. Lokale Marktaktivitäten: " + (targetMarketOrders == null ? 0 : targetMarketOrders.Count()) + ". Gate-Aktivität: Kontrollraum Level " + t.BuildingLevels.GateControlRoom + ". Aktive Flottenbewegungen: " + (targetFleets == null ? 0 : targetFleets.Count()) + ".");
+            if (decoyTriggered) parts.Add("Anzeichen für gezielte Falschinformationen wurden im Datenstrom erkannt – die Zuverlässigkeit dieses Berichts ist fraglich.");
+            return new IntelligenceReport { UserId = mission.UserId, EspionageMission = mission, CreatedAtUtc = now, DetailDepth = mission.ReportDepth, WasDetected = mission.WasDetected, IsSuspectedDecoy = decoyTriggered, Title = "Geheimdienstbericht: " + mission.MissionType, Body = string.Join(" ", parts) };
         }
 
         public SpyDefenseResult CalculateDetectionRisk(User user, PlayerBase source, PlayerBase target, EspionageMissionType type, int intelSpent)
@@ -65,6 +114,6 @@ namespace StargateGalacticCommand.Core.Services
         private static int FactionDefenseBonus(Faction f, EspionageMissionType t) { var s = f == null ? "" : f.ShortName; if (s == "SGC") return 2; if (s == "Jaffa" && (t == EspionageMissionType.SensorRecon || t == EspionageMissionType.SectorRecon)) return 3; return 0; }
         private static string CoarseResources(ResourceStock r) { return "NQ " + Coarse(r.Naquadah) + ", TR " + Coarse(r.Trinium) + ", Intel " + Coarse(r.Intel); }
         private static string Coarse(int v) { return v < 100 ? "niedrig" : v < 1000 ? "mittel" : "hoch"; }
-        private static string ShipSummary(BaseShips s) { return s == null ? "unbekannt" : (s.F302 + s.SmallTransporter + s.SupplyShuttle + s.Teltak + s.JaffaTransporter + s.CloakedTeltak + s.AgentTransporter + s.SmugglerTransporter + s.PirateFighter) + " erfasst"; }
+        private static int TotalShipCount(BaseShips s) { return s == null ? 0 : s.F302 + s.SmallTransporter + s.SupplyShuttle + s.Teltak + s.JaffaTransporter + s.CloakedTeltak + s.AgentTransporter + s.SmugglerTransporter + s.PirateFighter; }
     }
 }

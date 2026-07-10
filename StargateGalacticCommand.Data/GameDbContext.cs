@@ -52,6 +52,7 @@ namespace StargateGalacticCommand.Data
         public DbSet<AllianceWarGoal> AllianceWarGoals { get; set; }
         public DbSet<WorldEvent> WorldEvents { get; set; }
         public DbSet<WorldEventContribution> WorldEventContributions { get; set; }
+        public DbSet<DecoyProfile> DecoyProfiles { get; set; }
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
@@ -123,9 +124,12 @@ namespace StargateGalacticCommand.Data
             modelBuilder.Entity<FleetMovement>().HasOne(f => f.DebrisField).WithMany().HasForeignKey(f => f.DebrisFieldId).OnDelete(DeleteBehavior.Restrict);
             modelBuilder.Entity<FleetReport>().HasOne(r => r.User).WithMany().HasForeignKey(r => r.UserId).OnDelete(DeleteBehavior.Cascade);
             modelBuilder.Entity<EspionageMission>().Property(m => m.MissionType).HasConversion<int>();
+            modelBuilder.Entity<EspionageMission>().Property(m => m.TargetCounterIntelligenceLevel).HasConversion<int>();
             modelBuilder.Entity<EspionageMission>().HasOne(m => m.User).WithMany().HasForeignKey(m => m.UserId).OnDelete(DeleteBehavior.Cascade);
             modelBuilder.Entity<EspionageMission>().HasOne(m => m.SourceBase).WithMany().HasForeignKey(m => m.SourceBaseId).OnDelete(DeleteBehavior.Restrict);
             modelBuilder.Entity<EspionageMission>().HasOne(m => m.TargetBase).WithMany().HasForeignKey(m => m.TargetBaseId).OnDelete(DeleteBehavior.Restrict);
+            modelBuilder.Entity<DecoyProfile>().HasIndex(d => d.PlayerBaseId).IsUnique();
+            modelBuilder.Entity<DecoyProfile>().HasOne(d => d.PlayerBase).WithMany().HasForeignKey(d => d.PlayerBaseId).OnDelete(DeleteBehavior.Cascade);
             modelBuilder.Entity<IntelligenceReport>().HasOne(r => r.EspionageMission).WithMany().HasForeignKey(r => r.EspionageMissionId).OnDelete(DeleteBehavior.SetNull);
             modelBuilder.Entity<LocalCombatMission>().Property(m => m.Objective).HasConversion<int>();
             modelBuilder.Entity<LocalCombatMission>().HasOne(m => m.AttackerUser).WithMany().HasForeignKey(m => m.AttackerUserId).OnDelete(DeleteBehavior.Restrict);

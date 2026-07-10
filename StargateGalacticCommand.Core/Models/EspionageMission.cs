@@ -16,6 +16,7 @@ namespace StargateGalacticCommand.Core.Models
         public int ReportDepth { get; set; }
         public int DetectionRiskPercent { get; set; }
         public bool WasDetected { get; set; }
+        public CounterIntelligenceLevel TargetCounterIntelligenceLevel { get; set; }
         public DateTime CreatedAtUtc { get; set; }
     }
 }
