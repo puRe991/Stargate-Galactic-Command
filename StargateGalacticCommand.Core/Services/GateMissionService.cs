@@ -11,6 +11,8 @@ namespace StargateGalacticCommand.Core.Services
         private readonly FactionModifierService _factionModifiers;
         public GateMissionService(ResourceService resources, FactionModifierService factionModifiers = null) { _resources = resources; _factionModifiers = factionModifiers ?? new FactionModifierService(); }
 
+        public const double AnomalyChance = 0.02;
+
         public BuildCost GetMissionCost(GateMissionType type)
         {
             switch (type)
@@ -46,7 +48,7 @@ namespace StargateGalacticCommand.Core.Services
             return new GateMission { UserId = user.Id, User = user, GateAddressId = address.Id, GateAddress = address, MissionTeamId = team.Id, MissionTeam = team, MissionType = type, StartedAtUtc = nowUtc, CompletesAtUtc = nowUtc.AddSeconds(GetMissionSeconds(type)), IsCompleted = false };
         }
 
-        public GateMissionReport CompleteMission(GateMission mission, PlayerBase playerBase, IList<GateAddress> undiscoveredAddresses, DateTime nowUtc)
+        public GateMissionReport CompleteMission(GateMission mission, PlayerBase playerBase, IList<GateAddress> undiscoveredAddresses, DateTime nowUtc, Random random = null)
         {
             if (mission == null) throw new ArgumentNullException("mission");
             if (playerBase == null) throw new ArgumentNullException("playerBase");
@@ -69,10 +71,31 @@ namespace StargateGalacticCommand.Core.Services
             else
             {
                 ApplyRewards(mission, playerBase, report, outcome == GateMissionOutcome.Success ? 1.0 : 0.5);
+                TryTriggerAnomaly(mission, playerBase, report, random ?? Random.Shared);
             }
             mission.IsCompleted = true;
             team.IsAvailable = true;
             return report;
+        }
+
+        // Deliberately rare and one-shot per address (see GameplayIdeas balancing note): once an address has yielded its anomaly it's "erschöpft" and never rolls again, so this can't be farmed.
+        private static void TryTriggerAnomaly(GateMission mission, PlayerBase playerBase, GateMissionReport report, Random random)
+        {
+            if (mission.MissionType != GateMissionType.Explore && mission.MissionType != GateMissionType.AnalyzeAddress) return;
+            var address = mission.GateAddress;
+            if (address == null || address.AnomalyFound) return;
+            if (random.NextDouble() >= AnomalyChance) return;
+
+            address.AnomalyFound = true;
+            var anomalyType = random.NextDouble() < 0.5 ? GateAnomalyType.AncientRuin : GateAnomalyType.AsgardWreck;
+            report.AnomalyType = anomalyType;
+            int bonusIntel = anomalyType == GateAnomalyType.AncientRuin ? 40 : 25;
+            int bonusNaquadah = anomalyType == GateAnomalyType.AsgardWreck ? 150 : 0;
+            report.IntelFound += bonusIntel;
+            report.NaquadahFound += bonusNaquadah;
+            playerBase.Resources.Intel += bonusIntel;
+            playerBase.Resources.Naquadah += bonusNaquadah;
+            report.Summary += " Ungewöhnlicher Fund: " + (anomalyType == GateAnomalyType.AncientRuin ? "eine antike Ruine mit Datenfragmenten" : "ein havariertes Asgard-Wrack") + ". Die Adresse gilt damit als vollständig erkundet; ein weiterer Fund an dieser Adresse ist ausgeschlossen.";
         }
 
         private static void ApplyRewards(GateMission mission, PlayerBase playerBase, GateMissionReport report, double factor)

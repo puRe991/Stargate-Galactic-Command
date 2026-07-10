@@ -150,6 +150,89 @@ namespace StargateGalacticCommand.Tests
             Assert.Contains(discovered.GateAddressId, candidates.Select(c => c.Id));
         }
 
+        [Fact]
+        public void CompleteMission_AnomalyRoll_TriggersOnSuccessAndMarksAddressExhausted()
+        {
+            var service = new GateMissionService(new ResourceService());
+            var user = CreateUser();
+            var playerBase = CreateBase();
+            var address = Address();
+            var mission = service.StartMission(user, playerBase, address, Team(user), GateMissionType.Explore, Now);
+
+            var report = service.CompleteMission(mission, playerBase, null, mission.CompletesAtUtc, new FixedRandom(0.0));
+
+            Assert.Equal(GateAnomalyType.AncientRuin, report.AnomalyType);
+            Assert.True(address.AnomalyFound);
+            Assert.True(report.IntelFound >= 40);
+        }
+
+        [Fact]
+        public void CompleteMission_AnomalyRoll_DoesNotTriggerWhenRollMisses()
+        {
+            var service = new GateMissionService(new ResourceService());
+            var user = CreateUser();
+            var playerBase = CreateBase();
+            var address = Address();
+            var mission = service.StartMission(user, playerBase, address, Team(user), GateMissionType.Explore, Now);
+
+            var report = service.CompleteMission(mission, playerBase, null, mission.CompletesAtUtc, new FixedRandom(0.5));
+
+            Assert.Null(report.AnomalyType);
+            Assert.False(address.AnomalyFound);
+        }
+
+        [Fact]
+        public void CompleteMission_AnomalyRoll_NeverTriggersForNonExplorationMissionTypes()
+        {
+            var service = new GateMissionService(new ResourceService());
+            var user = CreateUser();
+            var playerBase = CreateBase();
+            var address = Address();
+            var mission = service.StartMission(user, playerBase, address, Team(user), GateMissionType.SecureResources, Now);
+
+            var report = service.CompleteMission(mission, playerBase, null, mission.CompletesAtUtc, new FixedRandom(0.0));
+
+            Assert.Null(report.AnomalyType);
+        }
+
+        [Fact]
+        public void CompleteMission_AnomalyRoll_SkipsAlreadyExhaustedAddress()
+        {
+            var service = new GateMissionService(new ResourceService());
+            var user = CreateUser();
+            var playerBase = CreateBase();
+            var address = Address();
+            address.AnomalyFound = true;
+            var mission = service.StartMission(user, playerBase, address, Team(user), GateMissionType.Explore, Now);
+
+            var report = service.CompleteMission(mission, playerBase, null, mission.CompletesAtUtc, new FixedRandom(0.0));
+
+            Assert.Null(report.AnomalyType);
+        }
+
+        [Fact]
+        public void CompleteMission_AnomalyRoll_NeverTriggersOnFailure()
+        {
+            var service = new GateMissionService(new ResourceService());
+            var user = CreateUser();
+            var playerBase = CreateBase();
+            var address = Address();
+            var weakTeam = new MissionTeam { Id = 2, User = user, UserId = user.Id, Name = "Grenzschutz", Strength = 1, Science = 1, Diplomacy = 1, Stealth = 1, CarryCapacity = 1, Risk = 10, IsAvailable = true };
+            var mission = service.StartMission(user, playerBase, address, weakTeam, GateMissionType.Explore, Now);
+
+            var report = service.CompleteMission(mission, playerBase, null, mission.CompletesAtUtc, new FixedRandom(0.0));
+
+            Assert.Equal(GateMissionOutcome.WoundedOrLosses, report.Outcome);
+            Assert.Null(report.AnomalyType);
+        }
+
+        private class FixedRandom : Random
+        {
+            private readonly double _value;
+            public FixedRandom(double value) { _value = value; }
+            public override double NextDouble() => _value;
+        }
+
         private static readonly DateTime Now = new DateTime(2026, 1, 1, 0, 0, 0, DateTimeKind.Utc);
         private static User CreateUser() => new User { Id = 1, Faction = new Faction { ShortName = "SGC" }, ResearchLevels = new ResearchLevels { GateAddressing = 1 } };
         private static PlayerBase CreateBase() => new PlayerBase { Id = 1, Resources = new ResourceStock { Energy = 1000, Supplies = 1000, Personnel = 1000, Intel = 10 }, BuildingLevels = new BuildingLevels { GateControlRoom = 1 } };

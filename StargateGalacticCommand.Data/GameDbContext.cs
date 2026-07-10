@@ -97,6 +97,7 @@ namespace StargateGalacticCommand.Data
             modelBuilder.Entity<GateMission>().Property(m => m.MissionType).HasConversion<int>();
             modelBuilder.Entity<GateMissionReport>().HasOne(r => r.User).WithMany(u => u.GateMissionReports).HasForeignKey(r => r.UserId).OnDelete(DeleteBehavior.Cascade);
             modelBuilder.Entity<GateMissionReport>().Property(r => r.Outcome).HasConversion<int>();
+            modelBuilder.Entity<GateMissionReport>().Property(r => r.AnomalyType).HasConversion<int?>();
             modelBuilder.Entity<PlanetMarketOrder>().HasIndex(o => new { o.PlanetId, o.CompletedAtUtc, o.CancelledAtUtc, o.ExpiresAtUtc });
             modelBuilder.Entity<PlanetMarketOrder>().Property(o => o.OfferedResource).HasConversion<int>();
             modelBuilder.Entity<PlanetMarketOrder>().Property(o => o.RequestedResource).HasConversion<int>();
