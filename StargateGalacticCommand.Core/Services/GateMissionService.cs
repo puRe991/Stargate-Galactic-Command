@@ -10,7 +10,8 @@ namespace StargateGalacticCommand.Core.Services
         private readonly ResourceService _resources;
         private readonly FactionModifierService _factionModifiers;
         private readonly SeasonService _season;
-        public GateMissionService(ResourceService resources, FactionModifierService factionModifiers = null, SeasonService season = null) { _resources = resources; _factionModifiers = factionModifiers ?? new FactionModifierService(); _season = season ?? new SeasonService(); }
+        private readonly SkillTreeService _skillTree;
+        public GateMissionService(ResourceService resources, FactionModifierService factionModifiers = null, SeasonService season = null, SkillTreeService skillTree = null) { _resources = resources; _factionModifiers = factionModifiers ?? new FactionModifierService(); _season = season ?? new SeasonService(); _skillTree = skillTree ?? new SkillTreeService(); }
 
         public const double AnomalyChance = 0.02;
 
@@ -49,7 +50,7 @@ namespace StargateGalacticCommand.Core.Services
             return new GateMission { UserId = user.Id, User = user, GateAddressId = address.Id, GateAddress = address, MissionTeamId = team.Id, MissionTeam = team, MissionType = type, StartedAtUtc = nowUtc, CompletesAtUtc = nowUtc.AddSeconds(GetMissionSeconds(type)), IsCompleted = false };
         }
 
-        public GateMissionReport CompleteMission(GateMission mission, PlayerBase playerBase, IList<GateAddress> undiscoveredAddresses, DateTime nowUtc, Random random = null)
+        public GateMissionReport CompleteMission(GateMission mission, PlayerBase playerBase, IList<GateAddress> undiscoveredAddresses, DateTime nowUtc, Random random = null, CharacterSkills skills = null)
         {
             if (mission == null) throw new ArgumentNullException("mission");
             if (playerBase == null) throw new ArgumentNullException("playerBase");
@@ -59,6 +60,7 @@ namespace StargateGalacticCommand.Core.Services
             int score = team.Strength + team.Science + team.Diplomacy + team.Stealth + team.CarryCapacity - team.Risk - (mission.GateAddress == null ? 0 : mission.GateAddress.RiskLevel);
             score += (int)mission.MissionType;
             score += _factionModifiers.GetGateMissionScoreBonus(playerBase.Faction, mission.MissionType);
+            score += _skillTree.GetGateMissionScoreBonus(skills, mission.MissionType);
             var outcome = score >= 28 ? GateMissionOutcome.Success : score >= 20 ? GateMissionOutcome.PartialSuccess : GateMissionOutcome.Failure;
             var report = new GateMissionReport { UserId = mission.UserId, GateMission = mission, GateMissionId = mission.Id, Outcome = outcome, CreatedAtUtc = nowUtc };
 
@@ -77,6 +79,7 @@ namespace StargateGalacticCommand.Core.Services
                 ApplyRewards(mission, playerBase, report, (outcome == GateMissionOutcome.Success ? 1.0 : 0.5) * seasonMultiplier);
                 TryTriggerAnomaly(mission, playerBase, report, random ?? Random.Shared);
             }
+            if (skills != null) _skillTree.AwardMissionPoint(skills);
             mission.IsCompleted = true;
             team.IsAvailable = true;
             return report;

@@ -79,6 +79,7 @@ namespace StargateGalacticCommand.Web.Models
         public IList<TradeRoute> TradeRoutes { get; set; }
         public string SeasonLabel { get; set; }
         public IList<int> SeasonFocusAddressIds { get; set; }
+        public CharacterSkills CharacterSkills { get; set; }
     }
 
     public class AchievementStatusViewModel

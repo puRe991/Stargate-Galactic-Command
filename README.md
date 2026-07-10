@@ -42,7 +42,7 @@ Kernsysteme, implementiert als Services in `StargateGalacticCommand.Core/Service
 | Planeten & Sektoren | Gemeinsame Planeten mit beanspruchbaren Sektoren, Sektorkontrolle, Einfluss-Zerfall, Ranglisten |
 | Diplomatie | Allianzen, Allianz-Kriegsziele, Marktplatz zwischen Spielern |
 | Geheimdienst | Spionage sowie Gegenspionage inklusive Köderdaten |
-| Meta-Progression | Kodex/Achievements, tägliche/wöchentliche Kontrakte, Erleuchtung (Prestige/Ascension), Weltevents |
+| Meta-Progression | Kodex/Achievements, tägliche/wöchentliche Kontrakte, Erleuchtung (Prestige/Ascension), Weltevents, Charakter-Skilltrees |
 | Kommunikation | Postfach/Nachrichten sowie Kampf- und Flottenberichte |
 
 Eine ausführliche Historie der einzelnen Features steht im Abschnitt [Erledigt](#erledigt); geplante bzw. angedachte Erweiterungen sind in [ROADMAP.md](ROADMAP.md) und [GAMEPLAY_IDEAS.md](GAMEPLAY_IDEAS.md) gesammelt.
@@ -122,3 +122,4 @@ dotnet test StargateGalacticCommand.sln
 - Espionage-Köder: Ab Gegenspionagestufe „Hardened" kann auf der Geheimdienst-Seite ein Ködervorrat mit erfundenen Ressourcen-/Flottenwerten aufgeladen werden (kostet Intel, begrenzte Einsätze). Erfolgreiche Spionageangriffe können dadurch mit Falschwerten getäuscht werden; die Erkennungschance des Angreifers sinkt mit dessen Sensorik-/Tarntechnologie-Stufe.
 - Handelsrouten: Auf „Flotte senden" lassen sich wiederkehrende automatische Transporte zwischen zwei Basen einrichten (Intervall 2–168 h, max. 5 aktive Routen), die ohne manuelle Bestätigung laufen; fehlende Schiffe/Ressourcen lassen einen Zyklus ausfallen und automatisch beim nächsten Versuch nachholen. Kein Abfangrisiko in dieser Version.
 - Season-Pässe: Eine deterministisch aus dem UTC-Datum berechnete „Fokuswoche" (0–59, rotiert alle 60 Wochen) markiert im Gate-Raum eine Teilmenge der bekannten Gate-Adressen mit ☀; erfolgreiche Gate-Missionen zu diesen Adressen bringen 50 % mehr Ressourcen-/Intel-Belohnung. Kein neues Datenmodell, keine sperrbaren Adressen – reine Bonusrotation ohne FOMO.
+- Charakter-Skilltrees: Auf der Forschungsseite lassen sich Skillpunkte (einer pro abgeschlossener Gate-Mission) auf drei Rollen verteilen (Militär, Wissenschaft, Diplomatie, je Stufe 0–10). Militär erhöht den Erfolg bei Risikoanalyse-, Wissenschaft bei Artefaktsuche- und Diplomatie bei diplomatischen Kontakt-Missionen; Wissenschaft beschleunigt zusätzlich die Forschung um bis zu 30 %.

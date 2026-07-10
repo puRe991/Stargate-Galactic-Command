@@ -260,6 +260,49 @@ namespace StargateGalacticCommand.Tests
             Assert.False(report.IsSeasonFocusBonus);
         }
 
+        [Fact]
+        public void CompleteMission_SkillBonus_TurnsPartialSuccessIntoSuccessForMatchingTrack()
+        {
+            var service = new GateMissionService(new ResourceService());
+            var user = new User { Id = 1, Faction = new Faction { ShortName = "Lucian" }, ResearchLevels = new ResearchLevels { GateAddressing = 1 } };
+            var playerBase = new PlayerBase { Id = 1, Faction = user.Faction, Resources = new ResourceStock { Energy = 1000, Supplies = 1000, Personnel = 1000, Intel = 10 }, BuildingLevels = new BuildingLevels { GateControlRoom = 1 } };
+            var team = new MissionTeam { Id = 1, User = user, UserId = user.Id, Name = "Grenzfall-Team", Strength = 6, Science = 6, Diplomacy = 6, Stealth = 6, CarryCapacity = 6, Risk = 5, IsAvailable = true };
+            var mission = service.StartMission(user, playerBase, Address(), team, GateMissionType.SearchArtifact, Now);
+            var skills = new CharacterSkills { UserId = user.Id, ScienceLevel = 4 };
+
+            var report = service.CompleteMission(mission, playerBase, null, mission.CompletesAtUtc, skills: skills);
+
+            // Score liegt ohne Bonus bei 25 (PartialSuccess); mit +4 Wissenschafts-Skillbonus bei 29 (Success).
+            Assert.True(report.ArtifactLeadFound);
+        }
+
+        [Fact]
+        public void CompleteMission_AwardsOneSkillPointOnCompletion()
+        {
+            var service = new GateMissionService(new ResourceService());
+            var user = CreateUser();
+            var playerBase = CreateBase();
+            var mission = service.StartMission(user, playerBase, Address(), Team(user), GateMissionType.SecureResources, Now);
+            var skills = new CharacterSkills { UserId = user.Id, UnspentPoints = 2 };
+
+            service.CompleteMission(mission, playerBase, null, mission.CompletesAtUtc, skills: skills);
+
+            Assert.Equal(3, skills.UnspentPoints);
+        }
+
+        [Fact]
+        public void CompleteMission_DoesNotThrowWhenSkillsAreNull()
+        {
+            var service = new GateMissionService(new ResourceService());
+            var user = CreateUser();
+            var playerBase = CreateBase();
+            var mission = service.StartMission(user, playerBase, Address(), Team(user), GateMissionType.SecureResources, Now);
+
+            var report = service.CompleteMission(mission, playerBase, null, mission.CompletesAtUtc);
+
+            Assert.NotNull(report);
+        }
+
         private class FixedRandom : Random
         {
             private readonly double _value;

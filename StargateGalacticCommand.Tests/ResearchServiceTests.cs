@@ -65,6 +65,20 @@ namespace StargateGalacticCommand.Tests
         }
 
         [Fact]
+        public void ScienceSkill_ReducesResearchDuration()
+        {
+            var service = CreateService();
+            var userWithoutSkill = CreateUser("SGC");
+            var userWithSkill = CreateUser("SGC");
+            var skills = new CharacterSkills { UserId = userWithSkill.Id, ScienceLevel = 10 };
+
+            var withoutSkill = service.StartResearch(userWithoutSkill, CreateBase(), ResearchType.GateAddressing, Now);
+            var withSkill = service.StartResearch(userWithSkill, CreateBase(), ResearchType.GateAddressing, Now, skills);
+
+            Assert.True(withSkill.CompletesAtUtc < withoutSkill.CompletesAtUtc);
+        }
+
+        [Fact]
         public void TokraIntelBonus_IncreasesIntelProduction()
         {
             var economy = new EconomyService();
