@@ -37,7 +37,7 @@ Kernsysteme, implementiert als Services in `StargateGalacticCommand.Core/Service
 | --- | --- |
 | Basis & Ressourcen | Gebäude, Bauwarteschlange, Ressourcenproduktion mit Fraktions- und Sektorboni |
 | Forschung | Forschungskatalog und -warteschlange mit Auswirkung auf Economy und Missionen |
-| Gate-Raum | PvE-Gate-Missionen (Adresse analysieren, Artefakt suchen, Risikoanalyse, Ressourcen sichern u. a.) |
+| Gate-Raum | PvE-Gate-Missionen (Adresse analysieren, Artefakt suchen, Risikoanalyse, Ressourcen sichern u. a.), wöchentliche Fokusadressen mit Bonusbelohnung |
 | Galaxie & Flotten | Prozedural generierte Galaxie, Schiffswerft, Flottenversand, Weltraumkampf, Trümmerfeldbergung, Handelsrouten |
 | Planeten & Sektoren | Gemeinsame Planeten mit beanspruchbaren Sektoren, Sektorkontrolle, Einfluss-Zerfall, Ranglisten |
 | Diplomatie | Allianzen, Allianz-Kriegsziele, Marktplatz zwischen Spielern |
@@ -121,3 +121,4 @@ dotnet test StargateGalacticCommand.sln
 - Ancient/Asgard-Anomalien: `Explore`- und `AnalyzeAddress`-Gate-Missionen haben bei Erfolg eine kleine Zufallschance (2 %) auf einen einmaligen Fund (antike Ruine oder Asgard-Wrack) mit Ressourcenbonus; jede Adresse liefert das höchstens einmal, danach gilt sie als erschöpft. Im Gate-Raum mit ✧ markiert.
 - Espionage-Köder: Ab Gegenspionagestufe „Hardened" kann auf der Geheimdienst-Seite ein Ködervorrat mit erfundenen Ressourcen-/Flottenwerten aufgeladen werden (kostet Intel, begrenzte Einsätze). Erfolgreiche Spionageangriffe können dadurch mit Falschwerten getäuscht werden; die Erkennungschance des Angreifers sinkt mit dessen Sensorik-/Tarntechnologie-Stufe.
 - Handelsrouten: Auf „Flotte senden" lassen sich wiederkehrende automatische Transporte zwischen zwei Basen einrichten (Intervall 2–168 h, max. 5 aktive Routen), die ohne manuelle Bestätigung laufen; fehlende Schiffe/Ressourcen lassen einen Zyklus ausfallen und automatisch beim nächsten Versuch nachholen. Kein Abfangrisiko in dieser Version.
+- Season-Pässe: Eine deterministisch aus dem UTC-Datum berechnete „Fokuswoche" (0–59, rotiert alle 60 Wochen) markiert im Gate-Raum eine Teilmenge der bekannten Gate-Adressen mit ☀; erfolgreiche Gate-Missionen zu diesen Adressen bringen 50 % mehr Ressourcen-/Intel-Belohnung. Kein neues Datenmodell, keine sperrbaren Adressen – reine Bonusrotation ohne FOMO.

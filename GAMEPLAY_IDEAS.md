@@ -275,7 +275,7 @@ schneiden lassen.
   verifiziert (echte Erfolgsfreischaltung würde einen künstlich
   hochgespielten Account erfordern, daher nicht end-to-end getestet).
 
-### 2.2 Season-Pässe / wöchentliche Storyline
+### 2.2 Season-Pässe / wöchentliche Storyline — ✅ umgesetzt
 - **Konzept**: Statt alle 300+ Gate-Adressen aus `GalaxyGeneratorService` von
   Anfang an gleichwertig verfügbar zu machen, wird ein rotierender
   "Fokusbereich" (z. B. eine Handvoll neu "aktivierter" Adressen pro Woche)
@@ -288,6 +288,23 @@ schneiden lassen.
 - **Balancing**: Season-Inhalte sollten kosmetisch/Fortschritts-Boni bringen,
   keine exklusiven Power-Vorteile, die verpasste Seasons dauerhaft
   benachteiligen (Fear-of-missing-out vermeiden, das reine Log-in-Zwang erzeugt).
+- **Tatsächliche Umsetzung**: Kein neues `SeasonEvent`-Modell und keine
+  Datenbanktabelle nötig – nach dem etablierten "live berechnen statt
+  persistieren"-Muster ist `SeasonService` zustandslos: die aktuelle
+  "Fokuswoche" (0–59) wird deterministisch aus dem UTC-Datum abgeleitet
+  (`GetWeekIndex`), und eine Gate-Adresse gilt als Fokusadresse dieser Woche,
+  wenn `AdresseId % 60 == Fokuswoche` gilt. Das rotiert automatisch alle 60
+  Wochen (~14 Monate) durch alle bestehenden Adressen, ohne dass Adressen
+  künstlich gesperrt werden müssen (kein Konflikt mit der bestehenden
+  Entdeckungsmechanik, kein FOMO – siehe Balancing-Hinweis). Fokusadressen
+  bringen den 1,5-fachen Faktor auf Ressourcen-/Intel-Belohnungen aus
+  `GateMissionService.CompleteMission` (nur bei Erfolg/Teilerfolg, keine
+  Sonderregel bei Fehlschlag). Im Gate-Raum wird die aktuelle Fokuswoche als
+  Banner angezeigt und bekannte Fokusadressen sind mit ☀ markiert (analog zur
+  ★-Markierung der Fraktionsspezialisierung aus 1.1); Berichte mit
+  Bonuswertung sind ebenfalls markiert. Abgedeckt durch neue
+  `SeasonServiceTests` (Wochenrotation, Bucket-Grenzen, Multiplikator) sowie
+  zwei Ergänzungen in `GateMissionServiceTests` (Bonus greift/greift nicht).
 
 ### 2.3 Achievements / Lore-Kodex — ✅ umgesetzt
 - **Konzept**: Ein sich füllender Kodex (entdeckte Gate-Adressen, besiegte
@@ -554,7 +571,7 @@ Größerer Aufwand / mehr Design-Abstimmung nötig, aber hohe Langzeitwirkung:
 
 Alle sechs priorisierten Punkte sind damit umgesetzt. Danach zusätzlich
 umgesetzt: **4.2 Ancient/Asgard-Anomalien** ✅, **1.2 Espionage-Köder** ✅,
-**1.4 Handelsrouten** ✅. Verbleibend aus dem Gesamt-Backlog (nicht
-priorisiert): 2.2 (Season-Pässe), 2.5 (Rollen-Skilltrees), 3.2
+**1.4 Handelsrouten** ✅, **2.2 Season-Pässe** ✅. Verbleibend aus dem
+Gesamt-Backlog (nicht priorisiert): 2.5 (Rollen-Skilltrees), 3.2
 (Mentoren-System), 3.3 (Diplomatie-Layer), 4.3 (Fraktionsspezifische
 Questlines).

@@ -226,6 +226,40 @@ namespace StargateGalacticCommand.Tests
             Assert.Null(report.AnomalyType);
         }
 
+        [Fact]
+        public void CompleteMission_SeasonFocusAddress_AppliesRewardMultiplier()
+        {
+            var season = new SeasonService();
+            int weekIndex = season.GetWeekIndex(Now);
+            var service = new GateMissionService(new ResourceService(), season: season);
+            var user = CreateUser();
+            var playerBase = CreateBase();
+            var focusAddress = new GateAddress { Id = weekIndex, Code = "P5X-FOCUS", WorldName = "P5X-FOCUS", Description = "Fokusadresse", RiskLevel = 3 };
+            var mission = service.StartMission(user, playerBase, focusAddress, Team(user), GateMissionType.SecureResources, Now);
+
+            var report = service.CompleteMission(mission, playerBase, null, mission.CompletesAtUtc);
+
+            Assert.True(report.IsSeasonFocusBonus);
+            Assert.Contains("Fokuswoche", report.Summary);
+        }
+
+        [Fact]
+        public void CompleteMission_NonFocusAddress_DoesNotApplySeasonBonus()
+        {
+            var season = new SeasonService();
+            int weekIndex = season.GetWeekIndex(Now);
+            int otherId = (weekIndex + 1) % SeasonService.FocusBucketModulus;
+            var service = new GateMissionService(new ResourceService(), season: season);
+            var user = CreateUser();
+            var playerBase = CreateBase();
+            var otherAddress = new GateAddress { Id = otherId, Code = "P6X-OTHER", WorldName = "P6X-OTHER", Description = "andere Adresse", RiskLevel = 3 };
+            var mission = service.StartMission(user, playerBase, otherAddress, Team(user), GateMissionType.SecureResources, Now);
+
+            var report = service.CompleteMission(mission, playerBase, null, mission.CompletesAtUtc);
+
+            Assert.False(report.IsSeasonFocusBonus);
+        }
+
         private class FixedRandom : Random
         {
             private readonly double _value;

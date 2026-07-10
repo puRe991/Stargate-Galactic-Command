@@ -77,6 +77,8 @@ namespace StargateGalacticCommand.Web.Models
         public string WorldEventBlockedReason { get; set; }
         public DecoyProfile OwnDecoyProfile { get; set; }
         public IList<TradeRoute> TradeRoutes { get; set; }
+        public string SeasonLabel { get; set; }
+        public IList<int> SeasonFocusAddressIds { get; set; }
     }
 
     public class AchievementStatusViewModel
