@@ -42,7 +42,7 @@ Kernsysteme, implementiert als Services in `StargateGalacticCommand.Core/Service
 | Planeten & Sektoren | Gemeinsame Planeten mit beanspruchbaren Sektoren, Sektorkontrolle, Einfluss-Zerfall, Ranglisten |
 | Diplomatie | Allianzen, Allianz-Kriegsziele, Mentoren-System, Marktplatz zwischen Spielern |
 | Geheimdienst | Spionage sowie Gegenspionage inklusive Köderdaten |
-| Meta-Progression | Kodex/Achievements, tägliche/wöchentliche Kontrakte, Erleuchtung (Prestige/Ascension), Weltevents, Charakter-Skilltrees |
+| Meta-Progression | Kodex/Achievements, tägliche/wöchentliche Kontrakte, Erleuchtung (Prestige/Ascension), Weltevents, Charakter-Skilltrees, fraktionsspezifische Questlines |
 | Kommunikation | Postfach/Nachrichten sowie Kampf- und Flottenberichte |
 
 Eine ausführliche Historie der einzelnen Features steht im Abschnitt [Erledigt](#erledigt); geplante bzw. angedachte Erweiterungen sind in [ROADMAP.md](ROADMAP.md) und [GAMEPLAY_IDEAS.md](GAMEPLAY_IDEAS.md) gesammelt.
@@ -125,3 +125,4 @@ dotnet test StargateGalacticCommand.sln
 - Charakter-Skilltrees: Auf der Forschungsseite lassen sich Skillpunkte (einer pro abgeschlossener Gate-Mission) auf drei Rollen verteilen (Militär, Wissenschaft, Diplomatie, je Stufe 0–10). Militär erhöht den Erfolg bei Risikoanalyse-, Wissenschaft bei Artefaktsuche- und Diplomatie bei diplomatischen Kontakt-Missionen; Wissenschaft beschleunigt zusätzlich die Forschung um bis zu 30 %.
 - Mentoren-System: Neue Allianzmitglieder können sich innerhalb von 14 Tagen nach Beitritt einen Mentor aus der eigenen Allianz wählen. Erreicht der Schützling seine erste Gate-Mission bzw. seinen ersten kontrollierten Sektor, erhält der Mentor automatisch eine Ressourcenbelohnung (ohne Cronjob, live bei Seitenaufruf berechnet).
 - Diplomatie-Layer: Allianzen können sich gegenseitig Nichtangriffspakte vorschlagen und annehmen; ein aktiver Pakt blockiert Weltraumangriffe zwischen den Allianzen und reduziert die Markt-Gebühr beim Handel zwischen ihnen um 10 %. Krieg lässt sich jederzeit erklären; ein während eines Pakts gebrochener Frieden sperrt die brechende Allianz für 7 Tage von einem neuen Paktvorschlag an dieselbe Allianz.
+- Fraktionsspezifische Questlines: Neue Seite „Questline" mit vier inhaltlich eigenständigen, aufeinander aufbauenden Missionsreihen pro Startfraktion (antike Ausgrabung, Jaffa-Aufstand, Tok'ra-Infiltration, Lucian-Schmuggelroute). Schritte schalten sich der Reihe nach frei, sobald genug passende Gate-Missionen erfolgreich abgeschlossen wurden, und bringen eine kleine Intel-Belohnung sowie einen neuen Handlungsabschnitt als Bericht.

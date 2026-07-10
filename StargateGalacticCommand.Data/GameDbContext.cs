@@ -56,6 +56,7 @@ namespace StargateGalacticCommand.Data
         public DbSet<TradeRoute> TradeRoutes { get; set; }
         public DbSet<CharacterSkills> CharacterSkills { get; set; }
         public DbSet<AllianceDiplomacyStatus> AllianceDiplomacyStatuses { get; set; }
+        public DbSet<QuestlineStepProgress> QuestlineStepProgresses { get; set; }
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
@@ -193,6 +194,8 @@ namespace StargateGalacticCommand.Data
             modelBuilder.Entity<AllianceDiplomacyStatus>().HasIndex(d => new { d.AllianceAId, d.AllianceBId }).IsUnique();
             modelBuilder.Entity<AllianceDiplomacyStatus>().HasOne(d => d.AllianceA).WithMany().HasForeignKey(d => d.AllianceAId).OnDelete(DeleteBehavior.Restrict);
             modelBuilder.Entity<AllianceDiplomacyStatus>().HasOne(d => d.AllianceB).WithMany().HasForeignKey(d => d.AllianceBId).OnDelete(DeleteBehavior.Restrict);
+            modelBuilder.Entity<QuestlineStepProgress>().HasOne(p => p.User).WithMany().HasForeignKey(p => p.UserId).OnDelete(DeleteBehavior.Cascade);
+            modelBuilder.Entity<QuestlineStepProgress>().HasIndex(p => new { p.UserId, p.StepKey }).IsUnique();
         }
     }
 }

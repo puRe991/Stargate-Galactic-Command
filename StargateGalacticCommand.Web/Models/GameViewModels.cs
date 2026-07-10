@@ -81,6 +81,20 @@ namespace StargateGalacticCommand.Web.Models
         public IList<int> SeasonFocusAddressIds { get; set; }
         public CharacterSkills CharacterSkills { get; set; }
         public IList<AllianceDiplomacyStatus> DiplomacyStatuses { get; set; }
+        public IList<QuestlineStepStatusViewModel> QuestlineStatuses { get; set; }
+    }
+
+    public class QuestlineStepStatusViewModel
+    {
+        public string Key { get; set; }
+        public int Order { get; set; }
+        public string Title { get; set; }
+        public string Narrative { get; set; }
+        public int RequiredCount { get; set; }
+        public int CurrentCount { get; set; }
+        public bool IsUnlocked { get; set; }
+        public bool IsComplete { get; set; }
+        public DateTime? CompletedAtUtc { get; set; }
     }
 
     public class AchievementStatusViewModel

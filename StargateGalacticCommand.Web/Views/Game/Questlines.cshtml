@@ -1,0 +1,19 @@
+@model StargateGalacticCommand.Web.Models.OverviewViewModel
+@{ ViewData["Title"] = "Questline"; }
+<h1>Questline: @Model.User.Faction.Name</h1>
+<p>Eine fraktionsspezifische Missionsreihe mit eigener Handlung. Schritte schalten sich der Reihe nach frei, sobald genügend passende Gate-Missionen erfolgreich abgeschlossen wurden; jeder Abschluss bringt eine kleine Intel-Belohnung und einen neuen Handlungsabschnitt.</p>
+<table>
+<thead><tr><th>Status</th><th>Titel</th><th>Handlung</th><th>Fortschritt</th><th>Abgeschlossen am</th></tr></thead>
+<tbody>
+@foreach (var s in Model.QuestlineStatuses.OrderBy(s => s.Order))
+{
+    <tr class="@(s.IsComplete ? "achievement-unlocked" : "achievement-locked")">
+        <td>@(s.IsComplete ? "★" : s.IsUnlocked ? "…" : "🔒")</td>
+        <td>@s.Title</td>
+        <td>@(s.IsUnlocked ? s.Narrative : "Noch nicht freigeschaltet.")</td>
+        <td>@s.CurrentCount / @s.RequiredCount</td>
+        <td>@(s.CompletedAtUtc.HasValue ? s.CompletedAtUtc.Value.ToString("u") : "")</td>
+    </tr>
+}
+</tbody>
+</table>
