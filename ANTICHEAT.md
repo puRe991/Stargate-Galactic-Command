@@ -116,7 +116,9 @@ Audit-Log) trägt auch die Echtzeit-Phase.
 
 ## Vorgeschlagene Umsetzungsreihenfolge
 
-1. Login-Rate-Limiting/Lockout (kleiner, isolierter Fix, hoher Sicherheitsgewinn)
+1. ✅ Login-Rate-Limiting/Lockout (umgesetzt: `LoginSecurityService`, `LoginAttempt`,
+   `AccountController.Login`) — Account- und IP-basierte, gestaffelte Sperrzeiten
+   nach wiederholten Fehlversuchen (siehe Abschnitt unten).
 2. Generisches Action-Throttling für `GameController`-Endpunkte
 3. Transaktions-/Concurrency-Schutz um Ressourcen-kritische Services
 4. Audit-Log-Tabelle + Report-Funktion

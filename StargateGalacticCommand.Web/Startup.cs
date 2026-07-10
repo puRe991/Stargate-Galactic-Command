@@ -44,6 +44,7 @@ namespace StargateGalacticCommand.Web
             services.AddScoped<SpaceCombatService>();
             services.AddScoped<PasswordService>();
             services.AddScoped<RegistrationService>();
+            services.AddScoped<LoginSecurityService>();
             services.AddScoped<RankingService>();
             services.AddScoped<MessageService>();
             services.AddScoped<ContractService>();
