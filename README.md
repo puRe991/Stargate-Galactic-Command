@@ -40,7 +40,7 @@ Kernsysteme, implementiert als Services in `StargateGalacticCommand.Core/Service
 | Gate-Raum | PvE-Gate-Missionen (Adresse analysieren, Artefakt suchen, Risikoanalyse, Ressourcen sichern u. a.), wöchentliche Fokusadressen mit Bonusbelohnung |
 | Galaxie & Flotten | Prozedural generierte Galaxie, Schiffswerft, Flottenversand, Weltraumkampf, Trümmerfeldbergung, Handelsrouten |
 | Planeten & Sektoren | Gemeinsame Planeten mit beanspruchbaren Sektoren, Sektorkontrolle, Einfluss-Zerfall, Ranglisten |
-| Diplomatie | Allianzen, Allianz-Kriegsziele, Marktplatz zwischen Spielern |
+| Diplomatie | Allianzen, Allianz-Kriegsziele, Mentoren-System, Marktplatz zwischen Spielern |
 | Geheimdienst | Spionage sowie Gegenspionage inklusive Köderdaten |
 | Meta-Progression | Kodex/Achievements, tägliche/wöchentliche Kontrakte, Erleuchtung (Prestige/Ascension), Weltevents, Charakter-Skilltrees |
 | Kommunikation | Postfach/Nachrichten sowie Kampf- und Flottenberichte |
@@ -123,3 +123,4 @@ dotnet test StargateGalacticCommand.sln
 - Handelsrouten: Auf „Flotte senden" lassen sich wiederkehrende automatische Transporte zwischen zwei Basen einrichten (Intervall 2–168 h, max. 5 aktive Routen), die ohne manuelle Bestätigung laufen; fehlende Schiffe/Ressourcen lassen einen Zyklus ausfallen und automatisch beim nächsten Versuch nachholen. Kein Abfangrisiko in dieser Version.
 - Season-Pässe: Eine deterministisch aus dem UTC-Datum berechnete „Fokuswoche" (0–59, rotiert alle 60 Wochen) markiert im Gate-Raum eine Teilmenge der bekannten Gate-Adressen mit ☀; erfolgreiche Gate-Missionen zu diesen Adressen bringen 50 % mehr Ressourcen-/Intel-Belohnung. Kein neues Datenmodell, keine sperrbaren Adressen – reine Bonusrotation ohne FOMO.
 - Charakter-Skilltrees: Auf der Forschungsseite lassen sich Skillpunkte (einer pro abgeschlossener Gate-Mission) auf drei Rollen verteilen (Militär, Wissenschaft, Diplomatie, je Stufe 0–10). Militär erhöht den Erfolg bei Risikoanalyse-, Wissenschaft bei Artefaktsuche- und Diplomatie bei diplomatischen Kontakt-Missionen; Wissenschaft beschleunigt zusätzlich die Forschung um bis zu 30 %.
+- Mentoren-System: Neue Allianzmitglieder können sich innerhalb von 14 Tagen nach Beitritt einen Mentor aus der eigenen Allianz wählen. Erreicht der Schützling seine erste Gate-Mission bzw. seinen ersten kontrollierten Sektor, erhält der Mentor automatisch eine Ressourcenbelohnung (ohne Cronjob, live bei Seitenaufruf berechnet).

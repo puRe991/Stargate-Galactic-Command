@@ -9,7 +9,31 @@
 }
 else
 {
-    <section><h2>[@Model.OwnAlliance.Tag] @Model.OwnAlliance.Name</h2><p>@Model.OwnAlliance.Description</p><h3>Mitglieder</h3><ul>@foreach (var m in Model.OwnAlliance.Members.OrderBy(m => m.Rank)) { <li>@m.User.UserName – @m.Rank</li> }</ul></section>
+    var ownMembership = Model.OwnAlliance.Members.SingleOrDefault(m => m.UserId == Model.User.Id);
+    <section><h2>[@Model.OwnAlliance.Tag] @Model.OwnAlliance.Name</h2><p>@Model.OwnAlliance.Description</p><h3>Mitglieder</h3><ul>@foreach (var m in Model.OwnAlliance.Members.OrderBy(m => m.Rank)) { <li>@m.User.UserName – @m.Rank@(m.MentorUserId.HasValue ? " (Mentor: " + Model.OwnAlliance.Members.SingleOrDefault(x => x.UserId == m.MentorUserId)?.User.UserName + ")" : "")</li> }</ul></section>
+    <section>
+        <h2>Mentoren-System</h2>
+        <p>Erfahrene Allianzmitglieder können neuen Mitgliedern als Mentor zur Seite stehen. Wählt der Neuling innerhalb der ersten @StargateGalacticCommand.Core.Services.MentorService.MentorshipWindowDays Tage nach Beitritt einen Mentor, erhält dieser eine Belohnung, sobald der Schützling seine erste Gate-Mission abschließt bzw. seinen ersten Sektor kontrolliert.</p>
+        @if (ownMembership != null)
+        {
+            @if (ownMembership.MentorUserId.HasValue)
+            {
+                <p>Dein Mentor: @Model.OwnAlliance.Members.SingleOrDefault(x => x.UserId == ownMembership.MentorUserId)?.User.UserName</p>
+            }
+            else if (Model.NowUtc <= ownMembership.JoinedAtUtc.AddDays(StargateGalacticCommand.Core.Services.MentorService.MentorshipWindowDays))
+            {
+                <form method="post" asp-action="AssignMentor">
+                    <label>Mentor wählen</label>
+                    <select name="mentorUserId">@foreach (var m in Model.OwnAlliance.Members.Where(m => m.UserId != Model.User.Id)) { <option value="@m.UserId">@m.User.UserName</option> }</select>
+                    <button type="submit">Mentor wählen</button>
+                </form>
+            }
+            else
+            {
+                <p>Zeitfenster für die Mentorenwahl ist abgelaufen.</p>
+            }
+        }
+    </section>
 }
 <section><h2>Allianzsuche</h2><table><tr><th>Tag</th><th>Name</th><th>Mitglieder</th><th></th></tr>@foreach (var a in Model.Alliances) { <tr><td>@a.Tag</td><td>@a.Name</td><td>@a.Members.Count</td><td>@if (Model.OwnAlliance == null) { <form method="post" asp-action="ApplyAlliance"><input type="hidden" name="allianceId" value="@a.Id" /><input name="message" placeholder="Nachricht" /><button type="submit">Bewerben</button></form> }</td></tr> }</table></section>
 @if (Model.OwnAlliance != null)

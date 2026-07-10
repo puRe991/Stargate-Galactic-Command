@@ -41,12 +41,13 @@ namespace StargateGalacticCommand.Web.Controllers
         private readonly TradeRouteService _tradeRoutes;
         private readonly SeasonService _season;
         private readonly SkillTreeService _skillTree;
+        private readonly MentorService _mentors;
 
         private static readonly TimeSpan OnlineWindow = TimeSpan.FromMinutes(15);
 
-        public GameController(GameDbContext db, EconomyService economy, BuildingCatalogService catalog, BuildQueueService buildQueue, ResourceService resources, ResearchCatalogService researchCatalog, ResearchQueueService researchQueue, FactionModifierService factionModifiers, GateMissionService gateMissions, LocalSectorService localSectors, PlanetMarketService planetMarket, ShipyardService shipyard, FleetService fleets, EspionageService espionage, LocalCombatService localCombat, AllianceService alliances, SpaceCombatService spaceCombat, RankingService ranking, MessageService messages, ContractService contracts, AchievementService achievements, AllianceWarService allianceWar, AscensionService ascension, WorldEventService worldEvents, TradeRouteService tradeRoutes, SeasonService season = null, SkillTreeService skillTree = null)
+        public GameController(GameDbContext db, EconomyService economy, BuildingCatalogService catalog, BuildQueueService buildQueue, ResourceService resources, ResearchCatalogService researchCatalog, ResearchQueueService researchQueue, FactionModifierService factionModifiers, GateMissionService gateMissions, LocalSectorService localSectors, PlanetMarketService planetMarket, ShipyardService shipyard, FleetService fleets, EspionageService espionage, LocalCombatService localCombat, AllianceService alliances, SpaceCombatService spaceCombat, RankingService ranking, MessageService messages, ContractService contracts, AchievementService achievements, AllianceWarService allianceWar, AscensionService ascension, WorldEventService worldEvents, TradeRouteService tradeRoutes, SeasonService season = null, SkillTreeService skillTree = null, MentorService mentors = null)
         {
-            _db = db; _economy = economy; _catalog = catalog; _buildQueue = buildQueue; _resources = resources; _researchCatalog = researchCatalog; _researchQueue = researchQueue; _factionModifiers = factionModifiers; _gateMissions = gateMissions; _localSectors = localSectors; _planetMarket = planetMarket; _shipyard = shipyard; _fleets = fleets; _espionage = espionage; _localCombat = localCombat; _alliances = alliances; _spaceCombat = spaceCombat; _ranking = ranking; _messages = messages; _contracts = contracts; _achievements = achievements; _allianceWar = allianceWar; _ascension = ascension; _worldEvents = worldEvents; _tradeRoutes = tradeRoutes; _season = season ?? new SeasonService(); _skillTree = skillTree ?? new SkillTreeService();
+            _db = db; _economy = economy; _catalog = catalog; _buildQueue = buildQueue; _resources = resources; _researchCatalog = researchCatalog; _researchQueue = researchQueue; _factionModifiers = factionModifiers; _gateMissions = gateMissions; _localSectors = localSectors; _planetMarket = planetMarket; _shipyard = shipyard; _fleets = fleets; _espionage = espionage; _localCombat = localCombat; _alliances = alliances; _spaceCombat = spaceCombat; _ranking = ranking; _messages = messages; _contracts = contracts; _achievements = achievements; _allianceWar = allianceWar; _ascension = ascension; _worldEvents = worldEvents; _tradeRoutes = tradeRoutes; _season = season ?? new SeasonService(); _skillTree = skillTree ?? new SkillTreeService(); _mentors = mentors ?? new MentorService();
         }
 
         public IActionResult Overview() { return GameView("Overview"); }
@@ -129,6 +130,24 @@ namespace StargateGalacticCommand.Web.Controllers
             int userId = CurrentUserId();
             var now = DateTime.UtcNow;
             try { var app = _db.AllianceApplications.Single(a => a.Id == applicationId); var member = _alliances.Accept(app, LoadCurrentUser(userId), _db.AllianceMembers.Where(m => m.AllianceId == app.AllianceId).ToList(), now); _db.AllianceMembers.Add(member); _db.Reports.Add(new Report { UserId = app.UserId, Title = "Allianzbeitritt", Body = "Deine Bewerbung wurde angenommen.", CreatedAtUtc = now }); TempData["Message"] = "Bewerbung angenommen."; }
+            catch (Exception ex) when (ex is InvalidOperationException || ex is ArgumentException) { TempData["Error"] = ex.Message; }
+            _db.SaveChanges(); return RedirectToAction("Alliances");
+        }
+
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public IActionResult AssignMentor(int mentorUserId)
+        {
+            int userId = CurrentUserId();
+            var now = DateTime.UtcNow;
+            try
+            {
+                var mentee = _db.AllianceMembers.SingleOrDefault(m => m.UserId == userId);
+                if (mentee == null) throw new InvalidOperationException("Du bist in keiner Allianz.");
+                var mentor = _db.AllianceMembers.Single(m => m.UserId == mentorUserId);
+                _mentors.AssignMentor(mentee, mentor, now);
+                TempData["Message"] = "Mentor gewählt.";
+            }
             catch (Exception ex) when (ex is InvalidOperationException || ex is ArgumentException) { TempData["Error"] = ex.Message; }
             _db.SaveChanges(); return RedirectToAction("Alliances");
         }
@@ -880,6 +899,7 @@ namespace StargateGalacticCommand.Web.Controllers
             try { _ascension.ValidateCanAscend(currentBaseScore, user.LastAscendedAtUtc, now); } catch (InvalidOperationException ex) { ascensionBlockedReason = ex.Message; }
             EvaluateWorldEventState(user, now, out var activeWorldEvent, out var myWorldEventContribution, out var canContributeToWorldEvent, out var worldEventBlockedReason);
             ExecuteDueTradeRoutes(playerBase, now);
+            EvaluateMentorRewards(user, playerBase, now);
             int seasonWeekIndex = _season.GetWeekIndex(now);
             var knownAddressesForSeason = _db.KnownGateAddresses.Where(k => k.UserId == user.Id).Select(k => k.GateAddressId).ToList();
             var seasonFocusAddressIds = knownAddressesForSeason.Where(id => _season.IsFocusAddress(id, seasonWeekIndex)).ToList();
@@ -1076,6 +1096,24 @@ namespace StargateGalacticCommand.Web.Controllers
                     _tradeRoutes.MarkExecuted(route, now);
                 }
                 catch (InvalidOperationException) { }
+            }
+        }
+
+        private void EvaluateMentorRewards(User mentorUser, PlayerBase mentorBase, DateTime now)
+        {
+            var mentees = _db.AllianceMembers.Where(m => m.MentorUserId == mentorUser.Id && (m.MentorMissionRewardGrantedAtUtc == null || m.MentorSectorRewardGrantedAtUtc == null)).ToList();
+            foreach (var mentee in mentees)
+            {
+                bool hasCompletedMission = _db.GateMissionReports.Any(r => r.UserId == mentee.UserId);
+                if (_mentors.TryGrantGateMissionMilestone(mentee, mentorBase, hasCompletedMission, now))
+                {
+                    _db.Reports.Add(new Report { UserId = mentorUser.Id, Title = "Mentor-Belohnung", Body = "Dein Schützling hat seine erste Gate-Mission abgeschlossen.", CreatedAtUtc = now });
+                }
+                bool controlsSector = _db.SectorControls.Any(c => c.UserId == mentee.UserId);
+                if (_mentors.TryGrantSectorMilestone(mentee, mentorBase, controlsSector, now))
+                {
+                    _db.Reports.Add(new Report { UserId = mentorUser.Id, Title = "Mentor-Belohnung", Body = "Dein Schützling kontrolliert nun seinen ersten Sektor.", CreatedAtUtc = now });
+                }
             }
         }
 

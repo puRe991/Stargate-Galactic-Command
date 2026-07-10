@@ -156,6 +156,7 @@ namespace StargateGalacticCommand.Data
             modelBuilder.Entity<AllianceMember>().HasIndex(m => m.UserId).IsUnique();
             modelBuilder.Entity<AllianceMember>().HasOne(m => m.Alliance).WithMany(a => a.Members).HasForeignKey(m => m.AllianceId).OnDelete(DeleteBehavior.Cascade);
             modelBuilder.Entity<AllianceMember>().HasOne(m => m.User).WithMany().HasForeignKey(m => m.UserId).OnDelete(DeleteBehavior.Cascade);
+            modelBuilder.Entity<AllianceMember>().HasOne(m => m.MentorUser).WithMany().HasForeignKey(m => m.MentorUserId).OnDelete(DeleteBehavior.SetNull);
             modelBuilder.Entity<AllianceApplication>().HasIndex(a => new { a.AllianceId, a.UserId, a.AcceptedAtUtc, a.RejectedAtUtc });
             modelBuilder.Entity<AllianceApplication>().HasOne(a => a.Alliance).WithMany(x => x.Applications).HasForeignKey(a => a.AllianceId).OnDelete(DeleteBehavior.Cascade);
             modelBuilder.Entity<AllianceApplication>().HasOne(a => a.User).WithMany().HasForeignKey(a => a.UserId).OnDelete(DeleteBehavior.Cascade);
