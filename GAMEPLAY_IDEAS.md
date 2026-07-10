@@ -438,7 +438,7 @@ schneiden lassen.
   Cooldown-Sperre beim zweiten Versuch) manuell gegen die laufende App
   verifiziert.
 
-### 4.2 Zufällige Anomalien auf Gate-Adressen (Ancient/Asgard-Encounter)
+### 4.2 Zufällige Anomalien auf Gate-Adressen (Ancient/Asgard-Encounter) — ✅ umgesetzt
 - **Konzept**: Seltene High-Value-Encounter bei `AnalyzeAddress`/`Explore`-
   Missionen: Ancient-Ruinen oder Asgard-Wracks als sehr seltene
   Zusatzergebnisse, die kleine, einmalige Boni geben (z. B. Forschungs-
@@ -451,6 +451,25 @@ schneiden lassen.
 - **Balancing**: Bewusst nicht wiederholbar pro Adresse (einmal gefunden,
   danach "erschöpft"), um Farming zu verhindern und den Seltenheitswert zu
   erhalten.
+- **Tatsächliche Umsetzung**: `GateAddress.AnomalyFound` (bool) markiert eine
+  Adresse als erschöpft. `GateMissionService.CompleteMission` würfelt bei
+  jedem nicht fehlgeschlagenen `Explore`- oder `AnalyzeAddress`-Abschluss
+  mit `AnomalyChance` (2 %) über eine neue private `TryTriggerAnomaly`-
+  Methode; ein optionaler `Random`-Parameter (Default `Random.Shared`) macht
+  das deterministisch testbar. Trifft der Wurf, wird zufällig zwischen
+  `GateAnomalyType.AncientRuin` (Intel-Fund) und `AsgardWreck` (Naquadah-Fund)
+  gewählt, ein einmaliger Ressourcenbonus gutgeschrieben und die Adresse als
+  erschöpft markiert – kein dauerhafter Multiplikator, bleibt damit
+  konsistent zur Lore-Leitplanke. Der Fund wird auf `GateMissionReport.
+  AnomalyType` gespeichert und im Gate-Raum mit ✧ markiert; da jeder
+  Bericht dauerhaft in der Berichtsliste stehen bleibt, fungiert das
+  bereits als der im Konzept erwähnte "kosmetische Kodex-Eintrag" – kein
+  Ausbau des Achievement-Systems nötig. Abgedeckt durch 5 neue Tests
+  (Auslösung bei Erfolg, kein Auslösen bei verfehltem Wurf, keine Auslösung
+  bei anderen Missionstypen oder bereits erschöpfter Adresse, keine
+  Auslösung bei Fehlschlag); Gate-Raum-Rendering mit dem neuen Schema
+  manuell gegen die laufende App verifiziert (ein echter Fund ließ sich
+  wegen der 2-Minuten-Missionsdauer nicht in Echtzeit end-to-end auslösen).
 
 ### 4.3 Fraktionsspezifische Questlines
 - **Konzept**: Eigene, inhaltlich unterschiedliche (nicht nur reskinnte)

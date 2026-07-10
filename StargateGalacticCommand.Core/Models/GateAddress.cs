@@ -12,6 +12,7 @@ namespace StargateGalacticCommand.Core.Models
         public string Description { get; set; }
         public bool IsNeutralPve { get; set; }
         public int RiskLevel { get; set; }
+        public bool AnomalyFound { get; set; }
         public ICollection<KnownGateAddress> KnownByUsers { get; set; }
         public GateAddress() { KnownByUsers = new List<KnownGateAddress>(); }
     }
