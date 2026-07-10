@@ -1,6 +1,18 @@
 # Stargate Galactic Command
 
-Browserbasierter Strategie-MMO-Prototyp im OGame-Stil mit Stargate-inspirierter Lore. Spieler verwalten keine ganzen Planeten, sondern geheime Basissektoren auf gemeinsam genutzten Welten.
+Browserbasierter Strategie-MMO-Prototyp im OGame-Stil mit Stargate-inspirierter Lore. Spieler verwalten keine ganzen Planeten, sondern geheime Basissektoren auf gemeinsam genutzten Welten und treten gegen andere Fraktionen um Einfluss, Ressourcen und Kontrolle an.
+
+## Inhaltsverzeichnis
+
+- [Status dieser Version](#status-dieser-version)
+- [Features im Überblick](#features-im-überblick)
+- [Lore-Leitplanken](#lore-leitplanken)
+- [Projektstruktur](#projektstruktur)
+- [Voraussetzungen](#voraussetzungen)
+- [Lokal starten](#lokal-starten)
+- [Tests ausführen](#tests-ausführen)
+- [Offene TODOs](#offene-todos)
+- [Erledigt](#erledigt)
 
 ## Status dieser Version
 
@@ -16,6 +28,24 @@ Version 0.0.9 macht gemeinsame Planeten spielmechanisch aktiv:
 - Planetenseite mit Sektorstatus, kontrollierten Sektoren und Einflussrangliste
 - Gebäude, Forschung, Gate-Raum und PvE-Gate-Missionen aus den Vorversionen
 - Prozedural generierte Galaxie mit 300+ erforschbaren Gate-Adressen (`GalaxyGeneratorService`); zufällige Entdeckung neuer Adressen sowohl über Gate-Missionen ("Adresse analysieren") als auch über Erkundungsflüge von Schiffen ohne festes Ziel ("Fernaufklärung")
+
+## Features im Überblick
+
+Kernsysteme, implementiert als Services in `StargateGalacticCommand.Core/Services` und als Seiten unter `StargateGalacticCommand.Web/Views/Game`:
+
+| Bereich | Beschreibung |
+| --- | --- |
+| Basis & Ressourcen | Gebäude, Bauwarteschlange, Ressourcenproduktion mit Fraktions- und Sektorboni |
+| Forschung | Forschungskatalog und -warteschlange mit Auswirkung auf Economy und Missionen |
+| Gate-Raum | PvE-Gate-Missionen (Adresse analysieren, Artefakt suchen, Risikoanalyse, Ressourcen sichern u. a.) |
+| Galaxie & Flotten | Prozedural generierte Galaxie, Schiffswerft, Flottenversand, Weltraumkampf, Trümmerfeldbergung |
+| Planeten & Sektoren | Gemeinsame Planeten mit beanspruchbaren Sektoren, Sektorkontrolle, Einfluss-Zerfall, Ranglisten |
+| Diplomatie | Allianzen, Allianz-Kriegsziele, Marktplatz zwischen Spielern |
+| Geheimdienst | Spionage sowie Gegenspionage inklusive Köderdaten |
+| Meta-Progression | Kodex/Achievements, tägliche/wöchentliche Kontrakte, Erleuchtung (Prestige/Ascension), Weltevents |
+| Kommunikation | Postfach/Nachrichten sowie Kampf- und Flottenberichte |
+
+Eine ausführliche Historie der einzelnen Features steht im Abschnitt [Erledigt](#erledigt); geplante bzw. angedachte Erweiterungen sind in [ROADMAP.md](ROADMAP.md) und [GAMEPLAY_IDEAS.md](GAMEPLAY_IDEAS.md) gesammelt.
 
 ## Lore-Leitplanken
 
@@ -41,7 +71,7 @@ StargateGalacticCommand.Tests  Unit-Tests für Economy-Formeln, Gate-Missionen, 
 - .NET SDK 8.0 oder neuer (das Repository enthält eine `global.json` mit Roll-forward auf neuere installierte SDKs)
 - SQLite wird lokal über `Microsoft.EntityFrameworkCore.Sqlite` verwendet; kein separater Server ist nötig.
 
-> Hinweis: Die Projekte zielen auf .NET 8 LTS. Wenn Visual Studio die Projekte nicht lädt, installiere das aktuelle .NET SDK und stelle sicher, dass der Workload „ASP.NET und Webentwicklung“ aktiv ist.
+> Hinweis: Die Projekte zielen auf .NET 8 LTS. Wenn Visual Studio die Projekte nicht lädt, installiere das aktuelle .NET SDK und stelle sicher, dass der Workload „ASP.NET und Webentwicklung" aktiv ist.
 
 ## Lokal starten
 
@@ -82,11 +112,11 @@ dotnet test StargateGalacticCommand.sln
 - Bauwarteschlange pro Basis erlaubt jetzt bis zu `BuildQueueService.MaxQueueLength` (5) aufeinanderfolgende Aufträge statt nur einen; Kosten und Ziellevel berücksichtigen bereits wartende Aufträge desselben Gebäudetyps.
 - Trümmerfeldbergung: Bergungsflotten (neue Flottenmission `FleetMissionType.Recycle`) können zu Trümmerfeldern nach Raumkämpfen geschickt werden, sammeln Naquadah/Trinium bis zur Frachtkapazität ein und liefern es an die Heimatbasis; Felder werden bei unzureichender Kapazität nur teilweise abgebaut.
 - Fraktionsspezialisierung bei Gate-Missionen: Jede Startfraktion bekommt einen Erfolgs-Score-Bonus auf eine Missionsart, die ihrer Lore-Rolle entspricht (SGC → Artefakt suchen, Freie Jaffa → Risikoanalyse, Tok'ra → Adresse analysieren, Lucian Alliance → Ressourcen sichern); im Gate-Raum mit ★ markiert.
-- Tägliche/wöchentliche Kontrakte: neue Seite „Kontrakte“ mit vier wiederkehrenden Aufträgen (Gate-Missionen, Flottenmissionen, Markthandel täglich; Gate-Missionen wöchentlich), Fortschritt wird live aus bestehenden Berichten berechnet, Belohnung wird einmal pro Zeitraum abgeholt; Namen sind fraktionsspezifisch eingefärbt (z. B. „Jaffa-Ehrenauftrag“).
-- Kodex/Achievements: neue Seite „Kodex“ mit 12 dauerhaften Sammel-Errungenschaften über sechs Kategorien (entdeckte Adressen, Raumschlachtsiege, alle Gate-Missionstypen, Allianzbeitritt, gegründete Kolonien, Markttransaktionen); schaltet sich automatisch frei und meldet sich als Bericht, ohne Ressourcenbelohnung.
-- Einfluss-Zerfall für Sektorkontrolle: kontrollierte Sektoren verlieren ohne bestätigte Präsenz (`ReinforceSector`) nach 24 h graduell an Einfluss und werden nach 96 h automatisch wieder neutral und frei beanspruchbar; Planetenseite zeigt Countdown und „Präsenz bestätigen“-Aktion pro Sektor.
+- Tägliche/wöchentliche Kontrakte: neue Seite „Kontrakte" mit vier wiederkehrenden Aufträgen (Gate-Missionen, Flottenmissionen, Markthandel täglich; Gate-Missionen wöchentlich), Fortschritt wird live aus bestehenden Berichten berechnet, Belohnung wird einmal pro Zeitraum abgeholt; Namen sind fraktionsspezifisch eingefärbt (z. B. „Jaffa-Ehrenauftrag").
+- Kodex/Achievements: neue Seite „Kodex" mit 12 dauerhaften Sammel-Errungenschaften über sechs Kategorien (entdeckte Adressen, Raumschlachtsiege, alle Gate-Missionstypen, Allianzbeitritt, gegründete Kolonien, Markttransaktionen); schaltet sich automatisch frei und meldet sich als Bericht, ohne Ressourcenbelohnung.
+- Einfluss-Zerfall für Sektorkontrolle: kontrollierte Sektoren verlieren ohne bestätigte Präsenz (`ReinforceSector`) nach 24 h graduell an Einfluss und werden nach 96 h automatisch wieder neutral und frei beanspruchbar; Planetenseite zeigt Countdown und „Präsenz bestätigen"-Aktion pro Sektor.
 - Allianz-Kriegsziele: Gründer/Offiziere können auf der Allianzen-Seite einen Zielplaneten erklären; hält die Allianz gemeinsam genug Sektoren (nach Allianzgröße gestaffelt) 24 Stunden durchgehend, erhält jedes Mitglied eine einmalige Ressourcenbelohnung. Fortschritt wird live berechnet, kein Cronjob nötig.
 - Erleuchtung (Prestige/Ascension): ab Basis-Score 15.000 (mit 24 h Cooldown zwischen Erleuchtungen) kann die Basis freiwillig auf den Ausgangsstand zurückgesetzt werden (Gebäude, Forschung, Schiffe, Ressourcen) gegen einen permanenten Produktionsbonus (+3 % pro Erleuchtung, gedeckelt bei +30 %); Berichte, Kodex-Fortschritt, Kontrakte und Allianzmitgliedschaft bleiben erhalten. Sichtbares ✦-Abzeichen in der Rangliste.
 - Weltevents: serverweite Bedrohungen (Replikatoren-Invasion / Ori-Einfall) starten automatisch nach 24 h Cooldown und laufen 48 h; jeder Spieler kann alle 4 h einen Verteidigungsbeitrag leisten (kostet Versorgungsgüter/Personal), gemeinsamer Fortschrittsbalken auf der Übersichtsseite; bei Erfolg erhält jeder Teilnehmer (nicht nur die stärksten Beitragenden) eine Belohnung.
 - Ancient/Asgard-Anomalien: `Explore`- und `AnalyzeAddress`-Gate-Missionen haben bei Erfolg eine kleine Zufallschance (2 %) auf einen einmaligen Fund (antike Ruine oder Asgard-Wrack) mit Ressourcenbonus; jede Adresse liefert das höchstens einmal, danach gilt sie als erschöpft. Im Gate-Raum mit ✧ markiert.
-- Espionage-Köder: Ab Gegenspionagestufe „Hardened“ kann auf der Geheimdienst-Seite ein Ködervorrat mit erfundenen Ressourcen-/Flottenwerten aufgeladen werden (kostet Intel, begrenzte Einsätze). Erfolgreiche Spionageangriffe können dadurch mit Falschwerten getäuscht werden; die Erkennungschance des Angreifers sinkt mit dessen Sensorik-/Tarntechnologie-Stufe.
+- Espionage-Köder: Ab Gegenspionagestufe „Hardened" kann auf der Geheimdienst-Seite ein Ködervorrat mit erfundenen Ressourcen-/Flottenwerten aufgeladen werden (kostet Intel, begrenzte Einsätze). Erfolgreiche Spionageangriffe können dadurch mit Falschwerten getäuscht werden; die Erkennungschance des Angreifers sinkt mit dessen Sensorik-/Tarntechnologie-Stufe.
