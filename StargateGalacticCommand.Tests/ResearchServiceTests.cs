@@ -89,6 +89,63 @@ namespace StargateGalacticCommand.Tests
             Assert.Equal(11, tokra);
         }
 
+        [Fact]
+        public void Catalog_HasFiftyResearchesAcrossFiveBranches()
+        {
+            var catalog = new ResearchCatalogService();
+            var all = catalog.GetAvailableForFaction(null).ToList();
+            // GetAvailableForFaction(null) liefert nur die allgemeinen Forschungen (kein FactionShortName), daher zählen wir hier direkt über alle vier Startfraktionen.
+            int general = all.Count;
+            int sgc = catalog.GetAvailableForFaction(CreateFaction("SGC")).Count() - general;
+            int jaffa = catalog.GetAvailableForFaction(CreateFaction("Jaffa")).Count() - general;
+            int tokra = catalog.GetAvailableForFaction(CreateFaction("Tok’ra")).Count() - general;
+            int lucian = catalog.GetAvailableForFaction(CreateFaction("Lucian")).Count() - general;
+
+            Assert.Equal(14, general);
+            Assert.Equal(9, sgc);
+            Assert.Equal(9, jaffa);
+            Assert.Equal(9, tokra);
+            Assert.Equal(9, lucian);
+            Assert.Equal(50, general + sgc + jaffa + tokra + lucian);
+        }
+
+        [Fact]
+        public void Catalog_HasNoDuplicateResearchTypesAndValidPrerequisiteReferences()
+        {
+            var catalog = new ResearchCatalogService();
+            var allTypes = Enum.GetValues(typeof(ResearchType)).Cast<ResearchType>().ToList();
+            var definitions = allTypes.Select(catalog.Get).ToList();
+            Assert.Equal(allTypes.Count, definitions.Select(d => d.Type).Distinct().Count());
+            foreach (var definition in definitions.Where(d => d.Prerequisite.HasValue))
+            {
+                Assert.Contains(definition.Prerequisite.Value, allTypes);
+            }
+        }
+
+        [Fact]
+        public void Catalog_CalculateCostAndSecondsWorkForEveryResearchType()
+        {
+            var catalog = new ResearchCatalogService();
+            foreach (ResearchType type in Enum.GetValues(typeof(ResearchType)))
+            {
+                var cost = catalog.CalculateCost(type, 0);
+                Assert.True(cost.Naquadah >= 0);
+                int seconds = catalog.CalculateResearchSeconds(type, 0, 1, 1.0);
+                Assert.True(seconds > 0);
+            }
+        }
+
+        [Fact]
+        public void ResearchLevels_GetAndSetLevelRoundTripForEveryResearchType()
+        {
+            var levels = new ResearchLevels();
+            foreach (ResearchType type in Enum.GetValues(typeof(ResearchType)))
+            {
+                levels.SetLevel(type, 3);
+                Assert.Equal(3, levels.GetLevel(type));
+            }
+        }
+
         private static readonly DateTime Now = new DateTime(2026, 1, 1, 0, 0, 0, DateTimeKind.Utc);
 
         private static ResearchQueueService CreateService()

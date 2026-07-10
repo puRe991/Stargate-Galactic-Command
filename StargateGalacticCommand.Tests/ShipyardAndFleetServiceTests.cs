@@ -26,6 +26,21 @@ namespace StargateGalacticCommand.Tests
         }
 
         [Fact]
+        public void ShipBuild_ResearchReducesCostAndBuildTime()
+        {
+            var service = new ShipyardService(new ResourceService());
+            var withoutResearch = Base(1);
+            var withResearch = Base(2);
+            var research = new ResearchLevels { NaquadahReactorMiniaturization = 20, StolenTechnologyIntegration = 20, AdvancedShipEngineering = 20 };
+
+            var baselineItem = service.StartBuild(withoutResearch, ShipType.SmallTransporter, 10, DateTime.UtcNow);
+            var boostedItem = service.StartBuild(withResearch, ShipType.SmallTransporter, 10, DateTime.UtcNow, research);
+
+            Assert.True(withResearch.Resources.Naquadah > withoutResearch.Resources.Naquadah, "Forschung sollte die Naquadah-Kosten senken.");
+            Assert.True(boostedItem.CompletesAtUtc < baselineItem.CompletesAtUtc, "Fortgeschrittener Schiffbau sollte die Bauzeit senken.");
+        }
+
+        [Fact]
         public void TransportDeductsAndDeliversResourcesThenReturns()
         {
             var shipyard = new ShipyardService(new ResourceService());

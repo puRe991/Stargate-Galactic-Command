@@ -44,7 +44,7 @@ namespace StargateGalacticCommand.Core.Services
             };
         }
 
-        public PlanetMarketTransaction BuyOrder(PlanetMarketOrder order, User buyer, PlayerBase buyerBase, PlayerBase sellerBase, IEnumerable<PlanetSector> sellerControlledSectors, DateTime nowUtc, double alliancePactFeeReduction = 0.0)
+        public PlanetMarketTransaction BuyOrder(PlanetMarketOrder order, User buyer, PlayerBase buyerBase, PlayerBase sellerBase, IEnumerable<PlanetSector> sellerControlledSectors, DateTime nowUtc, double alliancePactFeeReduction = 0.0, double sellerResearchFeeReduction = 0.0)
         {
             if (order == null) throw new ArgumentNullException("order");
             if (buyer == null) throw new ArgumentNullException("buyer");
@@ -58,7 +58,7 @@ namespace StargateGalacticCommand.Core.Services
             if (buyerBase.PlanetSector.PlanetId != order.PlanetId || sellerBase.PlanetSector.PlanetId != order.PlanetId) throw new InvalidOperationException("Handel ist nur auf demselben Planeten möglich.");
             if (!HasEnough(buyerBase.Resources, order.RequestedResource, order.RequestedAmount)) throw new InvalidOperationException("Nicht genug Ressourcen für den Kauf.");
 
-            var feeRate = CalculateFeeRate(order.SellerUser == null ? sellerBase.Faction : order.SellerUser.Faction, sellerControlledSectors, alliancePactFeeReduction);
+            var feeRate = CalculateFeeRate(order.SellerUser == null ? sellerBase.Faction : order.SellerUser.Faction, sellerControlledSectors, alliancePactFeeReduction + sellerResearchFeeReduction);
             var fee = CalculateFee(order.RequestedAmount, feeRate);
 
             Add(buyerBase.Resources, order.RequestedResource, -order.RequestedAmount);

@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using StargateGalacticCommand.Core.Models;
 using StargateGalacticCommand.Core.Services;
 using Xunit;
@@ -150,6 +151,39 @@ namespace StargateGalacticCommand.Tests
             var mission = new LocalCombatMission { AttackerUserId = 1, PlanetSectorId = 6, AttackingUnits = new GroundUnits { EliteJaffa = 2 }, DefendingUnits = new DefenseUnits { LocalMilitia = 1 }, ResolvesAtUtc = now.AddMinutes(-1) };
             var report = new LocalCombatService().Resolve(mission, new User { Id = 1, Faction = new Faction { ShortName = "Jaffa" } }, null, sector, now);
             Assert.Contains("Angriff", report.Body);
+        }
+
+        [Fact]
+        public void LocalCombat_ResearchIncreasesAttackerPower()
+        {
+            var now = new DateTime(2026, 1, 8, 0, 0, 0, DateTimeKind.Utc);
+            var sector = new PlanetSector { Id = 7, Name = "Naquadah-Ader", SectorType = SectorType.NaquadahDeposit };
+            var mission = new LocalCombatMission { AttackerUserId = 1, PlanetSectorId = 7, AttackingUnits = new GroundUnits { Marines = 1 }, DefendingUnits = new DefenseUnits { LocalMilitia = 1 }, ResolvesAtUtc = now.AddMinutes(-1) };
+            var attacker = new User { Id = 1, Faction = new Faction { ShortName = "Jaffa" }, ResearchLevels = new ResearchLevels { StaffWeaponDiscipline = 10 } };
+            new LocalCombatService().Resolve(mission, attacker, null, sector, now);
+
+            var baselineMission = new LocalCombatMission { AttackerUserId = 1, PlanetSectorId = 7, AttackingUnits = new GroundUnits { Marines = 1 }, DefendingUnits = new DefenseUnits { LocalMilitia = 1 }, ResolvesAtUtc = now.AddMinutes(-1) };
+            var baselineAttacker = new User { Id = 1, Faction = new Faction { ShortName = "Jaffa" } };
+            new LocalCombatService().Resolve(baselineMission, baselineAttacker, null, sector, now);
+
+            Assert.True(mission.Rounds.First().AttackerPower > baselineMission.Rounds.First().AttackerPower);
+        }
+
+        [Fact]
+        public void LocalCombat_FortifiedGarrisonsResearch_CanTurnAnAttackerWinIntoADefense()
+        {
+            var now = new DateTime(2026, 1, 8, 0, 0, 0, DateTimeKind.Utc);
+            var sector = new PlanetSector { Id = 8, Name = "Naquadah-Ader", SectorType = SectorType.NaquadahDeposit };
+            var attackerBase = new User { Id = 1, Faction = new Faction { ShortName = "SGC" } };
+            var mission = new LocalCombatMission { AttackerUserId = 1, PlanetSectorId = 8, AttackingUnits = new GroundUnits { Marines = 8 }, DefendingUnits = new DefenseUnits { LocalMilitia = 1 }, ResolvesAtUtc = now.AddMinutes(-1) };
+            var winReport = new LocalCombatService().Resolve(mission, attackerBase, null, sector, now);
+            Assert.True(winReport.AttackerWon);
+
+            var sector2 = new PlanetSector { Id = 9, Name = "Naquadah-Ader", SectorType = SectorType.NaquadahDeposit };
+            var mission2 = new LocalCombatMission { AttackerUserId = 1, PlanetSectorId = 9, AttackingUnits = new GroundUnits { Marines = 8 }, DefendingUnits = new DefenseUnits { LocalMilitia = 1 }, ResolvesAtUtc = now.AddMinutes(-1) };
+            var defender = new User { Id = 2, Faction = new Faction { ShortName = "Jaffa" }, ResearchLevels = new ResearchLevels { FortifiedGarrisons = 1000 } };
+            var defendedReport = new LocalCombatService().Resolve(mission2, attackerBase, defender, sector2, now);
+            Assert.False(defendedReport.AttackerWon);
         }
     }
 }

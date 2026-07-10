@@ -45,8 +45,8 @@ namespace StargateGalacticCommand.Core.Services
             var rounds = new List<LocalCombatRound>();
             for (int i = 1; i <= MaxRounds && attackerRemaining > 0 && defenderRemaining > 0; i++)
             {
-                int ap = attackerRemaining * 10 + FactionBonus(attacker?.Faction) + TerrainBonus(sector, true) + TacticBonus(mission.AttackingUnits);
-                int dp = defenderRemaining * 9 + FactionBonus(defender?.Faction) + TerrainBonus(sector, false) + DefenseBonus(mission.DefendingUnits);
+                int ap = attackerRemaining * 10 + FactionBonus(attacker?.Faction) + TerrainBonus(sector, true) + TacticBonus(mission.AttackingUnits) + ResearchAttackBonus(attacker);
+                int dp = defenderRemaining * 9 + FactionBonus(defender?.Faction) + TerrainBonus(sector, false) + DefenseBonus(mission.DefendingUnits) + ResearchDefenseBonus(defender);
                 int dLoss = Math.Min(defenderRemaining, Math.Max(0, ap - dp / 2) / 18 + (ap > dp ? 1 : 0));
                 int aLoss = Math.Min(attackerRemaining, Math.Max(0, dp - ap / 2) / 20 + (dp >= ap ? 1 : 0));
                 int capA = Math.Max(1, (int)Math.Ceiling(attackerRemaining * 0.35));
@@ -75,5 +75,7 @@ namespace StargateGalacticCommand.Core.Services
         private static int DefenseBonus(DefenseUnits d) => (d?.DefenseRings ?? 0) * 6 + (d?.SensorAlarms ?? 0) * 4 + (d?.BaseGuards ?? 0) * 2;
         private static int TerrainBonus(PlanetSector s, bool attacker) => s.SectorType == SectorType.GoauldRuin ? (attacker ? 2 : 5) : s.SectorType == SectorType.NaquadahDeposit || s.SectorType == SectorType.TriniumField ? 3 : 0;
         private static int FactionBonus(Faction f) { var s = f?.ShortName ?? ""; if (s == "Jaffa") return 5; if (s == "SGC") return 4; if (s == "Tokra") return 4; if (s == "Lucian") return 3; return 0; }
+        private static int ResearchAttackBonus(User u) => u?.ResearchLevels == null ? 0 : (u.ResearchLevels.StaffWeaponDiscipline + u.ResearchLevels.GroundAssaultTactics + u.ResearchLevels.MercenaryContracts) * 3;
+        private static int ResearchDefenseBonus(User u) => u?.ResearchLevels == null ? 0 : u.ResearchLevels.FortifiedGarrisons * 3;
     }
 }

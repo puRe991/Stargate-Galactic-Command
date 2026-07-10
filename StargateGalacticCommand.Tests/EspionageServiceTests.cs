@@ -162,6 +162,37 @@ namespace StargateGalacticCommand.Tests
             Assert.Equal(1, decoy.Charges);
         }
 
+        [Fact]
+        public void CalculateDetectionRisk_TokraAttackResearchLowersRisk()
+        {
+            var service = new EspionageService(new ResourceService());
+            var source = Base("Tok’ra", 1, 500);
+            var target = Base("Lucian", 3, 100);
+            var novice = User("Tok’ra", 0, 0);
+            var veteran = new User { Id = 1, Faction = new Faction { Name = "Tok’ra", ShortName = "Tok’ra" }, ResearchLevels = new ResearchLevels { CovertInfiltration = 5, DeepCoverNetworks = 5, ShadowCouncilInfluence = 5 } };
+
+            int riskWithoutResearch = service.CalculateDetectionRisk(novice, source, target, EspionageMissionType.SensorRecon, 50).DetectionRiskPercent;
+            int riskWithResearch = service.CalculateDetectionRisk(veteran, source, target, EspionageMissionType.SensorRecon, 50).DetectionRiskPercent;
+
+            Assert.True(riskWithResearch < riskWithoutResearch);
+        }
+
+        [Fact]
+        public void CalculateDetectionRisk_CloakFieldCoordinationRaisesDefenderProtection()
+        {
+            var service = new EspionageService(new ResourceService());
+            var attacker = User("SGC", 1, 0);
+            var source = Base("SGC", 1, 500);
+            var weakTarget = Base("Tok’ra", 3, 100);
+            var hardenedTarget = Base("Tok’ra", 3, 100);
+            hardenedTarget.User.ResearchLevels.CloakFieldCoordination = 10;
+
+            int riskAgainstWeak = service.CalculateDetectionRisk(attacker, source, weakTarget, EspionageMissionType.SensorRecon, 50).DetectionRiskPercent;
+            int riskAgainstHardened = service.CalculateDetectionRisk(attacker, source, hardenedTarget, EspionageMissionType.SensorRecon, 50).DetectionRiskPercent;
+
+            Assert.True(riskAgainstHardened > riskAgainstWeak);
+        }
+
         private class FixedRandom : Random
         {
             private readonly double _value;

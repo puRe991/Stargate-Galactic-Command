@@ -92,8 +92,8 @@ namespace StargateGalacticCommand.Core.Services
 
         public SpyDefenseResult CalculateDetectionRisk(User user, PlayerBase source, PlayerBase target, EspionageMissionType type, int intelSpent)
         {
-            int attack = source.BuildingLevels.SensorStation + user.ResearchLevels.Sensorics + user.ResearchLevels.StealthTechnology + IntelBonus(intelSpent) + FactionSpyBonus(user.Faction, type);
-            int defense = target.BuildingLevels.SensorStation * 2 + (target.User != null && target.User.ResearchLevels != null ? target.User.ResearchLevels.Sensorics : 0) + FactionDefenseBonus(target.Faction, type);
+            int attack = source.BuildingLevels.SensorStation + user.ResearchLevels.Sensorics + user.ResearchLevels.StealthTechnology + user.ResearchLevels.CovertInfiltration + user.ResearchLevels.DeepCoverNetworks + user.ResearchLevels.ShadowCouncilInfluence + IntelBonus(intelSpent) + FactionSpyBonus(user.Faction, type);
+            int defense = target.BuildingLevels.SensorStation * 2 + (target.User != null && target.User.ResearchLevels != null ? target.User.ResearchLevels.Sensorics + target.User.ResearchLevels.CloakFieldCoordination : 0) + FactionDefenseBonus(target.Faction, type);
             int risk = Math.Max(5, Math.Min(95, 35 + defense * 8 - attack * 6));
             bool detected = risk >= 50;
             return new SpyDefenseResult { DetectionRiskPercent = risk, WasDetected = detected, Level = defense >= 8 ? CounterIntelligenceLevel.Lockdown : defense >= 5 ? CounterIntelligenceLevel.Hardened : defense >= 3 ? CounterIntelligenceLevel.Guarded : CounterIntelligenceLevel.Low, Summary = detected ? "Spionageaktivität entdeckt." : "Keine sichere Identifikation." };

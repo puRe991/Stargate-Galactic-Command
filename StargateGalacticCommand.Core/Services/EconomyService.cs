@@ -48,18 +48,19 @@ namespace StargateGalacticCommand.Core.Services
         public ResourceProduction CalculateHourlyProduction(BuildingLevels levels, ResearchLevels researchLevels, Faction faction, SectorBonus sectorBonus, int ascensionCount)
         {
             if (levels == null) throw new ArgumentNullException("levels");
-            double naquadahMultiplier = 1;
-            double triniumMultiplier = 1;
-            double personnelMultiplier = 1;
-            double energyMultiplier = 1 + (Math.Max(0, researchLevels == null ? 0 : researchLevels.NaquadahEnergyTechnology) * 0.02);
-            double intelMultiplier = (1 + (Math.Max(0, researchLevels == null ? 0 : researchLevels.Sensorics) * 0.02)) * _factionModifiers.GetIntelProductionMultiplier(faction);
-            double suppliesMultiplier = _factionModifiers.GetSuppliesProductionMultiplier(faction);
+            // Jede Produktionsart summiert Boni aus mehreren Forschungen (allgemein + fraktionsspezifisch), siehe ResearchCatalogService.
+            double naquadahMultiplier = 1 + (Math.Max(0, researchLevels == null ? 0 : researchLevels.AdvancedNaquadahRefining + researchLevels.HiddenCaches) * 0.02);
+            double triniumMultiplier = 1 + (Math.Max(0, researchLevels == null ? 0 : researchLevels.AutomatedTriniumExtraction + researchLevels.HiddenCaches) * 0.02);
+            double personnelMultiplier = 1 + (Math.Max(0, researchLevels == null ? 0 : researchLevels.Medicine + researchLevels.SymbioteEfficiency + researchLevels.HostBondingTechnology) * 0.02);
+            double energyMultiplier = 1 + (Math.Max(0, researchLevels == null ? 0 : researchLevels.NaquadahEnergyTechnology) * 0.02) + (Math.Max(0, researchLevels == null ? 0 : researchLevels.ZeroPointModuleTheory) * 0.03);
+            double intelMultiplier = (1 + (Math.Max(0, researchLevels == null ? 0 : researchLevels.Sensorics + researchLevels.IntelligenceNetworkExpansion) * 0.02)) * _factionModifiers.GetIntelProductionMultiplier(faction);
+            double suppliesMultiplier = _factionModifiers.GetSuppliesProductionMultiplier(faction) * (1 + (Math.Max(0, researchLevels == null ? 0 : researchLevels.Logistics + researchLevels.FreeJaffaNationLogistics + researchLevels.ExtortionNetworks) * 0.02));
             if (sectorBonus != null)
             {
-                naquadahMultiplier = 1 + Math.Max(0, sectorBonus.NaquadahMultiplier);
-                triniumMultiplier = 1 + Math.Max(0, sectorBonus.TriniumMultiplier);
+                naquadahMultiplier *= 1 + Math.Max(0, sectorBonus.NaquadahMultiplier);
+                triniumMultiplier *= 1 + Math.Max(0, sectorBonus.TriniumMultiplier);
                 suppliesMultiplier *= 1 + Math.Max(0, sectorBonus.SuppliesMultiplier);
-                personnelMultiplier = 1 + Math.Max(0, sectorBonus.PersonnelMultiplier);
+                personnelMultiplier *= 1 + Math.Max(0, sectorBonus.PersonnelMultiplier);
                 intelMultiplier *= 1 + Math.Max(0, sectorBonus.IntelMultiplier);
             }
             double ascensionMultiplier = 1 + _ascension.CalculateProductionBonus(ascensionCount);

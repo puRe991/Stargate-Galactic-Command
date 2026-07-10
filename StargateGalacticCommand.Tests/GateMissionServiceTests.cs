@@ -303,6 +303,90 @@ namespace StargateGalacticCommand.Tests
             Assert.NotNull(report);
         }
 
+        [Fact]
+        public void CompleteMission_ResearchScoreBonus_TurnsPartialSuccessIntoSuccess()
+        {
+            var service = new GateMissionService(new ResourceService());
+            var user = new User { Id = 1, Faction = new Faction { ShortName = "Lucian" }, ResearchLevels = new ResearchLevels { GateAddressing = 1 } };
+            var playerBase = new PlayerBase { Id = 1, Faction = user.Faction, Resources = new ResourceStock { Energy = 1000, Supplies = 1000, Personnel = 1000, Intel = 10 }, BuildingLevels = new BuildingLevels { GateControlRoom = 1 } };
+            var team = new MissionTeam { Id = 1, User = user, UserId = user.Id, Name = "Grenzfall-Team", Strength = 6, Science = 6, Diplomacy = 6, Stealth = 6, CarryCapacity = 6, Risk = 5, IsAvailable = true };
+            var mission = service.StartMission(user, playerBase, Address(), team, GateMissionType.SearchArtifact, Now);
+            var research = new ResearchLevels { AncientOutpostTechnology = 4 };
+
+            // Score liegt ohne Bonus bei 25 (PartialSuccess); mit +4 Forschungsbonus (Antiker-Außenposten-Technologie) bei 29 (Success).
+            var report = service.CompleteMission(mission, playerBase, null, mission.CompletesAtUtc, researchLevels: research);
+
+            Assert.True(report.ArtifactLeadFound);
+        }
+
+        [Fact]
+        public void CompleteMission_MedicalResearch_ReducesPersonnelLossOnFailure()
+        {
+            var service = new GateMissionService(new ResourceService());
+            var user = CreateUser();
+            var playerBase = CreateBase();
+            var weakTeam = new MissionTeam { Id = 2, User = user, UserId = user.Id, Name = "Grenzschutz", Strength = 1, Science = 1, Diplomacy = 1, Stealth = 1, CarryCapacity = 1, Risk = 10, IsAvailable = true };
+            var missionWithoutResearch = service.StartMission(user, playerBase, Address(), weakTeam, GateMissionType.Explore, Now);
+            var reportWithoutResearch = service.CompleteMission(missionWithoutResearch, playerBase, null, missionWithoutResearch.CompletesAtUtc);
+
+            var weakTeam2 = new MissionTeam { Id = 3, User = user, UserId = user.Id, Name = "Grenzschutz 2", Strength = 1, Science = 1, Diplomacy = 1, Stealth = 1, CarryCapacity = 1, Risk = 10, IsAvailable = true };
+            var missionWithResearch = service.StartMission(user, playerBase, Address(), weakTeam2, GateMissionType.Explore, Now);
+            var research = new ResearchLevels { Medicine = 5, JaffaWarriorCode = 5 };
+            var reportWithResearch = service.CompleteMission(missionWithResearch, playerBase, null, missionWithResearch.CompletesAtUtc, researchLevels: research);
+
+            Assert.Equal(GateMissionOutcome.WoundedOrLosses, reportWithoutResearch.Outcome);
+            Assert.Equal(GateMissionOutcome.WoundedOrLosses, reportWithResearch.Outcome);
+            Assert.True(reportWithResearch.PersonnelLost < reportWithoutResearch.PersonnelLost);
+            Assert.True(reportWithResearch.PersonnelLost >= 0);
+        }
+
+        [Fact]
+        public void CompleteMission_XenoArchaeology_IncreasesAnomalyChance()
+        {
+            var service = new GateMissionService(new ResourceService());
+            var user = CreateUser();
+            var playerBase = CreateBase();
+            var address = Address();
+            var mission = service.StartMission(user, playerBase, address, Team(user), GateMissionType.Explore, Now);
+
+            // 0.025 liegt über der Basis-Chance (2%), aber unter der um Xenoarchäologie (Stufe 10 = +1%) erhöhten Chance.
+            var research = new ResearchLevels { XenoArchaeology = 10 };
+            var report = service.CompleteMission(mission, playerBase, null, mission.CompletesAtUtc, new FixedRandom(0.025), researchLevels: research);
+
+            Assert.NotNull(report.AnomalyType);
+            Assert.True(address.AnomalyFound);
+        }
+
+        [Fact]
+        public void CompleteMission_XenoArchaeology_DoesNotTriggerWithoutResearchAtSameRoll()
+        {
+            var service = new GateMissionService(new ResourceService());
+            var user = CreateUser();
+            var playerBase = CreateBase();
+            var address = Address();
+            var mission = service.StartMission(user, playerBase, address, Team(user), GateMissionType.Explore, Now);
+
+            var report = service.CompleteMission(mission, playerBase, null, mission.CompletesAtUtc, new FixedRandom(0.025));
+
+            Assert.Null(report.AnomalyType);
+        }
+
+        [Fact]
+        public void CompleteMission_AsgardDataAnalysis_IncreasesAnomalyIntelYield()
+        {
+            var service = new GateMissionService(new ResourceService());
+            var user = CreateUser();
+            var playerBase = CreateBase();
+            var mission = service.StartMission(user, playerBase, Address(), Team(user), GateMissionType.Explore, Now);
+            var research = new ResearchLevels { AsgardDataAnalysis = 5 };
+
+            var report = service.CompleteMission(mission, playerBase, null, mission.CompletesAtUtc, new FixedRandom(0.0), researchLevels: research);
+
+            // Basisertrag der antiken Ruine (FixedRandom(0.0) wählt AncientRuin) ist 40 Intel; +5*2 = 50 Intel durch Asgard-Datenanalyse.
+            Assert.Equal(GateAnomalyType.AncientRuin, report.AnomalyType);
+            Assert.True(report.IntelFound >= 50);
+        }
+
         private class FixedRandom : Random
         {
             private readonly double _value;

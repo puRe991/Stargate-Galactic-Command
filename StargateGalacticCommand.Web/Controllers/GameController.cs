@@ -393,7 +393,7 @@ namespace StargateGalacticCommand.Web.Controllers
         {
             var playerBase = LoadCurrentBase(); if (playerBase == null) return RedirectToAction("Login", "Account");
             var now = DateTime.UtcNow; _economy.ApplyOfflineProduction(playerBase, now);
-            try { _shipyard.StartBuild(playerBase, shipType, quantity, now); TempData["Message"] = "Schiffsbau gestartet."; }
+            try { _shipyard.StartBuild(playerBase, shipType, quantity, now, playerBase.User?.ResearchLevels); TempData["Message"] = "Schiffsbau gestartet."; }
             catch (Exception ex) when (ex is InvalidOperationException || ex is ArgumentException || ex is ArgumentOutOfRangeException) { TempData["Error"] = ex.Message; }
             _db.SaveChanges(); return RedirectToAction("Shipyard");
         }
@@ -626,8 +626,8 @@ namespace StargateGalacticCommand.Web.Controllers
             try
             {
                 var mission = _db.LocalCombatMissions.Include(m => m.AttackingUnits).Include(m => m.DefendingUnits).Include(m => m.PlanetSector).ThenInclude(s => s.PlayerBase).Include(m => m.PlanetSector).ThenInclude(s => s.SectorControl).Single(m => m.Id == missionId && m.AttackerUserId == userId);
-                var attacker = _db.Users.Include(u => u.Faction).Single(u => u.Id == mission.AttackerUserId);
-                var defender = mission.DefenderUserId.HasValue ? _db.Users.Include(u => u.Faction).SingleOrDefault(u => u.Id == mission.DefenderUserId.Value) : null;
+                var attacker = _db.Users.Include(u => u.Faction).Include(u => u.ResearchLevels).Single(u => u.Id == mission.AttackerUserId);
+                var defender = mission.DefenderUserId.HasValue ? _db.Users.Include(u => u.Faction).Include(u => u.ResearchLevels).SingleOrDefault(u => u.Id == mission.DefenderUserId.Value) : null;
                 var report = _localCombat.Resolve(mission, attacker, defender, mission.PlanetSector, now);
                 _db.SectorBattleReports.Add(report);
                 _db.Reports.Add(new Report { UserId = mission.AttackerUserId, Title = report.Title, Body = report.Body, CreatedAtUtc = now });
@@ -682,7 +682,9 @@ namespace StargateGalacticCommand.Web.Controllers
                     _economy.ApplyOfflineProduction(sellerBase, now);
                     var sellerSectors = _db.PlanetSectors.Include(s => s.SectorControl).Where(s => s.PlanetId == order.PlanetId && s.SectorControl != null && s.SectorControl.UserId == order.SellerUserId).ToList();
                     var pactFeeReduction = GetMarketPactFeeReduction(buyer.Id, order.SellerUserId);
-                    var transaction = _planetMarket.BuyOrder(order, buyer, buyerBase, sellerBase, sellerSectors, now, pactFeeReduction);
+                    var sellerResearch = sellerBase.User?.ResearchLevels;
+                    double sellerResearchFeeReduction = sellerResearch == null ? 0.0 : (sellerResearch.SmugglingRoutes + sellerResearch.BlackMarketLogistics + sellerResearch.PirateNetworkConnections) * 0.003;
+                    var transaction = _planetMarket.BuyOrder(order, buyer, buyerBase, sellerBase, sellerSectors, now, pactFeeReduction, sellerResearchFeeReduction);
                     _db.PlanetMarketTransactions.Add(transaction);
                     _db.TradeReports.Add(new TradeReport { UserId = buyer.Id, PlanetMarketOrder = order, CreatedAtUtc = now, Title = "Marktangebot gekauft", Body = "Du hast das Angebot gekauft." });
                     _db.TradeReports.Add(new TradeReport { UserId = order.SellerUserId, PlanetMarketOrder = order, CreatedAtUtc = now, Title = "Marktangebot verkauft", Body = "Dein Angebot wurde gekauft. Marktgebühr: " + transaction.FeeAmount + "." });
@@ -761,7 +763,7 @@ namespace StargateGalacticCommand.Web.Controllers
                 var mission = _db.GateMissions.Include(m => m.MissionTeam).Include(m => m.GateAddress).ThenInclude(a => a.Planet).ThenInclude(p => p.Sectors).ThenInclude(s => s.PlayerBase).Single(m => m.Id == gateMissionId && m.UserId == userId);
                 var existingSkills = _db.CharacterSkills.SingleOrDefault(s => s.UserId == userId);
                 var skills = _skillTree.GetOrCreate(existingSkills, playerBase.User);
-                var report = _gateMissions.CompleteMission(mission, playerBase, _db.GateAddresses.Where(a => a.ServerId == playerBase.User.ServerId).ToList(), now, skills: skills);
+                var report = _gateMissions.CompleteMission(mission, playerBase, _db.GateAddresses.Where(a => a.ServerId == playerBase.User.ServerId).ToList(), now, skills: skills, researchLevels: playerBase.User?.ResearchLevels);
                 if (existingSkills == null) _db.CharacterSkills.Add(skills);
                 _db.GateMissionReports.Add(report);
                 if (mission.MissionType == GateMissionType.FoundColony && report.Outcome != GateMissionOutcome.WoundedOrLosses)
@@ -832,7 +834,7 @@ namespace StargateGalacticCommand.Web.Controllers
             _economy.ApplyOfflineProduction(playerBase, now);
             try
             {
-                _buildQueue.StartBuild(playerBase, buildingType, now);
+                _buildQueue.StartBuild(playerBase, buildingType, now, playerBase.User?.ResearchLevels);
                 TempData["Message"] = "Ausbau gestartet.";
             }
             catch (Exception ex) when (ex is InvalidOperationException || ex is ArgumentException || ex is ArgumentOutOfRangeException)
