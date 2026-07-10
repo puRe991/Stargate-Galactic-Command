@@ -609,7 +609,7 @@ schneiden lassen.
   manuell gegen die laufende App verifiziert (ein echter Fund ließ sich
   wegen der 2-Minuten-Missionsdauer nicht in Echtzeit end-to-end auslösen).
 
-### 4.3 Fraktionsspezifische Questlines
+### 4.3 Fraktionsspezifische Questlines — ✅ umgesetzt
 - **Konzept**: Eigene, inhaltlich unterschiedliche (nicht nur reskinnte)
   Missionsreihen pro Startfraktion mit eigenen NPC-Kontakten und
   Entscheidungen (z. B. Tok'ra-Questline um Infiltration eines Goa'uld-
@@ -623,6 +623,27 @@ schneiden lassen.
 - **Balancing**: Questline-Abschluss sollte Fortschritt/Lore bringen, keine
   klar überlegene Ressourcenquelle gegenüber anderen Fraktionen – sonst wird
   Fraktionswahl zur reinen Powerchoice statt Rollenspiel-Entscheidung.
+- **Tatsächliche Umsetzung**: `QuestStepDefinition` ist ein reiner
+  Katalogeintrag (kein `GateMission`-Datenbankmodell), analog zum
+  `ContractDefinition`/Achievement-Katalog-Muster – vier Schritte pro
+  Startfraktion mit jeweils eigenem Titel und Handlungstext (SGC: antike
+  Ausgrabung, Freie Jaffa: Aufstand gegen Goa'uld, Tok'ra: Infiltration eines
+  Systemherren, Lucian-Allianz: Kontrolle einer Schmuggelroute – bewusst
+  inhaltlich verschieden, nicht nur umbenannt). Jeder Schritt ist an den
+  bereits aus 1.1 bekannten Fraktions-Spezialmissionstyp gekoppelt
+  (SGC→Artefaktsuche, Jaffa→Risikoanalyse, Tok'ra→Adresse analysieren,
+  Lucian→Ressourcen sichern) und verlangt eine steigende Gesamtzahl
+  erfolgreicher Abschlüsse dieses Typs (1/3/6/10) – Fortschritt wird wie bei
+  Kontrakten/Kodex **live aus `GateMissionReports` berechnet**, nur der
+  Abschlusszeitpunkt wird persistiert (`QuestlineStepProgress`, analog zu
+  `AchievementProgress`). Ein Schritt schaltet sich erst frei, wenn alle
+  vorherigen Schritte derselben Fraktion abgeschlossen sind (sequenzielle
+  Kette). Belohnung ist bewusst klein (20–80 Intel je nach Schrittnummer,
+  keine Naquadah/Trinium-Produktionsboni) plus der Handlungstext als
+  Bericht – erfüllt den Balancing-Hinweis, keine Powerchoice zu erzeugen.
+  Neue eigenständige Seite „Questline" (eigener Menüpunkt neben Kodex) zeigt
+  freigeschaltete/gesperrte/abgeschlossene Schritte mit Fortschrittsbalken.
+  Abgedeckt durch 9 neue Tests in `QuestlineServiceTests`.
 
 ## Priorisierungsvorschlag
 
@@ -644,6 +665,6 @@ Größerer Aufwand / mehr Design-Abstimmung nötig, aber hohe Langzeitwirkung:
 Alle sechs priorisierten Punkte sind damit umgesetzt. Danach zusätzlich
 umgesetzt: **4.2 Ancient/Asgard-Anomalien** ✅, **1.2 Espionage-Köder** ✅,
 **1.4 Handelsrouten** ✅, **2.2 Season-Pässe** ✅, **2.5 Rollen-Skilltrees**
-✅, **3.2 Mentoren-System** ✅, **3.3 Diplomatie-Layer** ✅. Verbleibend aus
-dem Gesamt-Backlog (nicht priorisiert): 4.3 (Fraktionsspezifische
-Questlines).
+✅, **3.2 Mentoren-System** ✅, **3.3 Diplomatie-Layer** ✅, **4.3
+Fraktionsspezifische Questlines** ✅. Damit ist der gesamte Backlog aus
+diesem Dokument umgesetzt.
