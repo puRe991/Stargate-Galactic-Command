@@ -28,6 +28,15 @@ Version 0.0.9 macht gemeinsame Planeten spielmechanisch aktiv:
 - Planetenseite mit Sektorstatus, kontrollierten Sektoren und Einflussrangliste
 - Gebäude, Forschung, Gate-Raum und PvE-Gate-Missionen aus den Vorversionen
 - Prozedural generierte Galaxie mit 300+ erforschbaren Gate-Adressen (`GalaxyGeneratorService`); zufällige Entdeckung neuer Adressen sowohl über Gate-Missionen ("Adresse analysieren") als auch über Erkundungsflüge von Schiffen ohne festes Ziel ("Fernaufklärung")
+- Server-Verwaltung: mehrere unabhängige Spielwelten (`GameServer`), jede mit eigener prozedural generierter Galaxie und eigenen Accounts. Spieler wählen unter „Server auswählen“ (`/Server/Select`) eine Welt, bevor sie sich einloggen oder registrieren. Ein separater Admin-Bereich (`/Admin/Login`) erlaubt dem Betreiber, Server zu erstellen, zu starten, zu pausieren (keine neuen Registrierungen) und zu stoppen (Welt verschwindet aus der Auswahl, aktive Sitzungen werden beendet)
+
+## Server-Verwaltung für den Betrieb
+
+Das Admin-Passwort wird über die Konfiguration `Admin:Password` gesetzt (Standard in `appsettings.json`: `change-me`). Für echte Deployments sollte es per Umgebungsvariable überschrieben werden, z. B.:
+
+```bash
+export Admin__Password="ein-sicheres-passwort"
+```
 
 ## Features im Überblick
 

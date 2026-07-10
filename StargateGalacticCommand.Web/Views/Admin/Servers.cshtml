@@ -1,0 +1,46 @@
+@model AdminServerListViewModel
+@{ ViewData["Title"] = "Server-Verwaltung"; Layout = null; }
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="utf-8" />
+    <title>Server-Verwaltung - Stargate Galactic Command</title>
+    <link rel="stylesheet" href="~/css/site.css" asp-append-version="true" />
+</head>
+<body>
+    <main class="container command-main">
+        <section class="panel">
+            <h1>Server-Verwaltung</h1>
+            @if (TempData["Error"] != null) { <p class="error">@TempData["Error"]</p> }
+            @if (TempData["Message"] != null) { <p class="success">@TempData["Message"]</p> }
+            <table>
+                <tr><th>Name</th><th>Status</th><th>Spieler</th><th>Erstellt</th><th>Aktionen</th></tr>
+                @foreach (var entry in Model.Servers)
+                {
+                    <tr>
+                        <td>@entry.Server.Name<br /><small>@entry.Server.Description</small></td>
+                        <td>@entry.Server.Status</td>
+                        <td>@entry.PlayerCount</td>
+                        <td>@entry.Server.CreatedAtUtc.ToString("u")</td>
+                        <td>
+                            <form method="post" asp-action="Start" asp-route-id="@entry.Server.Id" style="display:inline">@Html.AntiForgeryToken()<button type="submit" @(entry.Server.Status == ServerStatus.Online ? "disabled" : "")>Start</button></form>
+                            <form method="post" asp-action="Pause" asp-route-id="@entry.Server.Id" style="display:inline">@Html.AntiForgeryToken()<button type="submit" @(entry.Server.Status == ServerStatus.Paused ? "disabled" : "")>Pause</button></form>
+                            <form method="post" asp-action="Stop" asp-route-id="@entry.Server.Id" style="display:inline">@Html.AntiForgeryToken()<button type="submit" @(entry.Server.Status == ServerStatus.Stopped ? "disabled" : "")>Stop</button></form>
+                        </td>
+                    </tr>
+                }
+            </table>
+        </section>
+        <section class="panel">
+            <h2>Neuen Server erstellen</h2>
+            <form method="post" asp-action="Create">
+                @Html.AntiForgeryToken()
+                <label>Name<input name="name" maxlength="80" required /></label>
+                <label>Beschreibung<textarea name="description"></textarea></label>
+                <button type="submit">Server erstellen</button>
+            </form>
+        </section>
+        <p><a asp-action="Logout">Logout</a></p>
+    </main>
+</body>
+</html>

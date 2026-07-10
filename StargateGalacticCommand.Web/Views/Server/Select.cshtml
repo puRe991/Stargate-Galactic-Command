@@ -1,0 +1,23 @@
+@model ServerListViewModel
+@{ ViewData["Title"] = "Server auswählen"; }
+<section class="panel">
+    <h1>Server auswählen</h1>
+    <p>Jeder Server ist eine eigenständige Galaxie mit eigenem Fortschritt. Wähle einen Server, um dich einzuloggen oder eine neue Basis zu gründen.</p>
+    @if (!Model.Servers.Any())
+    {
+        <p>Aktuell ist kein Server verfügbar.</p>
+    }
+    <table>
+        <tr><th>Server</th><th>Status</th><th>Spieler</th><th>Beschreibung</th><th></th></tr>
+        @foreach (var entry in Model.Servers)
+        {
+            <tr>
+                <td>@entry.Server.Name</td>
+                <td>@(entry.Server.Status == ServerStatus.Online ? "Online" : "Wartung")</td>
+                <td>@entry.PlayerCount</td>
+                <td>@entry.Server.Description</td>
+                <td><a class="button" asp-controller="Server" asp-action="Choose" asp-route-id="@entry.Server.Id">Beitreten</a></td>
+            </tr>
+        }
+    </table>
+</section>

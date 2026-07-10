@@ -2,6 +2,7 @@
 @{ ViewData["Title"]="Login"; }
 <section class="panel">
     <h1>Login</h1>
+    <p>Server: <strong>@Model.ServerName</strong> · <a asp-controller="Server" asp-action="Select">anderen Server wählen</a></p>
     @if(!string.IsNullOrEmpty(Model.Error)){<p class="error">@Model.Error</p>}
     <form method="post">
         @Html.AntiForgeryToken()

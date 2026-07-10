@@ -10,19 +10,28 @@ namespace StargateGalacticCommand.Data
     {
         public const int GeneratedWorldCount = 320;
         public const int GalaxySeed = 20260706;
+        public const string DefaultServerName = "Alpha";
 
         public static void Initialize(GameDbContext context, GateMissionService gateMissionService, bool useMigrations = true)
         {
             if (context == null) return;
             EnsureDatabaseCreated(context, useMigrations);
             SeedFactions(context);
-            SeedStartPlanet(context);
-            context.SaveChanges();
-            EnsureResearchLevels(context);
-            SeedGateAddresses(context);
-            SeedGeneratedWorlds(context);
-            EnsureGateAccess(context, gateMissionService);
             SeedTradeTaxRule(context);
+            context.SaveChanges();
+
+            var serverService = new GameServerService(context, gateMissionService);
+            if (!context.GameServers.Any())
+            {
+                serverService.CreateServer(DefaultServerName, "Der erste Sektor der Galaktischen Allianz.");
+            }
+            context.SaveChanges();
+
+            EnsureResearchLevels(context);
+            foreach (var server in context.GameServers.ToList())
+            {
+                EnsureGateAccess(context, gateMissionService, server.Id);
+            }
             EnsureBaseShips(context);
             EnsureProtectionStatuses(context);
             context.SaveChanges();
@@ -57,47 +66,62 @@ namespace StargateGalacticCommand.Data
                 context.ResearchLevels.Add(new ResearchLevels { UserId = user.Id });
             }
         }
-        private static void SeedGateAddresses(GameDbContext context)
+
+        // Seeds one server's independent galaxy (start planets, gate addresses,
+        // procedurally generated worlds). Called both for the default server at
+        // app startup and whenever the admin creates a new server at runtime.
+        internal static void SeedGalaxyForServer(GameDbContext context, int serverId, int galaxySeed)
         {
-            AddPlanetAddress(context, "P3X-742", "Startplanet mit aktiver Stargate-Lichtung.", 1);
-            AddPlanetAddress(context, "P4X-650", "Bewohnbarer Waldmond mit aktiver Stargate-Zone.", 2);
-            AddPlanetAddress(context, "P9G-844", "Wüstenkolonie mit stabiler Gate-Düne.", 2);
-            AddPve(context, "P4X-219", "verlassene Menschenkolonie", 3);
-            AddPve(context, "P2X-885", "alte Goa’uld-Ruine", 5);
-            AddPve(context, "P7X-331", "Triniumvorkommen", 4);
-            AddPve(context, "P9C-117", "instabile Gate-Adresse", 8);
-            AddPve(context, "P3R-636", "neutraler Handelskontakt", 2);
+            SeedStartPlanet(context, serverId);
+            context.SaveChanges();
+            SeedGateAddresses(context, serverId);
+            SeedGeneratedWorlds(context, serverId, galaxySeed);
         }
-        private static void AddPlanetAddress(GameDbContext context, string code, string description, int risk)
+
+        private static void SeedGateAddresses(GameDbContext context, int serverId)
         {
-            var planet = context.Planets.SingleOrDefault(p => p.Name == code);
-            if (planet != null && !context.GateAddresses.Any(a => a.Code == code)) context.GateAddresses.Add(new GateAddress { Planet = planet, Code = code, WorldName = code, Description = description, IsNeutralPve = false, RiskLevel = risk });
+            AddPlanetAddress(context, serverId, "P3X-742", "Startplanet mit aktiver Stargate-Lichtung.", 1);
+            AddPlanetAddress(context, serverId, "P4X-650", "Bewohnbarer Waldmond mit aktiver Stargate-Zone.", 2);
+            AddPlanetAddress(context, serverId, "P9G-844", "Wüstenkolonie mit stabiler Gate-Düne.", 2);
+            AddPve(context, serverId, "P4X-219", "verlassene Menschenkolonie", 3);
+            AddPve(context, serverId, "P2X-885", "alte Goa’uld-Ruine", 5);
+            AddPve(context, serverId, "P7X-331", "Triniumvorkommen", 4);
+            AddPve(context, serverId, "P9C-117", "instabile Gate-Adresse", 8);
+            AddPve(context, serverId, "P3R-636", "neutraler Handelskontakt", 2);
         }
-        private static void AddPve(GameDbContext context, string code, string description, int risk)
+        private static void AddPlanetAddress(GameDbContext context, int serverId, string code, string description, int risk)
         {
-            if (!context.GateAddresses.Any(a => a.Code == code)) context.GateAddresses.Add(new GateAddress { Code = code, WorldName = code, Description = description, IsNeutralPve = true, RiskLevel = risk });
+            var planet = context.Planets.SingleOrDefault(p => p.ServerId == serverId && p.Name == code);
+            if (planet != null && !context.GateAddresses.Any(a => a.ServerId == serverId && a.Code == code))
+                context.GateAddresses.Add(new GateAddress { ServerId = serverId, Planet = planet, Code = code, WorldName = code, Description = description, IsNeutralPve = false, RiskLevel = risk });
         }
-        private static void SeedGeneratedWorlds(GameDbContext context)
+        private static void AddPve(GameDbContext context, int serverId, string code, string description, int risk)
+        {
+            if (!context.GateAddresses.Any(a => a.ServerId == serverId && a.Code == code))
+                context.GateAddresses.Add(new GateAddress { ServerId = serverId, Code = code, WorldName = code, Description = description, IsNeutralPve = true, RiskLevel = risk });
+        }
+        private static void SeedGeneratedWorlds(GameDbContext context, int serverId, int galaxySeed)
         {
             // SeedGateAddresses() above only Add()s to the change tracker; a plain
             // DbSet query would miss those pending rows, so pull codes from both the
             // database and the not-yet-saved Local view to avoid duplicate codes.
-            var existingCodes = context.GateAddresses.Select(a => a.Code).ToList()
-                .Concat(context.GateAddresses.Local.Select(a => a.Code))
+            var existingCodes = context.GateAddresses.Where(a => a.ServerId == serverId).Select(a => a.Code).ToList()
+                .Concat(context.GateAddresses.Local.Where(a => a.ServerId == serverId).Select(a => a.Code))
                 .Distinct(StringComparer.OrdinalIgnoreCase)
                 .ToList();
             if (existingCodes.Count >= GeneratedWorldCount) return;
 
             var generator = new GalaxyGeneratorService();
-            var worlds = generator.GenerateWorlds(GeneratedWorldCount - existingCodes.Count, existingCodes, GalaxySeed);
+            var worlds = generator.GenerateWorlds(GeneratedWorldCount - existingCodes.Count, existingCodes, galaxySeed);
+            foreach (var world in worlds) world.ServerId = serverId;
             context.GateAddresses.AddRange(worlds);
         }
 
-        private static void EnsureGateAccess(GameDbContext context, GateMissionService service)
+        private static void EnsureGateAccess(GameDbContext context, GateMissionService service, int serverId)
         {
-            var start = context.GateAddresses.SingleOrDefault(a => a.Code == "P3X-742");
+            var start = context.GateAddresses.SingleOrDefault(a => a.ServerId == serverId && a.Code == "P3X-742");
             if (start == null) return;
-            foreach (var user in context.Users.ToList())
+            foreach (var user in context.Users.Where(u => u.ServerId == serverId).ToList())
             {
                 if (!context.KnownGateAddresses.Any(k => k.UserId == user.Id && k.GateAddressId == start.Id))
                     context.KnownGateAddresses.Add(new KnownGateAddress { UserId = user.Id, GateAddress = start, DiscoveredAtUtc = System.DateTime.UtcNow, DiscoveryMethod = "Startplanet" });
@@ -125,17 +149,17 @@ namespace StargateGalacticCommand.Data
                 context.PlayerProtectionStatuses.Add(new PlayerProtectionStatus { UserId = user.Id, ProtectedUntilUtc = user.CreatedAtUtc.AddDays(3), Score = 0 });
             }
         }
-        private static void SeedStartPlanet(GameDbContext context)
+        private static void SeedStartPlanet(GameDbContext context, int serverId)
         {
-            AddSeedPlanet(context, "P3X-742", "Grenzwelt", "geteilt", new[] { "Stargate-Lichtung", "lokale Siedlung", "Siedlungssektor 3", "Siedlungssektor 4", "Siedlungssektor 5", "Siedlungssektor 6", "Triniumfeld", "alte Goa’uld-Ruine", "Naquadah-Vorkommen", "Orbitalkorridor" });
-            AddSeedPlanet(context, "P4X-650", "Waldmond", "umkämpft", new[] { "Stargate-Ring", "Flusssiedlung", "Siedlungsplateau 3", "Siedlungsplateau 4", "Siedlungsplateau 5", "Siedlungsplateau 6", "Triniumader", "verlassener Tempel", "Naquadah-Senke", "Handelspfad" });
-            AddSeedPlanet(context, "P9G-844", "Wüstenkolonie", "neutral", new[] { "Gate-Düne", "Oasenstadt", "Siedlungskamm 3", "Siedlungskamm 4", "Siedlungskamm 5", "Siedlungskamm 6", "Triniumbruch", "Goa’uld-Ausgrabung", "Naquadah-Schlucht", "Karawanenposten" });
+            AddSeedPlanet(context, serverId, "P3X-742", "Grenzwelt", "geteilt", new[] { "Stargate-Lichtung", "lokale Siedlung", "Siedlungssektor 3", "Siedlungssektor 4", "Siedlungssektor 5", "Siedlungssektor 6", "Triniumfeld", "alte Goa’uld-Ruine", "Naquadah-Vorkommen", "Orbitalkorridor" });
+            AddSeedPlanet(context, serverId, "P4X-650", "Waldmond", "umkämpft", new[] { "Stargate-Ring", "Flusssiedlung", "Siedlungsplateau 3", "Siedlungsplateau 4", "Siedlungsplateau 5", "Siedlungsplateau 6", "Triniumader", "verlassener Tempel", "Naquadah-Senke", "Handelspfad" });
+            AddSeedPlanet(context, serverId, "P9G-844", "Wüstenkolonie", "neutral", new[] { "Gate-Düne", "Oasenstadt", "Siedlungskamm 3", "Siedlungskamm 4", "Siedlungskamm 5", "Siedlungskamm 6", "Triniumbruch", "Goa’uld-Ausgrabung", "Naquadah-Schlucht", "Karawanenposten" });
         }
 
-        private static void AddSeedPlanet(GameDbContext context, string name, string type, string status, string[] names)
+        private static void AddSeedPlanet(GameDbContext context, int serverId, string name, string type, string status, string[] names)
         {
-            if (context.Planets.Any(p => p.Name == name)) return;
-            var planet = new Planet { Name = name, Galaxy = "Milchstraße", Type = type, StargateActive = true, Status = status };
+            if (context.Planets.Any(p => p.ServerId == serverId && p.Name == name)) return;
+            var planet = new Planet { ServerId = serverId, Name = name, Galaxy = "Milchstraße", Type = type, StargateActive = true, Status = status };
             SectorType[] types = { SectorType.StargateZone, SectorType.LocalSettlement, SectorType.SettlementSector, SectorType.SettlementSector, SectorType.SettlementSector, SectorType.SettlementSector, SectorType.TriniumField, SectorType.GoauldRuin, SectorType.NaquadahDeposit, SectorType.TradingPost };
             for (int i = 0; i < names.Length; i++) planet.Sectors.Add(new PlanetSector { Number = i + 1, Name = names[i], IsSettlementSector = types[i] == SectorType.LocalSettlement || types[i] == SectorType.SettlementSector, SectorType = types[i] });
             context.Planets.Add(planet);

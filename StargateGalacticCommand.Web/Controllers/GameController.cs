@@ -90,7 +90,7 @@ namespace StargateGalacticCommand.Web.Controllers
             try
             {
                 var sender = LoadCurrentUser(userId);
-                var recipient = _db.Users.Single(u => u.Id == recipientUserId);
+                var recipient = _db.Users.Single(u => u.Id == recipientUserId && u.ServerId == sender.ServerId);
                 var message = _messages.Send(sender, recipient, subject, body, now);
                 _db.PlayerMessages.Add(message);
                 TempData["Message"] = "Nachricht gesendet.";
@@ -110,7 +110,7 @@ namespace StargateGalacticCommand.Web.Controllers
         {
             int userId = CurrentUserId();
             var now = DateTime.UtcNow;
-            try { if (_db.AllianceMembers.Any(m => m.UserId == userId)) throw new InvalidOperationException("Du bist bereits in einer Allianz."); if (_db.Alliances.Any(a => a.Name == name || a.Tag == tag)) throw new InvalidOperationException("Name oder Tag ist bereits vergeben."); var alliance = _alliances.CreateAlliance(LoadCurrentUser(userId), name, tag, description, now); _db.Alliances.Add(alliance); _db.Reports.Add(new Report { UserId = userId, Title = "Allianz gegründet", Body = "Allianz " + alliance.Tag + " wurde erstellt.", CreatedAtUtc = now }); TempData["Message"] = "Allianz erstellt."; }
+            try { var user = LoadCurrentUser(userId); if (_db.AllianceMembers.Any(m => m.UserId == userId)) throw new InvalidOperationException("Du bist bereits in einer Allianz."); if (_db.Alliances.Any(a => a.ServerId == user.ServerId && (a.Name == name || a.Tag == tag))) throw new InvalidOperationException("Name oder Tag ist bereits vergeben."); var alliance = _alliances.CreateAlliance(user, name, tag, description, now); alliance.ServerId = user.ServerId; _db.Alliances.Add(alliance); _db.Reports.Add(new Report { UserId = userId, Title = "Allianz gegründet", Body = "Allianz " + alliance.Tag + " wurde erstellt.", CreatedAtUtc = now }); TempData["Message"] = "Allianz erstellt."; }
             catch (Exception ex) when (ex is InvalidOperationException || ex is ArgumentException) { TempData["Error"] = ex.Message; }
             _db.SaveChanges(); return RedirectToAction("Alliances");
         }
@@ -121,7 +121,7 @@ namespace StargateGalacticCommand.Web.Controllers
         {
             int userId = CurrentUserId();
             var now = DateTime.UtcNow;
-            try { var alliance = _db.Alliances.Single(a => a.Id == allianceId); var app = _alliances.Apply(alliance, LoadCurrentUser(userId), message, _db.AllianceMembers.Where(m => m.UserId == userId).ToList(), _db.AllianceApplications.Where(a => a.UserId == userId).ToList(), now); _db.AllianceApplications.Add(app); TempData["Message"] = "Bewerbung gesendet."; }
+            try { var user = LoadCurrentUser(userId); var alliance = _db.Alliances.Single(a => a.Id == allianceId && a.ServerId == user.ServerId); var app = _alliances.Apply(alliance, user, message, _db.AllianceMembers.Where(m => m.UserId == userId).ToList(), _db.AllianceApplications.Where(a => a.UserId == userId).ToList(), now); _db.AllianceApplications.Add(app); TempData["Message"] = "Bewerbung gesendet."; }
             catch (Exception ex) when (ex is InvalidOperationException || ex is ArgumentException) { TempData["Error"] = ex.Message; }
             _db.SaveChanges(); return RedirectToAction("Alliances");
         }
@@ -166,7 +166,7 @@ namespace StargateGalacticCommand.Web.Controllers
                 var member = _db.AllianceMembers.Include(m => m.Alliance).SingleOrDefault(m => m.UserId == userId);
                 if (member == null) throw new InvalidOperationException("Du bist in keiner Allianz.");
                 if (member.Rank != AllianceRank.Founder && member.Rank != AllianceRank.Officer) throw new InvalidOperationException("Nur Gründer oder Offiziere können Diplomatie betreiben.");
-                var target = _db.Alliances.Single(a => a.Id == targetAllianceId);
+                var target = _db.Alliances.Single(a => a.Id == targetAllianceId && a.ServerId == member.Alliance.ServerId);
                 var existing = FindDiplomacyStatus(member.AllianceId, targetAllianceId);
                 var status = _diplomacy.ProposePact(member.Alliance, target, existing, now);
                 if (existing == null) _db.AllianceDiplomacyStatuses.Add(status);
@@ -206,7 +206,7 @@ namespace StargateGalacticCommand.Web.Controllers
                 var member = _db.AllianceMembers.Include(m => m.Alliance).SingleOrDefault(m => m.UserId == userId);
                 if (member == null) throw new InvalidOperationException("Du bist in keiner Allianz.");
                 if (member.Rank != AllianceRank.Founder && member.Rank != AllianceRank.Officer) throw new InvalidOperationException("Nur Gründer oder Offiziere können Diplomatie betreiben.");
-                var target = _db.Alliances.Single(a => a.Id == targetAllianceId);
+                var target = _db.Alliances.Single(a => a.Id == targetAllianceId && a.ServerId == member.Alliance.ServerId);
                 var existing = FindDiplomacyStatus(member.AllianceId, targetAllianceId);
                 var status = _diplomacy.DeclareWar(member.Alliance, target, existing, now);
                 if (existing == null) _db.AllianceDiplomacyStatuses.Add(status);
@@ -227,7 +227,7 @@ namespace StargateGalacticCommand.Web.Controllers
                 var member = _db.AllianceMembers.Include(m => m.Alliance).SingleOrDefault(m => m.UserId == userId);
                 if (member == null) throw new InvalidOperationException("Du bist in keiner Allianz.");
                 if (member.Rank != AllianceRank.Founder && member.Rank != AllianceRank.Officer) throw new InvalidOperationException("Nur Gründer oder Offiziere können Kriegsziele erklären.");
-                var planet = _db.Planets.Single(p => p.Id == planetId);
+                var planet = _db.Planets.Single(p => p.Id == planetId && p.ServerId == member.Alliance.ServerId);
                 bool hasActiveGoal = _db.AllianceWarGoals.Any(g => g.AllianceId == member.AllianceId && g.Status == AllianceWarGoalStatus.Active);
                 int memberCount = _db.AllianceMembers.Count(m => m.AllianceId == member.AllianceId);
                 var goal = _allianceWar.Declare(member.Alliance, planet, memberCount, hasActiveGoal, now);
@@ -290,7 +290,7 @@ namespace StargateGalacticCommand.Web.Controllers
             var now = DateTime.UtcNow;
             try
             {
-                var worldEvent = _db.WorldEvents.SingleOrDefault(e => e.Status == WorldEventStatus.Active);
+                var worldEvent = _db.WorldEvents.SingleOrDefault(e => e.Status == WorldEventStatus.Active && e.ServerId == playerBase.User.ServerId);
                 if (worldEvent == null) throw new InvalidOperationException("Aktuell läuft kein Weltevent.");
                 var contribution = _db.WorldEventContributions.SingleOrDefault(c => c.WorldEventId == worldEvent.Id && c.UserId == userId);
                 if (contribution == null)
@@ -313,7 +313,7 @@ namespace StargateGalacticCommand.Web.Controllers
         {
             var origin = LoadCurrentBase(); if (origin == null) return RedirectToAction("Login", "Account");
             var now = DateTime.UtcNow;
-            try { var target = _db.PlayerBases.Include(b=>b.User).ThenInclude(u=>u.ResearchLevels).Include(b=>b.Faction).Include(b=>b.Resources).Include(b=>b.BuildingLevels).Include(b=>b.Ships).Include(b=>b.PlanetSector).ThenInclude(s=>s.Planet).Single(b=>b.Id==targetBaseId); var protection = _db.PlayerProtectionStatuses.SingleOrDefault(p=>p.UserId==target.UserId); var recentAttacksAgainstMe = _db.SpaceCombatMissions.Where(m=>m.AttackerUserId==target.UserId&&m.DefenderUserId==origin.UserId).ToList(); bool alliancesUnderPact = IsUnderActivePact(origin.UserId, target.UserId); var mission = _spaceCombat.StartAttack(LoadCurrentUser(origin.UserId), origin, target, shipType, shipCount, _db.SpaceCombatMissions.Where(m=>m.AttackerUserId==origin.UserId&&m.TargetBaseId==target.Id).ToList(), protection, now, recentAttacksAgainstMe, alliancesUnderPact); _db.SpaceCombatMissions.Add(mission); _db.Reports.Add(_spaceCombat.BuildIncomingAttackReport(mission, now)); if(protection!=null) protection.LastAttackedAtUtc=now; TempData["Message"]="Angriff gestartet."; }
+            try { var target = _db.PlayerBases.Include(b=>b.User).ThenInclude(u=>u.ResearchLevels).Include(b=>b.Faction).Include(b=>b.Resources).Include(b=>b.BuildingLevels).Include(b=>b.Ships).Include(b=>b.PlanetSector).ThenInclude(s=>s.Planet).Single(b=>b.Id==targetBaseId); if (target.User.ServerId != origin.User.ServerId) throw new InvalidOperationException("Ziel liegt auf einem anderen Server."); var protection = _db.PlayerProtectionStatuses.SingleOrDefault(p=>p.UserId==target.UserId); var recentAttacksAgainstMe = _db.SpaceCombatMissions.Where(m=>m.AttackerUserId==target.UserId&&m.DefenderUserId==origin.UserId).ToList(); bool alliancesUnderPact = IsUnderActivePact(origin.UserId, target.UserId); var mission = _spaceCombat.StartAttack(LoadCurrentUser(origin.UserId), origin, target, shipType, shipCount, _db.SpaceCombatMissions.Where(m=>m.AttackerUserId==origin.UserId&&m.TargetBaseId==target.Id).ToList(), protection, now, recentAttacksAgainstMe, alliancesUnderPact); _db.SpaceCombatMissions.Add(mission); _db.Reports.Add(_spaceCombat.BuildIncomingAttackReport(mission, now)); if(protection!=null) protection.LastAttackedAtUtc=now; TempData["Message"]="Angriff gestartet."; }
             catch (Exception ex) when (ex is InvalidOperationException || ex is ArgumentException || ex is ArgumentOutOfRangeException) { TempData["Error"] = ex.Message; }
             _db.SaveChanges(); return RedirectToAction("Fleets");
         }
@@ -340,6 +340,7 @@ namespace StargateGalacticCommand.Web.Controllers
             try
             {
                 var target = _db.PlayerBases.Include(b => b.User).ThenInclude(u => u.ResearchLevels).Include(b => b.Faction).Include(b => b.Resources).Include(b => b.BuildingLevels).Include(b => b.Ships).Include(b => b.PlanetSector).ThenInclude(s => s.Planet).Single(b => b.Id == targetBaseId);
+                if (target.User.ServerId != user.ServerId) throw new InvalidOperationException("Ziel liegt auf einem anderen Server.");
                 var mission = _espionage.StartMission(user, source, target, missionType, intelSpent, now);
                 _db.EspionageMissions.Add(mission);
                 var sectors = _db.PlanetSectors.Include(s => s.SectorControl).Where(s => s.PlanetId == target.PlanetSector.PlanetId && s.SectorControl != null && s.SectorControl.UserId == target.UserId).ToList();
@@ -507,7 +508,7 @@ namespace StargateGalacticCommand.Web.Controllers
                 {
                     var user = _db.Users.Single(u => u.Id == userId);
                     var knownIds = _db.KnownGateAddresses.Where(k => k.UserId == userId).Select(k => k.GateAddressId).ToList();
-                    var candidates = _db.GateAddresses.Where(a => !knownIds.Contains(a.Id)).ToList();
+                    var candidates = _db.GateAddresses.Where(a => a.ServerId == user.ServerId && !knownIds.Contains(a.Id)).ToList();
                     var discovered = _gateMissions.DiscoverRandomAddress(user, candidates, Random.Shared, "Fernaufklärung", now);
                     if (discovered != null)
                     {
@@ -760,20 +761,20 @@ namespace StargateGalacticCommand.Web.Controllers
                 var mission = _db.GateMissions.Include(m => m.MissionTeam).Include(m => m.GateAddress).ThenInclude(a => a.Planet).ThenInclude(p => p.Sectors).ThenInclude(s => s.PlayerBase).Single(m => m.Id == gateMissionId && m.UserId == userId);
                 var existingSkills = _db.CharacterSkills.SingleOrDefault(s => s.UserId == userId);
                 var skills = _skillTree.GetOrCreate(existingSkills, playerBase.User);
-                var report = _gateMissions.CompleteMission(mission, playerBase, _db.GateAddresses.ToList(), now, skills: skills);
+                var report = _gateMissions.CompleteMission(mission, playerBase, _db.GateAddresses.Where(a => a.ServerId == playerBase.User.ServerId).ToList(), now, skills: skills);
                 if (existingSkills == null) _db.CharacterSkills.Add(skills);
                 _db.GateMissionReports.Add(report);
                 if (mission.MissionType == GateMissionType.FoundColony && report.Outcome != GateMissionOutcome.WoundedOrLosses)
                 {
                     var user = _db.Users.Include(u => u.KnownGateAddresses).Single(u => u.Id == userId);
-                    var planets = _db.Planets.Include(p => p.Sectors).ThenInclude(s => s.PlayerBase).OrderBy(p => p.Id).ToList();
+                    var planets = _db.Planets.Include(p => p.Sectors).ThenInclude(s => s.PlayerBase).Where(p => p.ServerId == user.ServerId).OrderBy(p => p.Id).ToList();
                     report.Summary += " " + _gateMissions.ApplyFoundColonyResult(user, mission.GateAddress, planets, now);
                 }
                 if (mission.MissionType == GateMissionType.AnalyzeAddress && report.Outcome != GateMissionOutcome.WoundedOrLosses)
                 {
                     var user = _db.Users.Single(u => u.Id == userId);
                     var knownIds = _db.KnownGateAddresses.Where(k => k.UserId == userId).Select(k => k.GateAddressId).ToList();
-                    var candidates = _db.GateAddresses.Where(a => a.IsNeutralPve && !knownIds.Contains(a.Id)).ToList();
+                    var candidates = _db.GateAddresses.Where(a => a.ServerId == user.ServerId && a.IsNeutralPve && !knownIds.Contains(a.Id)).ToList();
                     var discovered = _gateMissions.DiscoverRandomAddress(user, candidates, Random.Shared, "Adresse analysieren", now);
                     if (discovered != null)
                     {
@@ -898,6 +899,13 @@ namespace StargateGalacticCommand.Web.Controllers
         {
             int userId = CurrentUserId();
             var user = LoadCurrentUser(userId);
+            var serverStatus = _db.GameServers.Where(s => s.Id == user.ServerId).Select(s => s.Status).SingleOrDefault();
+            if (serverStatus == ServerStatus.Stopped)
+            {
+                HttpContext.Session.Clear();
+                TempData["Error"] = "Dieser Server wurde vom Betreiber gestoppt.";
+                return RedirectToAction("Index", "Home");
+            }
             EnsureGateAccessForUser(user);
             var playerBase = LoadCurrentBase(user.Id);
             var now = DateTime.UtcNow;
@@ -949,16 +957,16 @@ namespace StargateGalacticCommand.Web.Controllers
                     QueueBusy = queueFull
                 };
             }).ToList();
-            var playerRankings = BuildPlayerRankings();
-            var allianceRankings = BuildAllianceRankings(playerRankings);
+            var playerRankings = BuildPlayerRankings(user.ServerId);
+            var allianceRankings = BuildAllianceRankings(playerRankings, user.ServerId);
             var galaxyEntries = BuildGalaxyEntries(planet.Id, user);
             var inboxMessages = _db.PlayerMessages.Include(m => m.SenderUser).Where(m => m.RecipientUserId == user.Id && !m.IsDeletedByRecipient).OrderByDescending(m => m.CreatedAtUtc).ToList();
             var sentMessages = _db.PlayerMessages.Include(m => m.RecipientUser).Where(m => m.SenderUserId == user.Id && !m.IsDeletedBySender).OrderByDescending(m => m.CreatedAtUtc).ToList();
-            var messageablePlayers = _db.Users.Where(u => !u.IsNpc && u.Id != user.Id).OrderBy(u => u.UserName).ToList();
+            var messageablePlayers = _db.Users.Where(u => !u.IsNpc && u.Id != user.Id && u.ServerId == user.ServerId).OrderBy(u => u.UserName).ToList();
             int unreadReportCount = _db.Reports.Count(r => r.UserId == user.Id && !r.IsRead);
             int unreadMessageCount = inboxMessages.Count(m => !m.ReadAtUtc.HasValue);
             EvaluateAllianceWarState(user, now, out var activeWarGoal, out var warGoalCurrentSectors, out var canManageWarGoal);
-            var warGoalPlanetOptions = _db.Planets.OrderBy(p => p.Name).ToList();
+            var warGoalPlanetOptions = _db.Planets.Where(p => p.ServerId == user.ServerId).OrderBy(p => p.Name).ToList();
             int? ownAllianceId = _db.AllianceMembers.Where(m => m.UserId == user.Id).Select(m => (int?)m.AllianceId).SingleOrDefault();
             var diplomacyStatuses = ownAllianceId.HasValue ? _db.AllianceDiplomacyStatuses.Include(d => d.AllianceA).Include(d => d.AllianceB).Where(d => d.AllianceAId == ownAllianceId || d.AllianceBId == ownAllianceId).ToList() : new System.Collections.Generic.List<AllianceDiplomacyStatus>();
             int currentBaseScore = _ranking.CalculateBaseScore(playerBase);
@@ -970,7 +978,7 @@ namespace StargateGalacticCommand.Web.Controllers
             int seasonWeekIndex = _season.GetWeekIndex(now);
             var knownAddressesForSeason = _db.KnownGateAddresses.Where(k => k.UserId == user.Id).Select(k => k.GateAddressId).ToList();
             var seasonFocusAddressIds = knownAddressesForSeason.Where(id => _season.IsFocusAddress(id, seasonWeekIndex)).ToList();
-            var model = new OverviewViewModel { User = user, Base = playerBase, Planet = planet, Hourly = _economy.CalculateHourlyProduction(playerBase.BuildingLevels, user.ResearchLevels, user.Faction, sectorBonus, user.AscensionCount), Sectors = planet.Sectors.OrderBy(s => s.Number).ToList(), Reports = _db.Reports.Where(r => r.UserId == user.Id).OrderByDescending(r => r.CreatedAtUtc).ToList(), Buildings = buildings, ActiveBuild = playerBase.BuildQueue.OrderBy(q => q.CompletesAtUtc).FirstOrDefault(), BuildQueue = playerBase.BuildQueue.OrderBy(q => q.CompletesAtUtc).ToList(), NowUtc = now, Researches = BuildResearchViewModels(user, playerBase), ActiveResearch = user.ResearchQueue.OrderBy(q => q.CompletesAtUtc).FirstOrDefault(), DefenseModifier = _factionModifiers.GetDefenseMultiplier(user.Faction), KnownGateAddresses = _db.KnownGateAddresses.Include(k => k.GateAddress).Where(k => k.UserId == user.Id).ToList(), MissionTeams = _db.MissionTeams.Where(t => t.UserId == user.Id).ToList(), ActiveGateMissions = _db.GateMissions.Include(m => m.GateAddress).Include(m => m.MissionTeam).Where(m => m.UserId == user.Id && !m.IsCompleted).ToList(), GateMissionReports = _db.GateMissionReports.Include(r => r.GateMission).ThenInclude(m => m.GateAddress).Where(r => r.UserId == user.Id).OrderByDescending(r => r.CreatedAtUtc).ToList(), ActiveSectorClaims = activeSectorClaims, ControlledSectors = controlledSectors, SectorBonus = sectorBonus, PlanetInfluences = BuildPlanetInfluences(planet.Id), OwnInfluence = _localSectors.CalculateInfluence(playerBase, user, controlledSectors, activeSectorClaims.Where(c => c.UserId == user.Id), now), ActiveMarketOrders = _db.PlanetMarketOrders.Include(o => o.SellerUser).Where(o => o.PlanetId == planet.Id && o.CompletedAtUtc == null && o.CancelledAtUtc == null && !o.ReservedReturned && o.ExpiresAtUtc > now).OrderBy(o => o.ExpiresAtUtc).ToList(), OwnMarketOrders = _db.PlanetMarketOrders.Where(o => o.PlanetId == planet.Id && o.SellerUserId == user.Id).OrderByDescending(o => o.CreatedAtUtc).ToList(), TradeReports = _db.TradeReports.Where(r => r.UserId == user.Id).OrderByDescending(r => r.CreatedAtUtc).ToList(), ShipDefinitions = BuildShipViewModels(user, playerBase), ActiveShipBuild = playerBase.ShipyardQueue.OrderBy(q => q.CompletesAtUtc).FirstOrDefault(), FleetTargets = _db.PlayerBases.Include(b=>b.User).Include(b=>b.PlanetSector).ThenInclude(s=>s.Planet).Where(b=>b.Id!=playerBase.Id).ToList(), ActiveFleets = _db.FleetMovements.Include(f=>f.TargetBase).ThenInclude(b=>b.PlanetSector).Where(f=>f.UserId==user.Id && f.Status!=FleetMovementStatus.Completed).ToList(), FleetReports = _db.FleetReports.Where(r=>r.UserId==user.Id).OrderByDescending(r=>r.CreatedAtUtc).ToList(), OrbitPresences = BuildOrbitPresences(planet.Id), EspionageTargets = _db.PlayerBases.Include(b=>b.User).Include(b=>b.Faction).Include(b=>b.PlanetSector).ThenInclude(s=>s.Planet).Where(b=>b.Id!=playerBase.Id).ToList(), IntelligenceReports = _db.IntelligenceReports.Where(r=>r.UserId==user.Id && !r.IsWarning).OrderByDescending(r=>r.CreatedAtUtc).ToList(), SpyWarnings = _db.IntelligenceReports.Where(r=>r.UserId==user.Id && r.IsWarning).OrderByDescending(r=>r.CreatedAtUtc).ToList(), ActiveLocalCombats = _db.LocalCombatMissions.Include(m=>m.PlanetSector).Where(m=>m.PlanetSector.PlanetId==planet.Id && !m.CompletedAtUtc.HasValue).OrderBy(m=>m.ResolvesAtUtc).ToList(), SectorBattleReports = _db.SectorBattleReports.Include(r=>r.PlanetSector).Where(r=>r.UserId==user.Id).OrderByDescending(r=>r.CreatedAtUtc).ToList() , OwnAlliance = _db.AllianceMembers.Include(m=>m.Alliance).ThenInclude(a=>a.Members).ThenInclude(m=>m.User).Where(m=>m.UserId==user.Id).Select(m=>m.Alliance).FirstOrDefault(), Alliances = _db.Alliances.Include(a=>a.Members).ThenInclude(m=>m.User).OrderBy(a=>a.Tag).ToList(), AllianceApplications = _db.AllianceApplications.Include(a=>a.User).Where(a=>a.AcceptedAtUtc==null&&a.RejectedAtUtc==null).ToList(), ActiveSpaceCombats = _db.SpaceCombatMissions.Include(m=>m.TargetBase).Where(m=>m.AttackerUserId==user.Id&&!m.CompletedAtUtc.HasValue).ToList(), SpaceCombatReports = _db.SpaceCombatReports.Where(r=>r.UserId==user.Id).OrderByDescending(r=>r.CreatedAtUtc).ToList(), DebrisFields = _db.DebrisFields.Include(d=>d.PlayerBase).ThenInclude(b=>b.PlanetSector).ThenInclude(s=>s.Planet).Where(d=>!d.IsRecycled).OrderByDescending(d=>d.CreatedAtUtc).ToList(), ProtectionStatus = protectionStatus, PlayerRankings = playerRankings, AllianceRankings = allianceRankings, GalaxyEntries = galaxyEntries, InboxMessages = inboxMessages, SentMessages = sentMessages, MessageablePlayers = messageablePlayers, UnreadReportCount = unreadReportCount, UnreadMessageCount = unreadMessageCount, ContractStatuses = BuildContractStatuses(user, now), AchievementStatuses = BuildAchievementStatuses(user, now), ActiveWarGoal = activeWarGoal, WarGoalCurrentSectors = warGoalCurrentSectors, CanManageWarGoal = canManageWarGoal, WarGoalPlanetOptions = warGoalPlanetOptions, AscensionCount = user.AscensionCount, AscensionBonusPercent = _ascension.CalculateProductionBonus(user.AscensionCount) * 100, CurrentBaseScore = currentBaseScore, CanAscendNow = ascensionBlockedReason == null, AscensionBlockedReason = ascensionBlockedReason, ActiveWorldEvent = activeWorldEvent, ActiveWorldEventName = activeWorldEvent == null ? null : _worldEvents.GetName(activeWorldEvent.Type), ActiveWorldEventDescription = activeWorldEvent == null ? null : _worldEvents.GetDescription(activeWorldEvent.Type), MyWorldEventContribution = myWorldEventContribution, CanContributeToWorldEvent = canContributeToWorldEvent, WorldEventBlockedReason = worldEventBlockedReason, OwnDecoyProfile = _db.DecoyProfiles.SingleOrDefault(d => d.PlayerBaseId == playerBase.Id), TradeRoutes = _db.TradeRoutes.Include(r => r.TargetBase).Where(r => r.UserId == user.Id).OrderBy(r => r.NextDueAtUtc).ToList(), SeasonLabel = _season.GetSeasonLabel(seasonWeekIndex), SeasonFocusAddressIds = seasonFocusAddressIds, CharacterSkills = _db.CharacterSkills.SingleOrDefault(s => s.UserId == user.Id), DiplomacyStatuses = diplomacyStatuses, QuestlineStatuses = BuildQuestlineStatuses(user, playerBase, now) };
+            var model = new OverviewViewModel { User = user, Base = playerBase, Planet = planet, Hourly = _economy.CalculateHourlyProduction(playerBase.BuildingLevels, user.ResearchLevels, user.Faction, sectorBonus, user.AscensionCount), Sectors = planet.Sectors.OrderBy(s => s.Number).ToList(), Reports = _db.Reports.Where(r => r.UserId == user.Id).OrderByDescending(r => r.CreatedAtUtc).ToList(), Buildings = buildings, ActiveBuild = playerBase.BuildQueue.OrderBy(q => q.CompletesAtUtc).FirstOrDefault(), BuildQueue = playerBase.BuildQueue.OrderBy(q => q.CompletesAtUtc).ToList(), NowUtc = now, Researches = BuildResearchViewModels(user, playerBase), ActiveResearch = user.ResearchQueue.OrderBy(q => q.CompletesAtUtc).FirstOrDefault(), DefenseModifier = _factionModifiers.GetDefenseMultiplier(user.Faction), KnownGateAddresses = _db.KnownGateAddresses.Include(k => k.GateAddress).Where(k => k.UserId == user.Id).ToList(), MissionTeams = _db.MissionTeams.Where(t => t.UserId == user.Id).ToList(), ActiveGateMissions = _db.GateMissions.Include(m => m.GateAddress).Include(m => m.MissionTeam).Where(m => m.UserId == user.Id && !m.IsCompleted).ToList(), GateMissionReports = _db.GateMissionReports.Include(r => r.GateMission).ThenInclude(m => m.GateAddress).Where(r => r.UserId == user.Id).OrderByDescending(r => r.CreatedAtUtc).ToList(), ActiveSectorClaims = activeSectorClaims, ControlledSectors = controlledSectors, SectorBonus = sectorBonus, PlanetInfluences = BuildPlanetInfluences(planet.Id), OwnInfluence = _localSectors.CalculateInfluence(playerBase, user, controlledSectors, activeSectorClaims.Where(c => c.UserId == user.Id), now), ActiveMarketOrders = _db.PlanetMarketOrders.Include(o => o.SellerUser).Where(o => o.PlanetId == planet.Id && o.CompletedAtUtc == null && o.CancelledAtUtc == null && !o.ReservedReturned && o.ExpiresAtUtc > now).OrderBy(o => o.ExpiresAtUtc).ToList(), OwnMarketOrders = _db.PlanetMarketOrders.Where(o => o.PlanetId == planet.Id && o.SellerUserId == user.Id).OrderByDescending(o => o.CreatedAtUtc).ToList(), TradeReports = _db.TradeReports.Where(r => r.UserId == user.Id).OrderByDescending(r => r.CreatedAtUtc).ToList(), ShipDefinitions = BuildShipViewModels(user, playerBase), ActiveShipBuild = playerBase.ShipyardQueue.OrderBy(q => q.CompletesAtUtc).FirstOrDefault(), FleetTargets = _db.PlayerBases.Include(b=>b.User).Include(b=>b.PlanetSector).ThenInclude(s=>s.Planet).Where(b=>b.Id!=playerBase.Id && b.User.ServerId==user.ServerId).ToList(), ActiveFleets = _db.FleetMovements.Include(f=>f.TargetBase).ThenInclude(b=>b.PlanetSector).Where(f=>f.UserId==user.Id && f.Status!=FleetMovementStatus.Completed).ToList(), FleetReports = _db.FleetReports.Where(r=>r.UserId==user.Id).OrderByDescending(r=>r.CreatedAtUtc).ToList(), OrbitPresences = BuildOrbitPresences(planet.Id), EspionageTargets = _db.PlayerBases.Include(b=>b.User).Include(b=>b.Faction).Include(b=>b.PlanetSector).ThenInclude(s=>s.Planet).Where(b=>b.Id!=playerBase.Id && b.User.ServerId==user.ServerId).ToList(), IntelligenceReports = _db.IntelligenceReports.Where(r=>r.UserId==user.Id && !r.IsWarning).OrderByDescending(r=>r.CreatedAtUtc).ToList(), SpyWarnings = _db.IntelligenceReports.Where(r=>r.UserId==user.Id && r.IsWarning).OrderByDescending(r=>r.CreatedAtUtc).ToList(), ActiveLocalCombats = _db.LocalCombatMissions.Include(m=>m.PlanetSector).Where(m=>m.PlanetSector.PlanetId==planet.Id && !m.CompletedAtUtc.HasValue).OrderBy(m=>m.ResolvesAtUtc).ToList(), SectorBattleReports = _db.SectorBattleReports.Include(r=>r.PlanetSector).Where(r=>r.UserId==user.Id).OrderByDescending(r=>r.CreatedAtUtc).ToList() , OwnAlliance = _db.AllianceMembers.Include(m=>m.Alliance).ThenInclude(a=>a.Members).ThenInclude(m=>m.User).Where(m=>m.UserId==user.Id).Select(m=>m.Alliance).FirstOrDefault(), Alliances = _db.Alliances.Include(a=>a.Members).ThenInclude(m=>m.User).Where(a=>a.ServerId==user.ServerId).OrderBy(a=>a.Tag).ToList(), AllianceApplications = _db.AllianceApplications.Include(a=>a.User).Where(a=>a.AcceptedAtUtc==null&&a.RejectedAtUtc==null).ToList(), ActiveSpaceCombats = _db.SpaceCombatMissions.Include(m=>m.TargetBase).Where(m=>m.AttackerUserId==user.Id&&!m.CompletedAtUtc.HasValue).ToList(), SpaceCombatReports = _db.SpaceCombatReports.Where(r=>r.UserId==user.Id).OrderByDescending(r=>r.CreatedAtUtc).ToList(), DebrisFields = _db.DebrisFields.Include(d=>d.PlayerBase).ThenInclude(b=>b.PlanetSector).ThenInclude(s=>s.Planet).Where(d=>!d.IsRecycled).OrderByDescending(d=>d.CreatedAtUtc).ToList(), ProtectionStatus = protectionStatus, PlayerRankings = playerRankings, AllianceRankings = allianceRankings, GalaxyEntries = galaxyEntries, InboxMessages = inboxMessages, SentMessages = sentMessages, MessageablePlayers = messageablePlayers, UnreadReportCount = unreadReportCount, UnreadMessageCount = unreadMessageCount, ContractStatuses = BuildContractStatuses(user, now), AchievementStatuses = BuildAchievementStatuses(user, now), ActiveWarGoal = activeWarGoal, WarGoalCurrentSectors = warGoalCurrentSectors, CanManageWarGoal = canManageWarGoal, WarGoalPlanetOptions = warGoalPlanetOptions, AscensionCount = user.AscensionCount, AscensionBonusPercent = _ascension.CalculateProductionBonus(user.AscensionCount) * 100, CurrentBaseScore = currentBaseScore, CanAscendNow = ascensionBlockedReason == null, AscensionBlockedReason = ascensionBlockedReason, ActiveWorldEvent = activeWorldEvent, ActiveWorldEventName = activeWorldEvent == null ? null : _worldEvents.GetName(activeWorldEvent.Type), ActiveWorldEventDescription = activeWorldEvent == null ? null : _worldEvents.GetDescription(activeWorldEvent.Type), MyWorldEventContribution = myWorldEventContribution, CanContributeToWorldEvent = canContributeToWorldEvent, WorldEventBlockedReason = worldEventBlockedReason, OwnDecoyProfile = _db.DecoyProfiles.SingleOrDefault(d => d.PlayerBaseId == playerBase.Id), TradeRoutes = _db.TradeRoutes.Include(r => r.TargetBase).Where(r => r.UserId == user.Id).OrderBy(r => r.NextDueAtUtc).ToList(), SeasonLabel = _season.GetSeasonLabel(seasonWeekIndex), SeasonFocusAddressIds = seasonFocusAddressIds, CharacterSkills = _db.CharacterSkills.SingleOrDefault(s => s.UserId == user.Id), DiplomacyStatuses = diplomacyStatuses, QuestlineStatuses = BuildQuestlineStatuses(user, playerBase, now) };
             _db.SaveChanges();
             return View(view, model);
         }
@@ -998,20 +1006,20 @@ namespace StargateGalacticCommand.Web.Controllers
             return bases.Select(b => new PlanetInfluence { PlanetId = planetId, UserId = b.UserId, UserName = b.User.UserName, Score = _localSectors.CalculateInfluence(b, b.User, sectors.Where(s => s.SectorControl.UserId == b.UserId), claims.Where(c => c.UserId == b.UserId), now) }).OrderByDescending(i => i.Score).ToList();
         }
 
-        private System.Collections.Generic.IDictionary<int, string> BuildAllianceTagByUserId()
+        private System.Collections.Generic.IDictionary<int, string> BuildAllianceTagByUserId(int serverId)
         {
-            return _db.AllianceMembers.Include(m => m.Alliance).ToList().ToDictionary(m => m.UserId, m => m.Alliance.Tag);
+            return _db.AllianceMembers.Include(m => m.Alliance).Where(m => m.Alliance.ServerId == serverId).ToList().ToDictionary(m => m.UserId, m => m.Alliance.Tag);
         }
 
-        private System.Collections.Generic.IList<PlayerRankingEntry> BuildPlayerRankings()
+        private System.Collections.Generic.IList<PlayerRankingEntry> BuildPlayerRankings(int serverId)
         {
-            var bases = _db.PlayerBases.Include(b => b.User).ThenInclude(u => u.Faction).Include(b => b.Resources).Include(b => b.Ships).Include(b => b.BuildingLevels).Where(b => !b.User.IsNpc).ToList();
-            return _ranking.BuildPlayerRankings(bases, BuildAllianceTagByUserId(), OnlineWindow, DateTime.UtcNow);
+            var bases = _db.PlayerBases.Include(b => b.User).ThenInclude(u => u.Faction).Include(b => b.Resources).Include(b => b.Ships).Include(b => b.BuildingLevels).Where(b => !b.User.IsNpc && b.User.ServerId == serverId).ToList();
+            return _ranking.BuildPlayerRankings(bases, BuildAllianceTagByUserId(serverId), OnlineWindow, DateTime.UtcNow);
         }
 
-        private System.Collections.Generic.IList<AllianceRankingEntry> BuildAllianceRankings(System.Collections.Generic.IList<PlayerRankingEntry> playerRankings)
+        private System.Collections.Generic.IList<AllianceRankingEntry> BuildAllianceRankings(System.Collections.Generic.IList<PlayerRankingEntry> playerRankings, int serverId)
         {
-            var members = _db.AllianceMembers.Include(m => m.Alliance).ToList();
+            var members = _db.AllianceMembers.Include(m => m.Alliance).Where(m => m.Alliance.ServerId == serverId).ToList();
             var scoreByUserId = playerRankings.ToDictionary(p => p.UserId, p => p.Score);
             return _ranking.BuildAllianceRankings(members, scoreByUserId);
         }
@@ -1019,7 +1027,7 @@ namespace StargateGalacticCommand.Web.Controllers
         private System.Collections.Generic.IList<GalaxyEntry> BuildGalaxyEntries(int planetId, User currentUser)
         {
             var bases = _db.PlayerBases.Include(b => b.User).ThenInclude(u => u.ResearchLevels).Include(b => b.User).ThenInclude(u => u.Faction).Include(b => b.BuildingLevels).Include(b => b.PlanetSector).Where(b => b.PlanetSector.PlanetId == planetId && !b.User.IsNpc).ToList();
-            var allianceTagByUserId = BuildAllianceTagByUserId();
+            var allianceTagByUserId = BuildAllianceTagByUserId(currentUser.ServerId);
             var sectors = _db.PlanetSectors.Include(s => s.SectorControl).Where(s => s.PlanetId == planetId && s.SectorControl != null).ToList();
             var claims = _db.SectorClaims.Include(c => c.PlanetSector).Where(c => !c.IsCompleted && c.PlanetSector.PlanetId == planetId).ToList();
             var now = DateTime.UtcNow;
@@ -1043,7 +1051,7 @@ namespace StargateGalacticCommand.Web.Controllers
         {
             if (user == null) return;
             if (!_db.MissionTeams.Any(t => t.UserId == user.Id)) _db.MissionTeams.Add(_gateMissions.CreateFactionTeam(user));
-            var start = _db.GateAddresses.SingleOrDefault(a => a.Code == "P3X-742");
+            var start = _db.GateAddresses.SingleOrDefault(a => a.ServerId == user.ServerId && a.Code == "P3X-742");
             if (start != null && !_db.KnownGateAddresses.Any(k => k.UserId == user.Id && k.GateAddressId == start.Id))
                 _db.KnownGateAddresses.Add(new KnownGateAddress { UserId = user.Id, GateAddressId = start.Id, DiscoveredAtUtc = DateTime.UtcNow, DiscoveryMethod = "Startplanet" });
         }
@@ -1284,17 +1292,18 @@ namespace StargateGalacticCommand.Web.Controllers
 
         private void EvaluateWorldEventState(User user, DateTime now, out WorldEvent activeEvent, out int myContribution, out bool canContribute, out string blockedReason)
         {
-            var worldEvent = _db.WorldEvents.SingleOrDefault(e => e.Status == WorldEventStatus.Active);
+            var worldEvent = _db.WorldEvents.SingleOrDefault(e => e.Status == WorldEventStatus.Active && e.ServerId == user.ServerId);
             if (worldEvent != null && _worldEvents.ResolveIfExpired(worldEvent, now))
             {
                 GrantWorldEventRewards(worldEvent, now);
             }
             if (worldEvent == null || worldEvent.Status != WorldEventStatus.Active)
             {
-                var lastResolved = _db.WorldEvents.Where(e => e.ResolvedAtUtc != null).OrderByDescending(e => e.ResolvedAtUtc).FirstOrDefault();
+                var lastResolved = _db.WorldEvents.Where(e => e.ServerId == user.ServerId && e.ResolvedAtUtc != null).OrderByDescending(e => e.ResolvedAtUtc).FirstOrDefault();
                 var newEvent = _worldEvents.TryStartEvent(null, lastResolved, now);
                 if (newEvent != null)
                 {
+                    newEvent.ServerId = user.ServerId;
                     _db.WorldEvents.Add(newEvent);
                     worldEvent = newEvent;
                 }

@@ -22,6 +22,7 @@ namespace StargateGalacticCommand.Web.Models
         public int FactionId { get; set; }
 
         public string Error { get; set; } = string.Empty;
+        public string ServerName { get; set; } = string.Empty;
         public IList<Faction> Factions { get; set; } = new List<Faction>();
     }
 }

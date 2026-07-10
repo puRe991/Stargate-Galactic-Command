@@ -12,5 +12,6 @@ namespace StargateGalacticCommand.Web.Models
         public string Password { get; set; } = string.Empty;
 
         public string Error { get; set; } = string.Empty;
+        public string ServerName { get; set; } = string.Empty;
     }
 }
