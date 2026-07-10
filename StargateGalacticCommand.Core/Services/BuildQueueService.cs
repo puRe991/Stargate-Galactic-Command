@@ -17,7 +17,7 @@ namespace StargateGalacticCommand.Core.Services
             _resources = resources ?? throw new ArgumentNullException("resources");
         }
 
-        public BuildQueueItem StartBuild(PlayerBase playerBase, BuildingType buildingType, DateTime nowUtc)
+        public BuildQueueItem StartBuild(PlayerBase playerBase, BuildingType buildingType, DateTime nowUtc, ResearchLevels researchLevels = null)
         {
             ValidateBase(playerBase);
             CompleteFinishedBuilds(playerBase, nowUtc);
@@ -35,6 +35,9 @@ namespace StargateGalacticCommand.Core.Services
                 : nowUtc;
             if (startedAt < nowUtc) startedAt = nowUtc;
 
+            // Strukturtechnik (allgemein) senkt die Bauzeit für Gebäude, gedeckelt bei 50% wie beim Schiffbau.
+            double timeMultiplier = Math.Max(0.5, 1 - (researchLevels == null ? 0 : researchLevels.StructuralEngineering) * 0.01);
+            int seconds = (int)Math.Ceiling(_catalog.CalculateBuildSeconds(buildingType, currentLevel, playerBase.BuildingLevels.CommandCenter) * timeMultiplier);
             var item = new BuildQueueItem
             {
                 PlayerBaseId = playerBase.Id,
@@ -42,7 +45,7 @@ namespace StargateGalacticCommand.Core.Services
                 BuildingType = buildingType,
                 TargetLevel = currentLevel + 1,
                 StartedAtUtc = startedAt,
-                CompletesAtUtc = startedAt.AddSeconds(_catalog.CalculateBuildSeconds(buildingType, currentLevel, playerBase.BuildingLevels.CommandCenter))
+                CompletesAtUtc = startedAt.AddSeconds(seconds)
             };
             playerBase.BuildQueue.Add(item);
             return item;

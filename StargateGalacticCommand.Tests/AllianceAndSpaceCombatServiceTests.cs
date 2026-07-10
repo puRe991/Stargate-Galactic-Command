@@ -51,6 +51,46 @@ namespace StargateGalacticCommand.Tests
         }
 
         [Fact]
+        public void Bc304TacticsResearch_CanTurnALosingAttackIntoAWin()
+        {
+            var service = new SpaceCombatService(new ShipyardService(new ResourceService()), new FactionModifierService(), new RankingService());
+            var attacker = User(1); var defender = User(2);
+            var origin = Base(1, attacker, 1, 1); origin.Ships.SmallTransporter = 5;
+            var target = Base(2, defender, 2, 1); target.Ships.SmallTransporter = 0; target.BuildingLevels.CommandCenter = 20;
+
+            var weakMission = service.StartAttack(attacker, origin, target, ShipType.SmallTransporter, 1, new List<SpaceCombatMission>(), null, DateTime.UtcNow.AddMinutes(-10)); weakMission.ArrivesAtUtc = DateTime.UtcNow.AddMinutes(-1);
+            var weakReport = service.Resolve(weakMission, attacker, defender, DateTime.UtcNow);
+            Assert.False(weakReport.AttackerWon);
+
+            attacker.ResearchLevels.Bc304Tactics = 1000;
+            var origin2 = Base(3, attacker, 1, 1); origin2.Ships.SmallTransporter = 5;
+            var target2 = Base(4, defender, 2, 1); target2.Ships.SmallTransporter = 0; target2.BuildingLevels.CommandCenter = 20;
+            var boostedMission = service.StartAttack(attacker, origin2, target2, ShipType.SmallTransporter, 1, new List<SpaceCombatMission>(), null, DateTime.UtcNow.AddMinutes(-10)); boostedMission.ArrivesAtUtc = DateTime.UtcNow.AddMinutes(-1);
+            var boostedReport = service.Resolve(boostedMission, attacker, defender, DateTime.UtcNow);
+            Assert.True(boostedReport.AttackerWon);
+        }
+
+        [Fact]
+        public void IrisSecurityProtocolsResearch_CanTurnAWinningAttackIntoADefensiveWin()
+        {
+            var service = new SpaceCombatService(new ShipyardService(new ResourceService()), new FactionModifierService(), new RankingService());
+            var attacker = User(1); var defender = User(2);
+            var origin = Base(1, attacker, 1, 1); origin.Ships.SmallTransporter = 15;
+            var target = Base(2, defender, 2, 1); target.Ships.SmallTransporter = 0; target.BuildingLevels.CommandCenter = 1;
+
+            var strongMission = service.StartAttack(attacker, origin, target, ShipType.SmallTransporter, 10, new List<SpaceCombatMission>(), null, DateTime.UtcNow.AddMinutes(-10)); strongMission.ArrivesAtUtc = DateTime.UtcNow.AddMinutes(-1);
+            var strongReport = service.Resolve(strongMission, attacker, defender, DateTime.UtcNow);
+            Assert.True(strongReport.AttackerWon);
+
+            defender.ResearchLevels.IrisSecurityProtocols = 1000;
+            var origin2 = Base(3, attacker, 1, 1); origin2.Ships.SmallTransporter = 15;
+            var target2 = Base(4, defender, 2, 1); target2.Ships.SmallTransporter = 0; target2.BuildingLevels.CommandCenter = 1;
+            var defendedMission = service.StartAttack(attacker, origin2, target2, ShipType.SmallTransporter, 10, new List<SpaceCombatMission>(), null, DateTime.UtcNow.AddMinutes(-10)); defendedMission.ArrivesAtUtc = DateTime.UtcNow.AddMinutes(-1);
+            var defendedReport = service.Resolve(defendedMission, attacker, defender, DateTime.UtcNow);
+            Assert.False(defendedReport.AttackerWon);
+        }
+
+        [Fact]
         public void CombatCreatesReportLootLimitAndKeepsBase()
         {
             var service = new SpaceCombatService(new ShipyardService(new ResourceService()), new FactionModifierService(), new RankingService()); var attacker = User(1); var defender = User(2); var origin = Base(1, attacker); origin.Ships.SmallTransporter = 20; var target = Base(2, defender, 1, 4); target.Ships.SmallTransporter = 0;

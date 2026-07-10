@@ -54,5 +54,70 @@ namespace StargateGalacticCommand.Tests
             Assert.Equal(330, production.Naquadah);
             Assert.Equal(42, production.Personnel);
         }
+
+        [Fact]
+        public void CalculateHourlyProduction_ResearchBonusStacksWithSectorBonus()
+        {
+            // Regressionstest: Sektorbonus muss den Forschungsbonus multiplizieren, nicht überschreiben.
+            var levels = new BuildingLevels { CommandCenter = 1, NaquadahRefinery = 10 };
+            var research = new ResearchLevels { AdvancedNaquadahRefining = 10 };
+            var withoutSector = new EconomyService().CalculateHourlyProduction(levels, research, null, null);
+            var withSector = new EconomyService().CalculateHourlyProduction(levels, research, null, new SectorBonus { NaquadahMultiplier = 0.10 });
+            Assert.True(withoutSector.Naquadah > 300, "Forschungsbonus allein sollte bereits über der Basisproduktion liegen.");
+            Assert.True(withSector.Naquadah > withoutSector.Naquadah, "Sektorbonus muss zusätzlich zum Forschungsbonus wirken, nicht ihn ersetzen.");
+        }
+
+        [Theory]
+        [InlineData(nameof(ResearchLevels.AdvancedNaquadahRefining))]
+        [InlineData(nameof(ResearchLevels.HiddenCaches))]
+        public void CalculateHourlyProduction_NaquadahResearchIncreasesOutput(string field)
+        {
+            var levels = new BuildingLevels { CommandCenter = 1, NaquadahRefinery = 10 };
+            var research = new ResearchLevels();
+            typeof(ResearchLevels).GetProperty(field).SetValue(research, 10);
+            var boosted = new EconomyService().CalculateHourlyProduction(levels, research, null, null);
+            var baseline = new EconomyService().CalculateHourlyProduction(levels, null, null, null);
+            Assert.True(boosted.Naquadah > baseline.Naquadah);
+        }
+
+        [Fact]
+        public void CalculateHourlyProduction_SupplyResearchIncreasesOutput()
+        {
+            var levels = new BuildingLevels { CommandCenter = 1, SupplyDepot = 10 };
+            var research = new ResearchLevels { Logistics = 5, FreeJaffaNationLogistics = 5, ExtortionNetworks = 5 };
+            var boosted = new EconomyService().CalculateHourlyProduction(levels, research, null, null);
+            var baseline = new EconomyService().CalculateHourlyProduction(levels, null, null, null);
+            Assert.True(boosted.Supplies > baseline.Supplies);
+        }
+
+        [Fact]
+        public void CalculateHourlyProduction_PersonnelResearchIncreasesOutput()
+        {
+            var levels = new BuildingLevels { CommandCenter = 20 };
+            var research = new ResearchLevels { Medicine = 10, SymbioteEfficiency = 10, HostBondingTechnology = 10 };
+            var boosted = new EconomyService().CalculateHourlyProduction(levels, research, null, null);
+            var baseline = new EconomyService().CalculateHourlyProduction(levels, null, null, null);
+            Assert.True(boosted.Personnel > baseline.Personnel);
+        }
+
+        [Fact]
+        public void CalculateHourlyProduction_EnergyResearchIncreasesOutput()
+        {
+            var levels = new BuildingLevels { CommandCenter = 1, EnergyGenerator = 10 };
+            var research = new ResearchLevels { ZeroPointModuleTheory = 10 };
+            var boosted = new EconomyService().CalculateHourlyProduction(levels, research, null, null);
+            var baseline = new EconomyService().CalculateHourlyProduction(levels, null, null, null);
+            Assert.True(boosted.Energy > baseline.Energy);
+        }
+
+        [Fact]
+        public void CalculateHourlyProduction_IntelResearchIncreasesOutput()
+        {
+            var levels = new BuildingLevels { CommandCenter = 1, SensorStation = 10 };
+            var research = new ResearchLevels { IntelligenceNetworkExpansion = 10 };
+            var boosted = new EconomyService().CalculateHourlyProduction(levels, research, null, null);
+            var baseline = new EconomyService().CalculateHourlyProduction(levels, null, null, null);
+            Assert.True(boosted.Intel > baseline.Intel);
+        }
     }
 }

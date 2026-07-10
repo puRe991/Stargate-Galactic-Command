@@ -129,6 +129,21 @@ namespace StargateGalacticCommand.Tests
         }
 
         [Fact]
+        public void StartBuild_StructuralEngineeringResearchReducesBuildTime()
+        {
+            var service = CreateService();
+            var now = new DateTime(2026, 1, 1, 0, 0, 0, DateTimeKind.Utc);
+            var baselineBase = CreateBase(new EconomyService().CreateStartingResources());
+            var boostedBase = CreateBase(new EconomyService().CreateStartingResources());
+            var research = new ResearchLevels { StructuralEngineering = 20 };
+
+            var baseline = service.StartBuild(baselineBase, BuildingType.NaquadahRefinery, now);
+            var boosted = service.StartBuild(boostedBase, BuildingType.NaquadahRefinery, now, research);
+
+            Assert.True(boosted.CompletesAtUtc < baseline.CompletesAtUtc);
+        }
+
+        [Fact]
         public void ProductionChangesAfterBuildingUpgrade()
         {
             var economy = new EconomyService();

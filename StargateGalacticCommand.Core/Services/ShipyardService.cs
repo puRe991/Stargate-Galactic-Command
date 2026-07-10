@@ -42,7 +42,7 @@ namespace StargateGalacticCommand.Core.Services
             return GetAll().Where(definition => definition.FactionShortName == faction.ShortName);
         }
 
-        public ShipyardQueueItem StartBuild(PlayerBase playerBase, ShipType shipType, int quantity, DateTime nowUtc)
+        public ShipyardQueueItem StartBuild(PlayerBase playerBase, ShipType shipType, int quantity, DateTime nowUtc, ResearchLevels researchLevels = null)
         {
             Validate(playerBase);
             if (quantity < 1 || quantity > 100) throw new ArgumentOutOfRangeException("quantity");
@@ -53,7 +53,11 @@ namespace StargateGalacticCommand.Core.Services
             if (!definition.IsActive) throw new InvalidOperationException("Dieser Schiffstyp ist in Version 0.0.7 gesperrt.");
             if (definition.FactionShortName != playerBase.Faction.ShortName) throw new InvalidOperationException("Schiffstyp gehört nicht zur Fraktion.");
 
-            _resources.Spend(playerBase.Resources, Scale(definition.Cost, quantity));
+            // Naquadah-Reaktor-Miniaturisierung (SGC) und gestohlene Technologie (Lucian) senken Baukosten, fortgeschrittener Schiffbau (allgemein) senkt die Bauzeit.
+            int costReductionLevels = researchLevels == null ? 0 : researchLevels.NaquadahReactorMiniaturization + researchLevels.StolenTechnologyIntegration;
+            double costMultiplier = Math.Max(0.5, 1 - costReductionLevels * 0.01);
+            double timeMultiplier = Math.Max(0.5, 1 - (researchLevels == null ? 0 : researchLevels.AdvancedShipEngineering) * 0.01);
+            _resources.Spend(playerBase.Resources, Scale(definition.Cost, quantity, costMultiplier));
             var item = new ShipyardQueueItem
             {
                 PlayerBaseId = playerBase.Id,
@@ -61,7 +65,7 @@ namespace StargateGalacticCommand.Core.Services
                 ShipType = shipType,
                 Quantity = quantity,
                 StartedAtUtc = nowUtc,
-                CompletesAtUtc = nowUtc.AddSeconds(definition.Cost.Seconds * quantity)
+                CompletesAtUtc = nowUtc.AddSeconds(definition.Cost.Seconds * quantity * timeMultiplier)
             };
             playerBase.ShipyardQueue.Add(item);
             return item;
@@ -85,9 +89,9 @@ namespace StargateGalacticCommand.Core.Services
             return new ShipTypeDefinition { Type = type, Name = name, FactionShortName = faction, IsActive = active, Cost = new BuildCost { Naquadah = naquadah, Trinium = trinium, Supplies = supplies, Energy = energy, Personnel = personnel, Seconds = seconds }, CargoCapacity = cargo, Speed = speed, FuelPerDistance = fuel };
         }
 
-        private static BuildCost Scale(BuildCost cost, int quantity)
+        private static BuildCost Scale(BuildCost cost, int quantity, double costMultiplier = 1.0)
         {
-            return new BuildCost { Naquadah = cost.Naquadah * quantity, Trinium = cost.Trinium * quantity, Supplies = cost.Supplies * quantity, Energy = cost.Energy * quantity, Personnel = cost.Personnel * quantity, Seconds = cost.Seconds * quantity };
+            return new BuildCost { Naquadah = (int)Math.Ceiling(cost.Naquadah * quantity * costMultiplier), Trinium = (int)Math.Ceiling(cost.Trinium * quantity * costMultiplier), Supplies = (int)Math.Ceiling(cost.Supplies * quantity * costMultiplier), Energy = (int)Math.Ceiling(cost.Energy * quantity * costMultiplier), Personnel = (int)Math.Ceiling(cost.Personnel * quantity * costMultiplier), Seconds = cost.Seconds * quantity };
         }
 
         private static void Validate(PlayerBase playerBase)

@@ -50,7 +50,7 @@ namespace StargateGalacticCommand.Core.Services
             return new GateMission { UserId = user.Id, User = user, GateAddressId = address.Id, GateAddress = address, MissionTeamId = team.Id, MissionTeam = team, MissionType = type, StartedAtUtc = nowUtc, CompletesAtUtc = nowUtc.AddSeconds(GetMissionSeconds(type)), IsCompleted = false };
         }
 
-        public GateMissionReport CompleteMission(GateMission mission, PlayerBase playerBase, IList<GateAddress> undiscoveredAddresses, DateTime nowUtc, Random random = null, CharacterSkills skills = null)
+        public GateMissionReport CompleteMission(GateMission mission, PlayerBase playerBase, IList<GateAddress> undiscoveredAddresses, DateTime nowUtc, Random random = null, CharacterSkills skills = null, ResearchLevels researchLevels = null)
         {
             if (mission == null) throw new ArgumentNullException("mission");
             if (playerBase == null) throw new ArgumentNullException("playerBase");
@@ -61,12 +61,15 @@ namespace StargateGalacticCommand.Core.Services
             score += (int)mission.MissionType;
             score += _factionModifiers.GetGateMissionScoreBonus(playerBase.Faction, mission.MissionType);
             score += _skillTree.GetGateMissionScoreBonus(skills, mission.MissionType);
+            score += GetResearchGateMissionScoreBonus(researchLevels, mission.MissionType);
             var outcome = score >= 28 ? GateMissionOutcome.Success : score >= 20 ? GateMissionOutcome.PartialSuccess : GateMissionOutcome.Failure;
             var report = new GateMissionReport { UserId = mission.UserId, GateMission = mission, GateMissionId = mission.Id, Outcome = outcome, CreatedAtUtc = nowUtc };
 
             if (outcome == GateMissionOutcome.Failure)
             {
-                report.PersonnelLost = Math.Max(1, team.Risk / 3);
+                // Medizin/Kriegerkodex/symbiontische Heilung senken die Verluste, aber niemals unter 0 (siehe ResearchCatalogService).
+                int medicalReduction = researchLevels == null ? 0 : researchLevels.Medicine + researchLevels.JaffaWarriorCode + researchLevels.SymbioteHealing;
+                report.PersonnelLost = Math.Max(0, Math.Max(1, team.Risk / 3) - medicalReduction);
                 playerBase.Resources.Personnel = Math.Max(0, playerBase.Resources.Personnel - report.PersonnelLost);
                 report.Outcome = GateMissionOutcome.WoundedOrLosses;
                 report.Summary = "Das Team kehrt verwundet zurück. Keine Schiffe oder Großflotten wurden durch das Gate bewegt.";
@@ -77,7 +80,7 @@ namespace StargateGalacticCommand.Core.Services
                 double seasonMultiplier = _season.GetRewardMultiplier(mission.GateAddress, weekIndex);
                 report.IsSeasonFocusBonus = seasonMultiplier > 1.0;
                 ApplyRewards(mission, playerBase, report, (outcome == GateMissionOutcome.Success ? 1.0 : 0.5) * seasonMultiplier);
-                TryTriggerAnomaly(mission, playerBase, report, random ?? Random.Shared);
+                TryTriggerAnomaly(mission, playerBase, report, random ?? Random.Shared, researchLevels);
             }
             if (skills != null) _skillTree.AwardMissionPoint(skills);
             mission.IsCompleted = true;
@@ -85,18 +88,36 @@ namespace StargateGalacticCommand.Core.Services
             return report;
         }
 
+        // Bündelt alle Forschungen mit Missionserfolgsbonus (allgemein: Diplomatie; fraktionsspezifisch: siehe ResearchCatalogService); additiv, analog zum Fraktions-/Skilltree-Bonus.
+        private static int GetResearchGateMissionScoreBonus(ResearchLevels r, GateMissionType type)
+        {
+            if (r == null) return 0;
+            switch (type)
+            {
+                case GateMissionType.DiplomaticContact: return r.Diplomacy + r.SystemLordDossiers;
+                case GateMissionType.SearchArtifact: return r.AncientOutpostTechnology;
+                case GateMissionType.AnalyzeAddress: return r.StargateNetworkMapping + r.GoauldSabotage;
+                case GateMissionType.RiskAnalysis: return r.KelNoReemTraining;
+                case GateMissionType.SecureResources: return r.RuthlessNegotiation;
+                default: return 0;
+            }
+        }
+
         // Deliberately rare and one-shot per address (see GameplayIdeas balancing note): once an address has yielded its anomaly it's "erschöpft" and never rolls again, so this can't be farmed.
-        private static void TryTriggerAnomaly(GateMission mission, PlayerBase playerBase, GateMissionReport report, Random random)
+        // Xenoarchäologie erhöht die Fundchance leicht, Asgard-Datenanalyse erhöht die Intel-Ausbeute eines Fundes.
+        private static void TryTriggerAnomaly(GateMission mission, PlayerBase playerBase, GateMissionReport report, Random random, ResearchLevels researchLevels)
         {
             if (mission.MissionType != GateMissionType.Explore && mission.MissionType != GateMissionType.AnalyzeAddress) return;
             var address = mission.GateAddress;
             if (address == null || address.AnomalyFound) return;
-            if (random.NextDouble() >= AnomalyChance) return;
+            double chance = AnomalyChance + (researchLevels == null ? 0 : researchLevels.XenoArchaeology * 0.001);
+            if (random.NextDouble() >= chance) return;
 
             address.AnomalyFound = true;
             var anomalyType = random.NextDouble() < 0.5 ? GateAnomalyType.AncientRuin : GateAnomalyType.AsgardWreck;
             report.AnomalyType = anomalyType;
-            int bonusIntel = anomalyType == GateAnomalyType.AncientRuin ? 40 : 25;
+            int intelResearchBonus = researchLevels == null ? 0 : researchLevels.AsgardDataAnalysis * 2;
+            int bonusIntel = (anomalyType == GateAnomalyType.AncientRuin ? 40 : 25) + intelResearchBonus;
             int bonusNaquadah = anomalyType == GateAnomalyType.AsgardWreck ? 150 : 0;
             report.IntelFound += bonusIntel;
             report.NaquadahFound += bonusNaquadah;

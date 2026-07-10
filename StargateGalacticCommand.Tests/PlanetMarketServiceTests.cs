@@ -63,6 +63,24 @@ namespace StargateGalacticCommand.Tests
         }
 
         [Fact]
+        public void BuyOrder_SellerResearchReducesMarketFee()
+        {
+            var seller = User(1, "SGC"); var buyer = User(2, "Jaffa"); var sellerBase = Base(1, seller, 1); var buyerBase = Base(2, buyer, 1);
+            buyerBase.Resources.Trinium = 100000;
+            var order = Service().CreateOrder(seller, sellerBase, TradeResourceType.Naquadah, 100, TradeResourceType.Trinium, 10000, Now.AddHours(1), Now);
+            order.Id = 1; order.SellerUser = seller;
+            var transactionWithoutResearch = Service().BuyOrder(order, buyer, buyerBase, sellerBase, Array.Empty<PlanetSector>(), Now.AddMinutes(1));
+
+            var seller2 = User(3, "SGC"); var buyer2 = User(4, "Jaffa"); var sellerBase2 = Base(3, seller2, 1); var buyerBase2 = Base(4, buyer2, 1);
+            buyerBase2.Resources.Trinium = 100000;
+            var order2 = Service().CreateOrder(seller2, sellerBase2, TradeResourceType.Naquadah, 100, TradeResourceType.Trinium, 10000, Now.AddHours(1), Now);
+            order2.Id = 2; order2.SellerUser = seller2;
+            var transactionWithResearch = Service().BuyOrder(order2, buyer2, buyerBase2, sellerBase2, Array.Empty<PlanetSector>(), Now.AddMinutes(1), 0.0, 0.3);
+
+            Assert.True(transactionWithResearch.FeeAmount < transactionWithoutResearch.FeeAmount);
+        }
+
+        [Fact]
         public void CalculateFee_UsesLucianBonus()
         {
             var fee = Service().CalculateFee(100, Service().CalculateFeeRate(new Faction { ShortName = "Lucian" }, Array.Empty<PlanetSector>()));
