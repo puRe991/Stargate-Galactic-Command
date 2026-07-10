@@ -55,6 +55,14 @@ namespace StargateGalacticCommand.Tests
         }
 
         [Fact]
+        public void CalculateFeeRate_AppliesAlliancePactReduction()
+        {
+            var withoutPact = Service().CalculateFeeRate(new Faction { ShortName = "SGC" }, Array.Empty<PlanetSector>());
+            var withPact = Service().CalculateFeeRate(new Faction { ShortName = "SGC" }, Array.Empty<PlanetSector>(), DiplomacyService.PactMarketFeeReduction);
+            Assert.True(withPact < withoutPact);
+        }
+
+        [Fact]
         public void CalculateFee_UsesLucianBonus()
         {
             var fee = Service().CalculateFee(100, Service().CalculateFeeRate(new Faction { ShortName = "Lucian" }, Array.Empty<PlanetSector>()));

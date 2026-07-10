@@ -55,6 +55,7 @@ namespace StargateGalacticCommand.Data
         public DbSet<DecoyProfile> DecoyProfiles { get; set; }
         public DbSet<TradeRoute> TradeRoutes { get; set; }
         public DbSet<CharacterSkills> CharacterSkills { get; set; }
+        public DbSet<AllianceDiplomacyStatus> AllianceDiplomacyStatuses { get; set; }
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
@@ -188,6 +189,10 @@ namespace StargateGalacticCommand.Data
             modelBuilder.Entity<AchievementProgress>().HasIndex(p => new { p.UserId, p.AchievementKey }).IsUnique();
             modelBuilder.Entity<CharacterSkills>().HasIndex(s => s.UserId).IsUnique();
             modelBuilder.Entity<CharacterSkills>().HasOne(s => s.User).WithMany().HasForeignKey(s => s.UserId).OnDelete(DeleteBehavior.Cascade);
+            modelBuilder.Entity<AllianceDiplomacyStatus>().Property(d => d.Status).HasConversion<int>();
+            modelBuilder.Entity<AllianceDiplomacyStatus>().HasIndex(d => new { d.AllianceAId, d.AllianceBId }).IsUnique();
+            modelBuilder.Entity<AllianceDiplomacyStatus>().HasOne(d => d.AllianceA).WithMany().HasForeignKey(d => d.AllianceAId).OnDelete(DeleteBehavior.Restrict);
+            modelBuilder.Entity<AllianceDiplomacyStatus>().HasOne(d => d.AllianceB).WithMany().HasForeignKey(d => d.AllianceBId).OnDelete(DeleteBehavior.Restrict);
         }
     }
 }

@@ -44,6 +44,13 @@ namespace StargateGalacticCommand.Tests
         }
 
         [Fact]
+        public void ActivePactBetweenAlliancesBlocksAttack()
+        {
+            var service = new SpaceCombatService(new ShipyardService(new ResourceService()), new FactionModifierService(), new RankingService()); var attacker = User(1); var defender = User(2); var origin = Base(1, attacker, 1, 1); var target = Base(2, defender, 2, 1);
+            Assert.Throws<InvalidOperationException>(() => service.StartAttack(attacker, origin, target, ShipType.SmallTransporter, 1, new List<SpaceCombatMission>(), null, DateTime.UtcNow, null, alliancesUnderPact: true));
+        }
+
+        [Fact]
         public void CombatCreatesReportLootLimitAndKeepsBase()
         {
             var service = new SpaceCombatService(new ShipyardService(new ResourceService()), new FactionModifierService(), new RankingService()); var attacker = User(1); var defender = User(2); var origin = Base(1, attacker); origin.Ships.SmallTransporter = 20; var target = Base(2, defender, 1, 4); target.Ships.SmallTransporter = 0;
