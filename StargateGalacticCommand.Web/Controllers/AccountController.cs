@@ -14,36 +14,63 @@ namespace StargateGalacticCommand.Web.Controllers
     {
         private readonly GameDbContext _db; private readonly RegistrationService _registration; private readonly PasswordService _passwords;
         public AccountController(GameDbContext db, RegistrationService registration, PasswordService passwords) { _db = db; _registration = registration; _passwords = passwords; }
-        public IActionResult Register() { return View(new RegisterViewModel { Factions = _db.Factions.OrderBy(f => f.Id).ToList() }); }
+
+        private GameServer LoadSelectedServer()
+        {
+            var serverId = HttpContext.Session.GetInt32("ServerId");
+            if (!serverId.HasValue) return null;
+            return _db.GameServers.SingleOrDefault(s => s.Id == serverId.Value && s.Status != ServerStatus.Stopped);
+        }
+
+        public IActionResult Register()
+        {
+            var server = LoadSelectedServer();
+            if (server == null) return RedirectToAction("Select", "Server");
+            var model = new RegisterViewModel { Factions = _db.Factions.OrderBy(f => f.Id).ToList(), ServerName = server.Name };
+            if (server.Status == ServerStatus.Paused) model.Error = "Dieser Server nimmt aktuell keine neuen Spieler auf.";
+            return View(model);
+        }
         [HttpPost]
         [ValidateAntiForgeryToken]
         public IActionResult Register(RegisterViewModel model)
         {
+            var server = LoadSelectedServer();
+            if (server == null) return RedirectToAction("Select", "Server");
             model.Factions = _db.Factions.OrderBy(f => f.Id).ToList();
+            model.ServerName = server.Name;
+            if (server.Status == ServerStatus.Paused) { model.Error = "Dieser Server nimmt aktuell keine neuen Spieler auf."; return View(model); }
             if (!ModelState.IsValid) return View(model);
             try
             {
                 var planets = _db.Planets.Include(p => p.Sectors).ThenInclude(s => s.PlayerBase);
-                var user = _registration.CreateUserWithStartBase(_db.Users, _db.Factions, planets, model.UserName, model.Email, model.Password, model.FactionId);
+                var user = _registration.CreateUserWithStartBase(_db.Users, _db.Factions, planets, server.Id, model.UserName, model.Email, model.Password, model.FactionId);
                 _db.Users.Add(user);
                 _db.PlayerProtectionStatuses.Add(new PlayerProtectionStatus { User = user, ProtectedUntilUtc = user.CreatedAtUtc.AddDays(3), Score = 0 });
                 _db.SaveChanges(); HttpContext.Session.SetInt32("UserId", user.Id); return RedirectToAction("Overview", "Game");
             }
             catch (Exception ex) { model.Error = ex.Message; return View(model); }
         }
-        public IActionResult Login() { return View(new LoginViewModel()); }
-        public static User? FindLoginCandidate(IQueryable<User> users, string? userNameOrEmail)
+        public IActionResult Login()
+        {
+            var server = LoadSelectedServer();
+            if (server == null) return RedirectToAction("Select", "Server");
+            return View(new LoginViewModel { ServerName = server.Name });
+        }
+        public static User? FindLoginCandidate(IQueryable<User> users, int serverId, string? userNameOrEmail)
         {
             var key = (userNameOrEmail ?? string.Empty).Trim().ToLowerInvariant();
             if (string.IsNullOrWhiteSpace(key)) return null;
-            return users.FirstOrDefault(u => !u.IsNpc && (u.UserName.ToLower() == key || u.Email == key));
+            return users.FirstOrDefault(u => u.ServerId == serverId && !u.IsNpc && (u.UserName.ToLower() == key || u.Email == key));
         }
         [HttpPost]
         [ValidateAntiForgeryToken]
         public IActionResult Login(LoginViewModel model)
         {
+            var server = LoadSelectedServer();
+            if (server == null) return RedirectToAction("Select", "Server");
+            model.ServerName = server.Name;
             if (!ModelState.IsValid) return View(model);
-            var user = FindLoginCandidate(_db.Users, model.UserNameOrEmail);
+            var user = FindLoginCandidate(_db.Users, server.Id, model.UserNameOrEmail);
             if (user == null || !_passwords.Verify(model.Password, user.PasswordHash, user.PasswordSalt)) { model.Error = "Login fehlgeschlagen."; return View(model); }
             user.LastSeenAtUtc = DateTime.UtcNow;
             _db.SaveChanges();

@@ -5,6 +5,8 @@ namespace StargateGalacticCommand.Core.Models
     public class GateAddress
     {
         public int Id { get; set; }
+        public int ServerId { get; set; }
+        public GameServer GameServer { get; set; }
         public int? PlanetId { get; set; }
         public Planet Planet { get; set; }
         public string Code { get; set; }

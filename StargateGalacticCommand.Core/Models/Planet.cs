@@ -5,6 +5,8 @@ namespace StargateGalacticCommand.Core.Models
     public class Planet
     {
         public int Id { get; set; }
+        public int ServerId { get; set; }
+        public GameServer GameServer { get; set; }
         public string Name { get; set; }
         public string Galaxy { get; set; }
         public string Type { get; set; }

@@ -5,6 +5,8 @@ namespace StargateGalacticCommand.Core.Models
     public class WorldEvent
     {
         public int Id { get; set; }
+        public int ServerId { get; set; }
+        public GameServer GameServer { get; set; }
         public WorldEventType Type { get; set; }
         public WorldEventStatus Status { get; set; }
         public DateTime StartedAtUtc { get; set; }

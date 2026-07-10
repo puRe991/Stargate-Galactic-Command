@@ -7,6 +7,7 @@ namespace StargateGalacticCommand.Data
     public class GameDbContext : DbContext
     {
         public GameDbContext(DbContextOptions<GameDbContext> options) : base(options) { }
+        public DbSet<GameServer> GameServers { get; set; }
         public DbSet<User> Users { get; set; }
         public DbSet<Faction> Factions { get; set; }
         public DbSet<Planet> Planets { get; set; }
@@ -62,14 +63,19 @@ namespace StargateGalacticCommand.Data
         {
             modelBuilder.Entity<Faction>().Property(f => f.Name).IsRequired().HasMaxLength(80);
             modelBuilder.Entity<Faction>().HasIndex(f => f.Name).IsUnique();
+            modelBuilder.Entity<GameServer>().Property(s => s.Name).IsRequired().HasMaxLength(80);
+            modelBuilder.Entity<GameServer>().Property(s => s.Slug).IsRequired().HasMaxLength(40);
+            modelBuilder.Entity<GameServer>().HasIndex(s => s.Slug).IsUnique();
             modelBuilder.Entity<User>().Property(u => u.UserName).IsRequired().HasMaxLength(40);
             modelBuilder.Entity<User>().Property(u => u.Email).IsRequired().HasMaxLength(160);
             modelBuilder.Entity<User>().Property(u => u.IsNpc).HasDefaultValue(false);
             modelBuilder.Entity<User>().HasIndex(u => u.IsNpc);
-            modelBuilder.Entity<User>().HasIndex(u => u.UserName).IsUnique();
-            modelBuilder.Entity<User>().HasIndex(u => u.Email).IsUnique();
+            modelBuilder.Entity<User>().HasIndex(u => new { u.ServerId, u.UserName }).IsUnique();
+            modelBuilder.Entity<User>().HasIndex(u => new { u.ServerId, u.Email }).IsUnique();
+            modelBuilder.Entity<User>().HasOne(u => u.GameServer).WithMany().HasForeignKey(u => u.ServerId).OnDelete(DeleteBehavior.Restrict);
             modelBuilder.Entity<Planet>().Property(p => p.Name).IsRequired().HasMaxLength(80);
-            modelBuilder.Entity<Planet>().HasIndex(p => p.Name).IsUnique();
+            modelBuilder.Entity<Planet>().HasIndex(p => new { p.ServerId, p.Name }).IsUnique();
+            modelBuilder.Entity<Planet>().HasOne(p => p.GameServer).WithMany().HasForeignKey(p => p.ServerId).OnDelete(DeleteBehavior.Restrict);
             modelBuilder.Entity<PlanetSector>().HasIndex(s => new { s.PlanetId, s.Number }).IsUnique();
             modelBuilder.Entity<PlanetSector>().HasOne(s => s.Planet).WithMany(p => p.Sectors).HasForeignKey(s => s.PlanetId).OnDelete(DeleteBehavior.Cascade);
             modelBuilder.Entity<PlanetSector>().Property(s => s.SectorType).HasConversion<int>();
@@ -90,8 +96,9 @@ namespace StargateGalacticCommand.Data
             modelBuilder.Entity<ResearchQueueItem>().HasOne(q => q.User).WithMany(u => u.ResearchQueue).HasForeignKey(q => q.UserId).OnDelete(DeleteBehavior.Cascade);
             modelBuilder.Entity<ResearchQueueItem>().Property(q => q.ResearchType).HasConversion<int>();
             modelBuilder.Entity<GateAddress>().Property(a => a.Code).IsRequired().HasMaxLength(20);
-            modelBuilder.Entity<GateAddress>().HasIndex(a => a.Code).IsUnique();
+            modelBuilder.Entity<GateAddress>().HasIndex(a => new { a.ServerId, a.Code }).IsUnique();
             modelBuilder.Entity<GateAddress>().HasOne(a => a.Planet).WithOne().HasForeignKey<GateAddress>(a => a.PlanetId).OnDelete(DeleteBehavior.SetNull);
+            modelBuilder.Entity<GateAddress>().HasOne(a => a.GameServer).WithMany().HasForeignKey(a => a.ServerId).OnDelete(DeleteBehavior.Restrict);
             modelBuilder.Entity<KnownGateAddress>().HasIndex(k => new { k.UserId, k.GateAddressId }).IsUnique();
             modelBuilder.Entity<KnownGateAddress>().HasOne(k => k.User).WithMany(u => u.KnownGateAddresses).HasForeignKey(k => k.UserId).OnDelete(DeleteBehavior.Cascade);
             modelBuilder.Entity<KnownGateAddress>().HasOne(k => k.GateAddress).WithMany(a => a.KnownByUsers).HasForeignKey(k => k.GateAddressId).OnDelete(DeleteBehavior.Cascade);
@@ -151,9 +158,10 @@ namespace StargateGalacticCommand.Data
             modelBuilder.Entity<SectorBattleReport>().HasOne(r => r.PlanetSector).WithMany().HasForeignKey(r => r.PlanetSectorId).OnDelete(DeleteBehavior.Restrict);
             modelBuilder.Entity<Alliance>().Property(a => a.Name).IsRequired().HasMaxLength(80);
             modelBuilder.Entity<Alliance>().Property(a => a.Tag).IsRequired().HasMaxLength(8);
-            modelBuilder.Entity<Alliance>().HasIndex(a => a.Name).IsUnique();
-            modelBuilder.Entity<Alliance>().HasIndex(a => a.Tag).IsUnique();
+            modelBuilder.Entity<Alliance>().HasIndex(a => new { a.ServerId, a.Name }).IsUnique();
+            modelBuilder.Entity<Alliance>().HasIndex(a => new { a.ServerId, a.Tag }).IsUnique();
             modelBuilder.Entity<Alliance>().HasOne(a => a.FounderUser).WithMany().HasForeignKey(a => a.FounderUserId).OnDelete(DeleteBehavior.Restrict);
+            modelBuilder.Entity<Alliance>().HasOne(a => a.GameServer).WithMany().HasForeignKey(a => a.ServerId).OnDelete(DeleteBehavior.Restrict);
             modelBuilder.Entity<AllianceMember>().Property(m => m.Rank).HasConversion<int>();
             modelBuilder.Entity<AllianceMember>().HasIndex(m => m.UserId).IsUnique();
             modelBuilder.Entity<AllianceMember>().HasOne(m => m.Alliance).WithMany(a => a.Members).HasForeignKey(m => m.AllianceId).OnDelete(DeleteBehavior.Cascade);
@@ -167,6 +175,8 @@ namespace StargateGalacticCommand.Data
             modelBuilder.Entity<AllianceWarGoal>().HasOne(g => g.Planet).WithMany().HasForeignKey(g => g.PlanetId).OnDelete(DeleteBehavior.Restrict);
             modelBuilder.Entity<WorldEvent>().Property(e => e.Type).HasConversion<int>();
             modelBuilder.Entity<WorldEvent>().Property(e => e.Status).HasConversion<int>();
+            modelBuilder.Entity<WorldEvent>().HasIndex(e => new { e.ServerId, e.Status });
+            modelBuilder.Entity<WorldEvent>().HasOne(e => e.GameServer).WithMany().HasForeignKey(e => e.ServerId).OnDelete(DeleteBehavior.Restrict);
             modelBuilder.Entity<WorldEventContribution>().HasOne(c => c.WorldEvent).WithMany().HasForeignKey(c => c.WorldEventId).OnDelete(DeleteBehavior.Cascade);
             modelBuilder.Entity<WorldEventContribution>().HasOne(c => c.User).WithMany().HasForeignKey(c => c.UserId).OnDelete(DeleteBehavior.Cascade);
             modelBuilder.Entity<WorldEventContribution>().HasIndex(c => new { c.WorldEventId, c.UserId }).IsUnique();

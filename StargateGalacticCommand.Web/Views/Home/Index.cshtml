@@ -1,2 +1,3 @@
 @{ ViewData["Title"] = "Startseite"; }
-<section class="hero"><h1>Stargate Galactic Command</h1><p>Dunkles, tabellarisches OGame-Style Browsergame: Du führst eine Basis in einem Sektor eines gemeinsam genutzten Planeten. Kein PvP, keine Flotten, keine echten Gate-Missionen in Version 0.0.1.</p><p><a class="button" href="/Account/Register">Account erstellen</a> <a class="button" href="/Account/Login">Einloggen</a></p></section>
+@if (TempData["Error"] != null) { <p class="error">@TempData["Error"]</p> }
+<section class="hero"><h1>Stargate Galactic Command</h1><p>Dunkles, tabellarisches OGame-Style Browsergame: Du führst eine Basis in einem Sektor eines gemeinsam genutzten Planeten auf einem von mehreren unabhängigen Servern.</p><p><a class="button" href="/Server/Select">Server auswählen</a></p></section>

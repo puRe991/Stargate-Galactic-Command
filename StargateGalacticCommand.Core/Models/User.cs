@@ -6,6 +6,8 @@ namespace StargateGalacticCommand.Core.Models
     public class User
     {
         public int Id { get; set; }
+        public int ServerId { get; set; }
+        public GameServer GameServer { get; set; }
         public string UserName { get; set; }
         public string Email { get; set; }
         public string PasswordHash { get; set; }
