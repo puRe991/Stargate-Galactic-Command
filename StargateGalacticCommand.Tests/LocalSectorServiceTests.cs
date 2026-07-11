@@ -117,10 +117,35 @@ namespace StargateGalacticCommand.Tests
         }
 
         [Fact]
-        public void LocalCombat_PreventsNewPlayerAttack()
+        public void LocalCombat_PreventsAttackOnPlayerUnderStartplanetProtection()
         {
             var now = new DateTime(2026, 1, 8, 0, 0, 0, DateTimeKind.Utc);
-            Assert.Throws<InvalidOperationException>(() => new LocalCombatService().ValidateProtection(new User { Id = 1 }, new User { Id = 2, CreatedAtUtc = now.AddDays(-2) }, 100, 100, now));
+            var protection = new PlayerProtectionStatus { UserId = 2, ProtectedUntilUtc = now.AddDays(1) };
+            Assert.Throws<InvalidOperationException>(() => new LocalCombatService().ValidateProtection(new User { Id = 2 }, protection, 100, 100, now));
+        }
+
+        [Fact]
+        public void LocalCombat_AllowsAttackOncePlayerProtectionExpired()
+        {
+            var now = new DateTime(2026, 1, 8, 0, 0, 0, DateTimeKind.Utc);
+            var protection = new PlayerProtectionStatus { UserId = 2, ProtectedUntilUtc = now.AddDays(-1) };
+            new LocalCombatService().ValidateProtection(new User { Id = 2 }, protection, 100, 100, now);
+        }
+
+        [Fact]
+        public void LocalCombat_OnlyAllowsAttacksOnContestedPlanets()
+        {
+            var now = new DateTime(2026, 1, 8, 0, 0, 0, DateTimeKind.Utc);
+            var neutralSector = new PlanetSector { Id = 10, SectorType = SectorType.TriniumField, Planet = new Planet { Status = "neutral" } };
+            var sharedStartSector = new PlanetSector { Id = 11, SectorType = SectorType.TriniumField, Planet = new Planet { Status = "geteilt" } };
+            var contestedSector = new PlanetSector { Id = 12, SectorType = SectorType.TriniumField, Planet = new Planet { Status = "umkämpft" } };
+            var service = new LocalCombatService();
+
+            Assert.Throws<InvalidOperationException>(() => service.StartMission(new User { Id = 1 }, new PlayerBase(), neutralSector, LocalCombatObjective.SecureNeutralResourceZone, new GroundUnits { Marines = 1 }, Array.Empty<LocalCombatMission>(), now));
+            Assert.Throws<InvalidOperationException>(() => service.StartMission(new User { Id = 1 }, new PlayerBase(), sharedStartSector, LocalCombatObjective.SecureNeutralResourceZone, new GroundUnits { Marines = 1 }, Array.Empty<LocalCombatMission>(), now));
+
+            var mission = service.StartMission(new User { Id = 1 }, new PlayerBase(), contestedSector, LocalCombatObjective.SecureNeutralResourceZone, new GroundUnits { Marines = 1 }, Array.Empty<LocalCombatMission>(), now);
+            Assert.Equal(12, mission.PlanetSectorId);
         }
 
         [Fact]
@@ -140,7 +165,8 @@ namespace StargateGalacticCommand.Tests
         {
             var now = new DateTime(2026, 1, 8, 0, 0, 0, DateTimeKind.Utc);
             var old = new LocalCombatMission { AttackerUserId = 1, PlanetSectorId = 3, CompletedAtUtc = now.AddHours(-1) };
-            Assert.Throws<InvalidOperationException>(() => new LocalCombatService().StartMission(new User { Id = 1 }, new PlayerBase(), new PlanetSector { Id = 3, SectorType = SectorType.TriniumField }, LocalCombatObjective.SecureNeutralResourceZone, new GroundUnits { Marines = 1 }, new[] { old }, now));
+            var sector = new PlanetSector { Id = 3, SectorType = SectorType.TriniumField, Planet = new Planet { Status = "umkämpft" } };
+            Assert.Throws<InvalidOperationException>(() => new LocalCombatService().StartMission(new User { Id = 1 }, new PlayerBase(), sector, LocalCombatObjective.SecureNeutralResourceZone, new GroundUnits { Marines = 1 }, new[] { old }, now));
         }
 
         [Fact]

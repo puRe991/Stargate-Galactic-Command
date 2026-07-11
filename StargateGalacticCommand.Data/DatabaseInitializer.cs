@@ -16,6 +16,7 @@ namespace StargateGalacticCommand.Data
         {
             if (context == null) return;
             EnsureDatabaseCreated(context, useMigrations);
+            EnableWriteAheadLogging(context);
             SeedFactions(context);
             SeedTradeTaxRule(context);
             context.SaveChanges();
@@ -38,16 +39,112 @@ namespace StargateGalacticCommand.Data
         }
         private static void EnsureDatabaseCreated(GameDbContext context, bool useMigrations)
         {
-            // Migrate() does not create the model tables when the assembly has no
-            // migrations. This prototype currently has no migration files, so fall
-            // back to EnsureCreated() to avoid a startup crash while seeding.
-            if (useMigrations && context.Database.GetMigrations().Any())
+            if (!useMigrations)
             {
-                context.Database.Migrate();
+                // Only used by the in-memory/relational test fixtures, which have no migrations.
+                context.Database.EnsureCreated();
                 return;
             }
 
-            context.Database.EnsureCreated();
+            // A database file created by the old EnsureCreated() fallback (before real
+            // migrations existed) has all the tables but no __EFMigrationsHistory row.
+            // Migrate() would then try to CREATE TABLE for tables that already exist and
+            // crash. Baseline such a database instead of touching its schema/data: stamp
+            // the current migrations as already applied, exactly like the EF Core docs
+            // recommend for adopting migrations on an existing database.
+            if (HasPreMigrationSchema(context)) BaselineExistingDatabase(context);
+
+            context.Database.Migrate();
+        }
+
+        private static bool HasPreMigrationSchema(GameDbContext context)
+        {
+            var connection = context.Database.GetDbConnection();
+            // For SQLite ":memory:" connections (used by tests), closing a connection we
+            // did not open ourselves would destroy the in-memory database and its content.
+            bool wasOpen = connection.State == System.Data.ConnectionState.Open;
+            if (!wasOpen) connection.Open();
+            try
+            {
+                if (TableExists(connection, "__EFMigrationsHistory")) return false;
+                return TableExists(connection, "Users");
+            }
+            finally
+            {
+                if (!wasOpen) connection.Close();
+            }
+        }
+
+        // SQLite's default rollback-journal mode locks the whole database file for the
+        // duration of a write, so readers block on writers (and vice versa). WAL mode lets
+        // one writer and many readers proceed concurrently, which matters once this
+        // single-file database serves more than one request at a time. WAL is a persistent,
+        // one-time-per-file setting stored in the database header, so re-applying it on
+        // every startup is a cheap no-op once set. Has no effect on ":memory:" databases
+        // (used by tests), which SQLite always keeps in a private in-memory journal mode.
+        private static void EnableWriteAheadLogging(GameDbContext context)
+        {
+            var connection = context.Database.GetDbConnection();
+            bool wasOpen = connection.State == System.Data.ConnectionState.Open;
+            if (!wasOpen) connection.Open();
+            try
+            {
+                using var command = connection.CreateCommand();
+                command.CommandText = "PRAGMA journal_mode=WAL;";
+                command.ExecuteNonQuery();
+            }
+            finally
+            {
+                if (!wasOpen) connection.Close();
+            }
+        }
+
+        private static bool TableExists(System.Data.Common.DbConnection connection, string tableName)
+        {
+            using var command = connection.CreateCommand();
+            command.CommandText = "SELECT name FROM sqlite_master WHERE type='table' AND name=$name";
+            var parameter = command.CreateParameter();
+            parameter.ParameterName = "$name";
+            parameter.Value = tableName;
+            command.Parameters.Add(parameter);
+            return command.ExecuteScalar() != null;
+        }
+
+        private static void BaselineExistingDatabase(GameDbContext context)
+        {
+            var connection = context.Database.GetDbConnection();
+            bool wasOpen = connection.State == System.Data.ConnectionState.Open;
+            if (!wasOpen) connection.Open();
+            try
+            {
+                using (var createHistoryTable = connection.CreateCommand())
+                {
+                    createHistoryTable.CommandText =
+                        "CREATE TABLE IF NOT EXISTS \"__EFMigrationsHistory\" (" +
+                        "\"MigrationId\" TEXT NOT NULL CONSTRAINT \"PK___EFMigrationsHistory\" PRIMARY KEY, " +
+                        "\"ProductVersion\" TEXT NOT NULL)";
+                    createHistoryTable.ExecuteNonQuery();
+                }
+
+                foreach (var migrationId in context.Database.GetMigrations())
+                {
+                    using var insert = connection.CreateCommand();
+                    insert.CommandText = "INSERT OR IGNORE INTO \"__EFMigrationsHistory\" (\"MigrationId\", \"ProductVersion\") VALUES ($id, $version)";
+                    var idParameter = insert.CreateParameter();
+                    idParameter.ParameterName = "$id";
+                    idParameter.Value = migrationId;
+                    insert.Parameters.Add(idParameter);
+                    var versionParameter = insert.CreateParameter();
+                    versionParameter.ParameterName = "$version";
+                    versionParameter.Value = "8.0.28";
+                    insert.Parameters.Add(versionParameter);
+                    insert.ExecuteNonQuery();
+                }
+            }
+            finally
+            {
+                if (!wasOpen) connection.Close();
+            }
         }
 
         private static void SeedFactions(GameDbContext context)

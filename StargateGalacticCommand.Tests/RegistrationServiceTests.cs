@@ -97,7 +97,7 @@ namespace StargateGalacticCommand.Tests
             }
         }
         [Fact]
-        public void Initialize_WithDefaultMigrationMode_CreatesSchemaWhenNoMigrationsExist()
+        public void Initialize_WithDefaultMigrationMode_CreatesSchemaViaMigrations()
         {
             using (var connection = new SqliteConnection("DataSource=:memory:"))
             {
@@ -114,6 +114,67 @@ namespace StargateGalacticCommand.Tests
                     Assert.True(db.GateAddresses.Count() >= DatabaseInitializer.GeneratedWorldCount);
                     Assert.Equal(db.GateAddresses.Count(), db.GateAddresses.Select(a => a.Code).Distinct().Count());
                 }
+            }
+        }
+
+        [Fact]
+        public void Initialize_BaselinesExistingEnsureCreatedDatabaseInsteadOfCrashing()
+        {
+            var dbPath = System.IO.Path.Combine(System.IO.Path.GetTempPath(), "sgc-baseline-test-" + Guid.NewGuid() + ".db");
+            var options = new DbContextOptionsBuilder<GameDbContext>().UseSqlite("Data Source=" + dbPath).Options;
+            try
+            {
+                // Simulate a database created by the pre-migration EnsureCreated() fallback:
+                // all tables exist, but there is no __EFMigrationsHistory table/row.
+                using (var db = new GameDbContext(options))
+                {
+                    db.Database.EnsureCreated();
+                }
+
+                using (var db = new GameDbContext(options))
+                {
+                    DatabaseInitializer.Initialize(db, new GateMissionService(new ResourceService()));
+                    Assert.Equal(4, db.Factions.Count());
+                }
+
+                // A second run must go through Migrate() against the now-baselined database
+                // without trying to re-create any tables.
+                using (var db = new GameDbContext(options))
+                {
+                    DatabaseInitializer.Initialize(db, new GateMissionService(new ResourceService()));
+                    Assert.Equal(4, db.Factions.Count());
+                }
+            }
+            finally
+            {
+                System.IO.File.Delete(dbPath);
+            }
+        }
+
+        [Fact]
+        public void Initialize_EnablesWriteAheadLoggingOnFileBasedDatabase()
+        {
+            var dbPath = System.IO.Path.Combine(System.IO.Path.GetTempPath(), "sgc-wal-test-" + Guid.NewGuid() + ".db");
+            var options = new DbContextOptionsBuilder<GameDbContext>().UseSqlite("Data Source=" + dbPath).Options;
+            try
+            {
+                using (var db = new GameDbContext(options))
+                {
+                    DatabaseInitializer.Initialize(db, new GateMissionService(new ResourceService()));
+
+                    db.Database.OpenConnection();
+                    using var command = db.Database.GetDbConnection().CreateCommand();
+                    command.CommandText = "PRAGMA journal_mode;";
+                    var mode = (string)command.ExecuteScalar();
+                    db.Database.CloseConnection();
+                    Assert.Equal("wal", mode, ignoreCase: true);
+                }
+            }
+            finally
+            {
+                System.IO.File.Delete(dbPath);
+                System.IO.File.Delete(dbPath + "-wal");
+                System.IO.File.Delete(dbPath + "-shm");
             }
         }
 

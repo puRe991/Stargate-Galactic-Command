@@ -11,6 +11,7 @@ Browserbasierter Strategie-MMO-Prototyp im OGame-Stil mit Stargate-inspirierter 
 - [Voraussetzungen](#voraussetzungen)
 - [Lokal starten](#lokal-starten)
 - [Tests ausführen](#tests-ausführen)
+- [Betrieb & Deployment](#betrieb--deployment)
 - [Offene TODOs](#offene-todos)
 - [Erledigt](#erledigt)
 
@@ -37,6 +38,8 @@ Das Admin-Passwort wird über die Konfiguration `Admin:Password` gesetzt (Standa
 ```bash
 export Admin__Password="ein-sicheres-passwort"
 ```
+
+Ein Startup-Check verhindert, dass das vergessen wird: Außerhalb von `Development` bricht die Anwendung den Start mit einer Fehlermeldung ab, solange `Admin:Password` noch auf `change-me` steht; im `Development`-Profil (Standard bei `dotnet run`, siehe `Properties/launchSettings.json`) gibt es stattdessen nur eine Log-Warnung, damit lokales Entwickeln ohne zusätzliche Konfiguration funktioniert.
 
 ## Features im Überblick
 
@@ -110,14 +113,35 @@ Die Anwendung erstellt beim Start eine lokale SQLite-Datei `stargate-galactic-co
 dotnet test StargateGalacticCommand.sln
 ```
 
+## Betrieb & Deployment
+
+- **EF-Core-Migrationen**: Das Schema wird über echte Migrationen (`StargateGalacticCommand.Data/Migrations`) verwaltet, nicht mehr über `EnsureCreated()`. Neue Migration nach einer Modelländerung erzeugen:
+  ```bash
+  dotnet ef migrations add <Name> --project StargateGalacticCommand.Data --startup-project StargateGalacticCommand.Web
+  ```
+  Bestehende Datenbanken, die noch vom alten `EnsureCreated()`-Fallback stammen (keine `__EFMigrationsHistory`-Tabelle), werden beim ersten Start automatisch "baselined" (die vorhandenen Migrationen werden als bereits angewendet markiert, ohne das Schema anzufassen) statt einen Fehler zu werfen.
+- **SQLite im Mehrbenutzerbetrieb**: SQLite ist Single-File/Single-Writer; parallele Schreibzugriffe können sich blockieren. Die App aktiviert beim Start WAL-Journaling (`PRAGMA journal_mode=WAL`) und einen Busy-Timeout von 30 s (`Default Timeout` in der Connection-String), damit Leser und ein Schreiber nebeneinander arbeiten können und kurze Kollisionen nicht sofort fehlschlagen. Das behebt das grundsätzliche Single-Writer-Limit aber nicht – für echte Mehrspieler-Last unter Last ist der in der [ROADMAP](ROADMAP.md) (Phase 5) vorgesehene Wechsel zu PostgreSQL der richtige Schritt.
+- **Backups**: `scripts/backup-sqlite.sh [db] [backup-dir] [retention-days]` erstellt über SQLites Online-Backup-API (`.backup`) eine konsistente Kopie der laufenden Datenbank (auch im WAL-Modus sicher) und räumt alte Kopien nach der Aufbewahrungsfrist auf. Beispiel für einen täglichen Cronjob steht im Skriptkopf.
+- **Logging**: Strukturiertes Logging über Serilog, konfiguriert in `appsettings.json` (Abschnitt `Serilog`) – Konsole wie bisher, zusätzlich rollierende Tagesdateien unter `logs/` (14 Tage Aufbewahrung). Für produktives Monitoring lassen sich weitere Sinks (z. B. Seq, ein Log-Aggregator) rein über Konfiguration ergänzen, ohne Code zu ändern.
+- **Docker**: `Dockerfile` baut ein Multi-Stage-Image (SDK zum Bauen/Publishen, `aspnet:8.0` zur Laufzeit). Die SQLite-Datei liegt im Container unter `/data` (als Volume mountbar), Port ist `8080`. `Admin__Password` muss beim Start per Umgebungsvariable gesetzt werden.
+  ```bash
+  docker build -t stargate-galactic-command .
+  docker run -p 8080:8080 -v sgc-data:/data -e Admin__Password=ein-sicheres-passwort stargate-galactic-command
+  ```
+- **CI**: `.github/workflows/build-and-test.yml` baut die Solution und führt `dotnet test` bei jedem Push/PR auf `main` aus.
+
 ## Offene TODOs
 
-- PvP-Regeln für umkämpfte Sektoren erst nach dem Startplanet-Schutz sauber modellieren.
-- Erste Migrationen ergänzen, sobald das Datenmodell stabiler ist.
-- Balancing-Werte für Kosten und Produktion mit Spieldesign-Zielen abgleichen.
+- Balancing-Werte für Kosten und Produktion mit Spieldesign-Zielen abgleichen. Analyse:
+
+  `BuildingCatalogService.CalculateCost` skaliert Baukosten mit `1.6^Level` (Forschung: `1.7^Level`), während die Produktion pro Level linear/additiv bleibt (z. B. `EconomyService`: pauschal +30 Naquadah/h je Raffinerie-Level, unabhängig vom bereits erreichten Level; Forschungseffekte analog pauschal +2 %/Level). Weil die Kosten exponentiell, der Ertrag pro Level aber konstant wächst, explodiert die Amortisationszeit je Ausbaustufe: Raffinerie-Level 0→1 kostet 60 Naquadah für +30 Naquadah/h (≈2 h Amortisation), Level 10→11 kostet ≈6.600 Naquadah für dieselben +30 Naquadah/h (≈220 h ≈ 9 Tage), Level 15→16 bereits ≈69.000 Naquadah (≈96 Tage) – nur für die Naquadah-Teilkosten, ohne Trinium/Supplies. Ab etwa Level 12–15 wird der Ausbau damit praktisch unwirtschaftlich, was der in ROADMAP.md gewünschten Langzeitprogression entgegensteht.
+
+  Mögliche Stellschrauben (nicht umgesetzt, da eine Spieldesign-Entscheidung mit Auswirkung auf bestehende Balance-Erwartungen, u. a. den versionierten Test `CalculateCost_UsesVersion002Formula`): Kostenwachstum abflachen (z. B. 1.6 → ~1.35–1.45), und/oder Produktion pro Level leicht überproportional wachsen lassen (z. B. kleiner kombinierender Faktor statt rein linear), damit die Amortisationszeit über die Levels hinweg begrenzt bleibt statt unbegrenzt zu wachsen.
 
 ## Erledigt
 
+- Produktionsreife-Grundlagen: echte EF-Core-Migrationen statt `EnsureCreated()`-Fallback (bestehende Datenbanken werden beim ersten Start automatisch baselined statt zu crashen), WAL-Modus + Busy-Timeout für SQLite, Serilog-Datei-/Konsolenlogging, SQLite-Backup-Skript (`scripts/backup-sqlite.sh`), Dockerfile, GitHub-Actions-CI (Build+Test) und ein Startup-Check, der das Standard-Admin-Passwort `change-me` außerhalb von `Development` blockiert statt es stillschweigend laufen zu lassen. Details unter [Betrieb & Deployment](#betrieb--deployment).
+- PvP-Regeln für umkämpfte Sektoren sauber modelliert: Bewaffnete Sektorangriffe (`LocalCombatService.StartMission`) sind jetzt nur noch auf Planeten mit Status „umkämpft" erlaubt; auf dem geteilten Startplaneten und auf neutralen Planeten bleibt nur friedliche Beanspruchung (`LocalSectorService.StartClaim`) möglich. Der Anfängerschutz wurde vereinheitlicht: Lokale Kämpfe prüfen jetzt dieselbe persistierte `PlayerProtectionStatus` wie der Weltraumkampf, statt einer zweiten, abweichenden 7-Tage-Regel auf Basis von `User.CreatedAtUtc`.
 - Bauwarteschlange pro Basis erlaubt jetzt bis zu `BuildQueueService.MaxQueueLength` (5) aufeinanderfolgende Aufträge statt nur einen; Kosten und Ziellevel berücksichtigen bereits wartende Aufträge desselben Gebäudetyps.
 - Trümmerfeldbergung: Bergungsflotten (neue Flottenmission `FleetMissionType.Recycle`) können zu Trümmerfeldern nach Raumkämpfen geschickt werden, sammeln Naquadah/Trinium bis zur Frachtkapazität ein und liefern es an die Heimatbasis; Felder werden bei unzureichender Kapazität nur teilweise abgebaut.
 - Fraktionsspezialisierung bei Gate-Missionen: Jede Startfraktion bekommt einen Erfolgs-Score-Bonus auf eine Missionsart, die ihrer Lore-Rolle entspricht (SGC → Artefakt suchen, Freie Jaffa → Risikoanalyse, Tok'ra → Adresse analysieren, Lucian Alliance → Ressourcen sichern); im Gate-Raum mit ★ markiert.

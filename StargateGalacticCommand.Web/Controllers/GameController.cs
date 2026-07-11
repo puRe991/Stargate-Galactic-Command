@@ -602,11 +602,12 @@ namespace StargateGalacticCommand.Web.Controllers
             var now = DateTime.UtcNow;
             try
             {
-                var sector = _db.PlanetSectors.Include(s => s.PlayerBase).Include(s => s.SectorControl).Single(s => s.Id == sectorId && s.PlanetId == playerBase.PlanetSector.PlanetId);
+                var sector = _db.PlanetSectors.Include(s => s.Planet).Include(s => s.PlayerBase).Include(s => s.SectorControl).Single(s => s.Id == sectorId && s.PlanetId == playerBase.PlanetSector.PlanetId);
                 var missions = _db.LocalCombatMissions.Where(m => m.PlanetSectorId == sector.Id).ToList();
                 var defender = sector.SectorControl == null ? null : _db.Users.Include(u => u.ResearchLevels).Include(u => u.Faction).SingleOrDefault(u => u.Id == sector.SectorControl.UserId);
                 var defenderBase = defender == null ? null : _db.PlayerBases.Include(b => b.BuildingLevels).FirstOrDefault(b => b.UserId == defender.Id);
-                _localCombat.ValidateProtection(user, defender, _localSectors.CalculateInfluence(playerBase, user, null, null, now), _localSectors.CalculateInfluence(defenderBase, defender, null, null, now), now);
+                var defenderProtection = defender == null ? null : _db.PlayerProtectionStatuses.SingleOrDefault(p => p.UserId == defender.Id);
+                _localCombat.ValidateProtection(defender, defenderProtection, _localSectors.CalculateInfluence(playerBase, user, null, null, now), _localSectors.CalculateInfluence(defenderBase, defender, null, null, now), now);
                 var units = new GroundUnits { SgSecurityTeams = Math.Max(0, sgSecurityTeams), Marines = Math.Max(0, marines), JaffaWarriors = Math.Max(0, jaffaWarriors), EliteJaffa = Math.Max(0, eliteJaffa), AgentCells = Math.Max(0, agentCells), Saboteurs = Math.Max(0, saboteurs), Mercenaries = Math.Max(0, mercenaries), SmugglerSquads = Math.Max(0, smugglerSquads) };
                 var mission = _localCombat.StartMission(user, playerBase, sector, objective, units, missions, now);
                 _db.LocalCombatMissions.Add(mission);
