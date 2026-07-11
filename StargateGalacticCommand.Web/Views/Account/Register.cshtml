@@ -1,5 +1,15 @@
 @model RegisterViewModel
-@{ ViewData["Title"]="Registrierung"; }
+@{
+    ViewData["Title"]="Registrierung";
+    string FactionIcon(string shortName) => shortName switch
+    {
+        "SGC" => "sgc",
+        "Jaffa" => "jaffa",
+        "Tok’ra" => "tokra",
+        "Lucian" => "lucian",
+        _ => "sgc"
+    };
+}
 <section class="panel">
     <h1>Registrierung</h1>
     <p>Server: <strong>@Model.ServerName</strong> · <a asp-controller="Server" asp-action="Select">anderen Server wählen</a></p>
@@ -13,7 +23,19 @@
         <span asp-validation-for="Email" class="error"></span>
         <label>Passwort<input asp-for="Password" type="password" /></label>
         <span asp-validation-for="Password" class="error"></span>
-        <label>Fraktion<select asp-for="FactionId" asp-items="@(new Microsoft.AspNetCore.Mvc.Rendering.SelectList(Model.Factions, "Id", "Name"))"></select></label>
+        <fieldset class="faction-picker">
+            <legend>Fraktion</legend>
+            <div class="faction-grid">
+                @foreach (var f in Model.Factions)
+                {
+                    <label class="faction-card">
+                        <input type="radio" name="FactionId" value="@f.Id" required />
+                        <img src="~/images/factions/@(FactionIcon(f.ShortName)).svg" alt="" width="40" height="40" />
+                        <span>@f.Name</span>
+                    </label>
+                }
+            </div>
+        </fieldset>
         <span asp-validation-for="FactionId" class="error"></span>
         <button type="submit">Basis gründen</button>
     </form>
