@@ -2,14 +2,16 @@
 @{ ViewData["Title"] = "Server-Chat"; }
 <section class="panel">
     <h1>Server-Chat</h1>
+    <p id="chat-status">Verbinde...</p>
     @if (TempData["Error"] != null) { <div class="alert">@TempData["Error"]</div> }
     @if (TempData["Message"] != null) { <div class="success">@TempData["Message"]</div> }
+    <div id="chat-error" class="alert" style="display:none"></div>
 </section>
 <section class="panel">
     <h2>Nachricht senden</h2>
-    <form method="post" asp-action="SendChatMessage">@Html.AntiForgeryToken()
+    <form method="post" asp-action="SendChatMessage" id="chat-form">@Html.AntiForgeryToken()
         <label>Nachricht</label>
-        <textarea name="body" maxlength="500" required></textarea>
+        <textarea name="body" id="chat-body" maxlength="500" required></textarea>
         <button type="submit">Senden</button>
     </form>
 </section>
@@ -17,11 +19,69 @@
     <h2>Verlauf</h2>
     <table>
         <thead><tr><th>Zeit</th><th>Commander</th><th>Nachricht</th></tr></thead>
-        <tbody>
+        <tbody id="chat-log">
         @foreach (var m in Model.ChatMessages)
         {
-            <tr class="@(m.UserId == Model.User.Id ? "active" : "")"><td>@m.CreatedAtUtc.ToString("u")</td><td>@m.User.UserName</td><td>@m.Body</td></tr>
+            <tr class="@(m.UserId == Model.User.Id ? "active" : "")" data-user-id="@m.UserId"><td>@m.CreatedAtUtc.ToString("u")</td><td>@m.User.UserName</td><td>@m.Body</td></tr>
         }
         </tbody>
     </table>
 </section>
+@section Scripts {
+    <script src="~/lib/signalr/signalr.min.js"></script>
+    <script>
+        (function () {
+            var currentUserId = @Model.User.Id;
+            var statusEl = document.getElementById("chat-status");
+            var errorEl = document.getElementById("chat-error");
+            var logEl = document.getElementById("chat-log");
+            var formEl = document.getElementById("chat-form");
+            var bodyEl = document.getElementById("chat-body");
+
+            function appendMessage(m) {
+                var row = document.createElement("tr");
+                if (m.userId === currentUserId) row.className = "active";
+                row.dataset.userId = m.userId;
+                var timeCell = document.createElement("td");
+                timeCell.textContent = m.createdAtUtc;
+                var nameCell = document.createElement("td");
+                nameCell.textContent = m.userName;
+                var bodyCell = document.createElement("td");
+                bodyCell.textContent = m.body;
+                row.appendChild(timeCell);
+                row.appendChild(nameCell);
+                row.appendChild(bodyCell);
+                logEl.appendChild(row);
+                row.scrollIntoView({ block: "nearest" });
+            }
+
+            var connection = new signalR.HubConnectionBuilder()
+                .withUrl("/hubs/chat")
+                .withAutomaticReconnect()
+                .build();
+
+            connection.on("ReceiveMessage", appendMessage);
+
+            connection.onreconnecting(function () { statusEl.textContent = "Verbindung unterbrochen, versuche erneut..."; });
+            connection.onreconnected(function () { statusEl.textContent = "Live verbunden."; });
+            connection.onclose(function () { statusEl.textContent = "Verbindung getrennt. Bitte Seite neu laden."; });
+
+            connection.start()
+                .then(function () { statusEl.textContent = "Live verbunden."; })
+                .catch(function () { statusEl.textContent = "Live-Verbindung fehlgeschlagen. Formular funktioniert weiterhin per Seitenaufruf."; });
+
+            formEl.addEventListener("submit", function (evt) {
+                if (connection.state !== signalR.HubConnectionState.Connected) return;
+                evt.preventDefault();
+                errorEl.style.display = "none";
+                var body = bodyEl.value;
+                connection.invoke("SendMessage", body)
+                    .then(function () { bodyEl.value = ""; })
+                    .catch(function (err) {
+                        errorEl.textContent = (err && err.message) ? err.message.replace(/^.*HubException: /, "") : "Nachricht konnte nicht gesendet werden.";
+                        errorEl.style.display = "";
+                    });
+            });
+        })();
+    </script>
+}

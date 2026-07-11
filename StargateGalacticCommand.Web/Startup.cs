@@ -8,6 +8,7 @@ using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using StargateGalacticCommand.Core.Services;
 using StargateGalacticCommand.Data;
+using StargateGalacticCommand.Web.Hubs;
 
 namespace StargateGalacticCommand.Web
 {
@@ -24,6 +25,7 @@ namespace StargateGalacticCommand.Web
         {
             services.AddControllersWithViews();
             services.AddSession();
+            services.AddSignalR();
             services.AddDbContext<GameDbContext>(options =>
                 options.UseSqlite(Configuration.GetConnectionString("DefaultConnection")));
             services.AddScoped<EconomyService>();
@@ -92,6 +94,7 @@ namespace StargateGalacticCommand.Web
                 endpoints.MapControllerRoute(
                     name: "default",
                     pattern: "{controller=Home}/{action=Index}/{id?}");
+                endpoints.MapHub<ChatHub>("/hubs/chat");
             });
         }
 

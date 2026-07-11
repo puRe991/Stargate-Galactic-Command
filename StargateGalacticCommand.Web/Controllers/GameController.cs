@@ -1,13 +1,16 @@
 using System;
 using System.Linq;
+using System.Threading.Tasks;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.SignalR;
 using Microsoft.EntityFrameworkCore;
 using StargateGalacticCommand.Core.Models;
 using StargateGalacticCommand.Core.Services;
 using StargateGalacticCommand.Data;
 using StargateGalacticCommand.Web.Models;
 using StargateGalacticCommand.Web.Filters;
+using StargateGalacticCommand.Web.Hubs;
 
 namespace StargateGalacticCommand.Web.Controllers
 {
@@ -46,12 +49,13 @@ namespace StargateGalacticCommand.Web.Controllers
         private readonly QuestlineService _questlines;
         private readonly SpecialResourceCatalogService _specialResourceCatalog;
         private readonly ChatService _chat;
+        private readonly IHubContext<ChatHub> _chatHub;
 
         private static readonly TimeSpan OnlineWindow = TimeSpan.FromMinutes(15);
 
-        public GameController(GameDbContext db, EconomyService economy, BuildingCatalogService catalog, BuildQueueService buildQueue, ResourceService resources, ResearchCatalogService researchCatalog, ResearchQueueService researchQueue, FactionModifierService factionModifiers, GateMissionService gateMissions, LocalSectorService localSectors, PlanetMarketService planetMarket, ShipyardService shipyard, FleetService fleets, EspionageService espionage, LocalCombatService localCombat, AllianceService alliances, SpaceCombatService spaceCombat, RankingService ranking, MessageService messages, ContractService contracts, AchievementService achievements, AllianceWarService allianceWar, AscensionService ascension, WorldEventService worldEvents, TradeRouteService tradeRoutes, SeasonService season = null, SkillTreeService skillTree = null, MentorService mentors = null, DiplomacyService diplomacy = null, QuestlineService questlines = null, SpecialResourceCatalogService specialResourceCatalog = null, ChatService chat = null)
+        public GameController(GameDbContext db, EconomyService economy, BuildingCatalogService catalog, BuildQueueService buildQueue, ResourceService resources, ResearchCatalogService researchCatalog, ResearchQueueService researchQueue, FactionModifierService factionModifiers, GateMissionService gateMissions, LocalSectorService localSectors, PlanetMarketService planetMarket, ShipyardService shipyard, FleetService fleets, EspionageService espionage, LocalCombatService localCombat, AllianceService alliances, SpaceCombatService spaceCombat, RankingService ranking, MessageService messages, ContractService contracts, AchievementService achievements, AllianceWarService allianceWar, AscensionService ascension, WorldEventService worldEvents, TradeRouteService tradeRoutes, SeasonService season = null, SkillTreeService skillTree = null, MentorService mentors = null, DiplomacyService diplomacy = null, QuestlineService questlines = null, SpecialResourceCatalogService specialResourceCatalog = null, ChatService chat = null, IHubContext<ChatHub> chatHub = null)
         {
-            _db = db; _economy = economy; _catalog = catalog; _buildQueue = buildQueue; _resources = resources; _researchCatalog = researchCatalog; _researchQueue = researchQueue; _factionModifiers = factionModifiers; _gateMissions = gateMissions; _localSectors = localSectors; _planetMarket = planetMarket; _shipyard = shipyard; _fleets = fleets; _espionage = espionage; _localCombat = localCombat; _alliances = alliances; _spaceCombat = spaceCombat; _ranking = ranking; _messages = messages; _contracts = contracts; _achievements = achievements; _allianceWar = allianceWar; _ascension = ascension; _worldEvents = worldEvents; _tradeRoutes = tradeRoutes; _season = season ?? new SeasonService(); _skillTree = skillTree ?? new SkillTreeService(); _mentors = mentors ?? new MentorService(); _diplomacy = diplomacy ?? new DiplomacyService(); _questlines = questlines ?? new QuestlineService(); _specialResourceCatalog = specialResourceCatalog ?? new SpecialResourceCatalogService(); _chat = chat ?? new ChatService();
+            _db = db; _economy = economy; _catalog = catalog; _buildQueue = buildQueue; _resources = resources; _researchCatalog = researchCatalog; _researchQueue = researchQueue; _factionModifiers = factionModifiers; _gateMissions = gateMissions; _localSectors = localSectors; _planetMarket = planetMarket; _shipyard = shipyard; _fleets = fleets; _espionage = espionage; _localCombat = localCombat; _alliances = alliances; _spaceCombat = spaceCombat; _ranking = ranking; _messages = messages; _contracts = contracts; _achievements = achievements; _allianceWar = allianceWar; _ascension = ascension; _worldEvents = worldEvents; _tradeRoutes = tradeRoutes; _season = season ?? new SeasonService(); _skillTree = skillTree ?? new SkillTreeService(); _mentors = mentors ?? new MentorService(); _diplomacy = diplomacy ?? new DiplomacyService(); _questlines = questlines ?? new QuestlineService(); _specialResourceCatalog = specialResourceCatalog ?? new SpecialResourceCatalogService(); _chat = chat ?? new ChatService(); _chatHub = chatHub;
         }
 
         public IActionResult Overview() { return GameView("Overview"); }
@@ -87,15 +91,16 @@ namespace StargateGalacticCommand.Web.Controllers
 
         [HttpPost]
         [ValidateAntiForgeryToken]
-        public IActionResult SendChatMessage(string body)
+        public async Task<IActionResult> SendChatMessage(string body)
         {
             int userId = CurrentUserId();
             var now = DateTime.UtcNow;
+            ServerChatMessage message = null;
             try
             {
                 var sender = LoadCurrentUser(userId);
                 DateTime? lastMessageAtUtc = _db.ServerChatMessages.Where(m => m.UserId == userId).OrderByDescending(m => m.CreatedAtUtc).Select(m => (DateTime?)m.CreatedAtUtc).FirstOrDefault();
-                var message = _chat.Send(sender, body, lastMessageAtUtc, now);
+                message = _chat.Send(sender, body, lastMessageAtUtc, now);
                 _db.ServerChatMessages.Add(message);
             }
             catch (Exception ex) when (ex is InvalidOperationException || ex is ArgumentException)
@@ -103,6 +108,16 @@ namespace StargateGalacticCommand.Web.Controllers
                 TempData["Error"] = ex.Message;
             }
             _db.SaveChanges();
+            if (message != null && _chatHub != null)
+            {
+                await _chatHub.Clients.Group(ChatHub.GroupName(message.ServerId)).SendAsync("ReceiveMessage", new
+                {
+                    userId = message.UserId,
+                    userName = message.User.UserName,
+                    body = message.Body,
+                    createdAtUtc = message.CreatedAtUtc.ToString("u")
+                });
+            }
             return RedirectToAction("Chat");
         }
 
