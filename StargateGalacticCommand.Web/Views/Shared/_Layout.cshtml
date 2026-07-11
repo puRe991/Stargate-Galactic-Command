@@ -86,11 +86,12 @@
                                 <a class="nav-link @(Active("Game", "CombatReports"))" asp-controller="Game" asp-action="CombatReports">Kampfberichte</a>
                                 <a class="nav-link @(Active("Game", "FleetReports"))" asp-controller="Game" asp-action="FleetReports">Flottenberichte</a>
                             </div>
-                            <div class="nav-group @(GroupOpen("Rankings", "Galaxy", "Mailbox"))">
+                            <div class="nav-group @(GroupOpen("Rankings", "Galaxy", "Mailbox", "Chat"))">
                                 <span class="nav-group-title">Gemeinschaft</span>
                                 <a class="nav-link @(Active("Game", "Rankings"))" asp-controller="Game" asp-action="Rankings">Rangliste</a>
                                 <a class="nav-link @(Active("Game", "Galaxy"))" asp-controller="Game" asp-action="Galaxy">Galaxie</a>
                                 <a class="nav-link @(Active("Game", "Mailbox"))" asp-controller="Game" asp-action="Mailbox">Postfach @if (gameModel != null && gameModel.UnreadMessageCount > 0) { <span class="nav-badge">@gameModel.UnreadMessageCount</span> }</a>
+                                <a class="nav-link @(Active("Game", "Chat"))" asp-controller="Game" asp-action="Chat">Server-Chat</a>
                             </div>
                             <div class="nav-account">
                                 @{ var factionIcon = FactionIcon(factionShortName); }
