@@ -60,6 +60,7 @@ namespace StargateGalacticCommand.Data
         public DbSet<QuestlineStepProgress> QuestlineStepProgresses { get; set; }
         public DbSet<LoginAttempt> LoginAttempts { get; set; }
         public DbSet<PlayerBaseSpecialResource> PlayerBaseSpecialResources { get; set; }
+        public DbSet<ServerChatMessage> ServerChatMessages { get; set; }
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
@@ -214,6 +215,10 @@ namespace StargateGalacticCommand.Data
             modelBuilder.Entity<PlayerBaseSpecialResource>().Property(r => r.Type).HasConversion<int>();
             modelBuilder.Entity<PlayerBaseSpecialResource>().HasIndex(r => new { r.PlayerBaseId, r.Type }).IsUnique();
             modelBuilder.Entity<PlayerBaseSpecialResource>().HasOne(r => r.PlayerBase).WithMany(b => b.SpecialResources).HasForeignKey(r => r.PlayerBaseId).OnDelete(DeleteBehavior.Cascade);
+            modelBuilder.Entity<ServerChatMessage>().Property(m => m.Body).IsRequired().HasMaxLength(ChatService.MaxBodyLength);
+            modelBuilder.Entity<ServerChatMessage>().HasIndex(m => new { m.ServerId, m.CreatedAtUtc });
+            modelBuilder.Entity<ServerChatMessage>().HasOne(m => m.GameServer).WithMany().HasForeignKey(m => m.ServerId).OnDelete(DeleteBehavior.Cascade);
+            modelBuilder.Entity<ServerChatMessage>().HasOne(m => m.User).WithMany().HasForeignKey(m => m.UserId).OnDelete(DeleteBehavior.Cascade);
         }
     }
 }

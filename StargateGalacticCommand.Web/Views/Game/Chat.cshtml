@@ -1,0 +1,27 @@
+@model StargateGalacticCommand.Web.Models.OverviewViewModel
+@{ ViewData["Title"] = "Server-Chat"; }
+<section class="panel">
+    <h1>Server-Chat</h1>
+    @if (TempData["Error"] != null) { <div class="alert">@TempData["Error"]</div> }
+    @if (TempData["Message"] != null) { <div class="success">@TempData["Message"]</div> }
+</section>
+<section class="panel">
+    <h2>Nachricht senden</h2>
+    <form method="post" asp-action="SendChatMessage">@Html.AntiForgeryToken()
+        <label>Nachricht</label>
+        <textarea name="body" maxlength="500" required></textarea>
+        <button type="submit">Senden</button>
+    </form>
+</section>
+<section class="panel">
+    <h2>Verlauf</h2>
+    <table>
+        <thead><tr><th>Zeit</th><th>Commander</th><th>Nachricht</th></tr></thead>
+        <tbody>
+        @foreach (var m in Model.ChatMessages)
+        {
+            <tr class="@(m.UserId == Model.User.Id ? "active" : "")"><td>@m.CreatedAtUtc.ToString("u")</td><td>@m.User.UserName</td><td>@m.Body</td></tr>
+        }
+        </tbody>
+    </table>
+</section>
