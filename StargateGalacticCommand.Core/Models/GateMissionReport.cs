@@ -16,6 +16,8 @@ namespace StargateGalacticCommand.Core.Models
         public int SuppliesFound { get; set; }
         public int IntelFound { get; set; }
         public bool ArtifactLeadFound { get; set; }
+        public SpecialResourceType? SpecialResourceFound { get; set; }
+        public int SpecialResourceAmount { get; set; }
         public int PersonnelLost { get; set; }
         public GateAnomalyType? AnomalyType { get; set; }
         public bool IsSeasonFocusBonus { get; set; }

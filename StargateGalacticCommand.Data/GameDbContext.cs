@@ -59,6 +59,7 @@ namespace StargateGalacticCommand.Data
         public DbSet<AllianceDiplomacyStatus> AllianceDiplomacyStatuses { get; set; }
         public DbSet<QuestlineStepProgress> QuestlineStepProgresses { get; set; }
         public DbSet<LoginAttempt> LoginAttempts { get; set; }
+        public DbSet<PlayerBaseSpecialResource> PlayerBaseSpecialResources { get; set; }
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
@@ -111,6 +112,7 @@ namespace StargateGalacticCommand.Data
             modelBuilder.Entity<GateMissionReport>().HasOne(r => r.User).WithMany(u => u.GateMissionReports).HasForeignKey(r => r.UserId).OnDelete(DeleteBehavior.Cascade);
             modelBuilder.Entity<GateMissionReport>().Property(r => r.Outcome).HasConversion<int>();
             modelBuilder.Entity<GateMissionReport>().Property(r => r.AnomalyType).HasConversion<int?>();
+            modelBuilder.Entity<GateMissionReport>().Property(r => r.SpecialResourceFound).HasConversion<int?>();
             modelBuilder.Entity<PlanetMarketOrder>().HasIndex(o => new { o.PlanetId, o.CompletedAtUtc, o.CancelledAtUtc, o.ExpiresAtUtc });
             modelBuilder.Entity<PlanetMarketOrder>().Property(o => o.OfferedResource).HasConversion<int>();
             modelBuilder.Entity<PlanetMarketOrder>().Property(o => o.RequestedResource).HasConversion<int>();
@@ -209,6 +211,9 @@ namespace StargateGalacticCommand.Data
             modelBuilder.Entity<QuestlineStepProgress>().HasIndex(p => new { p.UserId, p.StepKey }).IsUnique();
             modelBuilder.Entity<LoginAttempt>().HasIndex(a => new { a.ServerId, a.UsernameKey, a.AttemptedAtUtc });
             modelBuilder.Entity<LoginAttempt>().HasIndex(a => new { a.ServerId, a.IpHash, a.AttemptedAtUtc });
+            modelBuilder.Entity<PlayerBaseSpecialResource>().Property(r => r.Type).HasConversion<int>();
+            modelBuilder.Entity<PlayerBaseSpecialResource>().HasIndex(r => new { r.PlayerBaseId, r.Type }).IsUnique();
+            modelBuilder.Entity<PlayerBaseSpecialResource>().HasOne(r => r.PlayerBase).WithMany(b => b.SpecialResources).HasForeignKey(r => r.PlayerBaseId).OnDelete(DeleteBehavior.Cascade);
         }
     }
 }

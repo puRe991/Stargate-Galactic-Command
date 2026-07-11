@@ -19,6 +19,7 @@ namespace StargateGalacticCommand.Core.Models
         public ICollection<BuildQueueItem> BuildQueue { get; set; }
         public BaseShips Ships { get; set; }
         public ICollection<ShipyardQueueItem> ShipyardQueue { get; set; }
-        public PlayerBase() { BuildQueue = new List<BuildQueueItem>(); ShipyardQueue = new List<ShipyardQueueItem>(); }
+        public ICollection<PlayerBaseSpecialResource> SpecialResources { get; set; }
+        public PlayerBase() { BuildQueue = new List<BuildQueueItem>(); ShipyardQueue = new List<ShipyardQueueItem>(); SpecialResources = new List<PlayerBaseSpecialResource>(); }
     }
 }

@@ -1,0 +1,45 @@
+@model StargateGalacticCommand.Web.Models.OverviewViewModel
+@using System.Linq
+@using StargateGalacticCommand.Core.Models
+@{
+    ViewData["Title"] = "Spezialressourcen";
+    var categoryNames = new System.Collections.Generic.Dictionary<SpecialResourceCategory, string>
+    {
+        { SpecialResourceCategory.RawMaterial, "Rohstoffe" },
+        { SpecialResourceCategory.Crystal, "Kristalle" },
+        { SpecialResourceCategory.EnergySource, "Energiequellen" },
+        { SpecialResourceCategory.Lifeform, "Lebensformen" },
+        { SpecialResourceCategory.Technology, "Technologie" },
+        { SpecialResourceCategory.KnowledgeArchive, "Wissensarchive" },
+        { SpecialResourceCategory.WeaponSystem, "Waffensysteme" },
+        { SpecialResourceCategory.ShipSystem, "Schiffssysteme" },
+        { SpecialResourceCategory.MedicalBiological, "Medizinisch/Biologisch" },
+        { SpecialResourceCategory.Logistics, "Logistik & Grundversorgung" },
+        { SpecialResourceCategory.Personnel, "Personal" },
+        { SpecialResourceCategory.StrategicPoint, "Strategische Punkte" },
+        { SpecialResourceCategory.Artifact, "Artefakte" }
+    };
+}
+<h1>Spezialressourcen</h1>
+<p>Das Ressourcenlager sammelt seltene Funde aus Gate-Missionen – Kristalle, Technologie, Wissen und Artefakte
+verschiedener Völker der Milchstraße und Pegasus-Galaxie. Naquadah und Trinium bleiben die zentralen
+Basis-Ressourcen (siehe Ressourcen-Übersicht); alles hier ist zusätzlicher Sonderbestand.</p>
+@foreach (var category in Model.SpecialResourceHoldings.Select(h => h.Category).Distinct())
+{
+    <section class="panel">
+        <h2>@categoryNames[category]</h2>
+        <table>
+            <thead><tr><th>Ressource</th><th>Beschreibung</th><th>Bestand</th></tr></thead>
+            <tbody>
+                @foreach (var holding in Model.SpecialResourceHoldings.Where(h => h.Category == category))
+                {
+                    <tr class="@(holding.Quantity > 0 ? "" : "special-resource-empty")">
+                        <td>@holding.Name</td>
+                        <td>@holding.Description</td>
+                        <td>@holding.Quantity</td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </section>
+}

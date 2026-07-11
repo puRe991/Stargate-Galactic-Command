@@ -47,11 +47,12 @@
                             <a class="nav-link @(Active("Game", "Contracts"))" asp-controller="Game" asp-action="Contracts">Kontrakte</a>
                             <a class="nav-link @(Active("Game", "Codex"))" asp-controller="Game" asp-action="Codex">Kodex</a>
                             <a class="nav-link @(Active("Game", "Questlines"))" asp-controller="Game" asp-action="Questlines">Questline</a>
-                            <div class="nav-group @(GroupOpen("Base", "Planet", "Resources", "Research", "GateRoom", "Sectors"))">
+                            <div class="nav-group @(GroupOpen("Base", "Planet", "Resources", "SpecialResources", "Research", "GateRoom", "Sectors"))">
                                 <span class="nav-group-title">Basis-Verwaltung</span>
                                 <a class="nav-link @(Active("Game", "Base"))" asp-controller="Game" asp-action="Base">Basis</a>
                                 <a class="nav-link @(Active("Game", "Planet"))" asp-controller="Game" asp-action="Planet">Planet</a>
                                 <a class="nav-link @(Active("Game", "Resources"))" asp-controller="Game" asp-action="Resources">Ressourcen</a>
+                                <a class="nav-link @(Active("Game", "SpecialResources"))" asp-controller="Game" asp-action="SpecialResources">Spezialressourcen</a>
                                 <a class="nav-link @(Active("Game", "Research"))" asp-controller="Game" asp-action="Research">Forschung</a>
                                 <a class="nav-link @(Active("Game", "GateRoom"))" asp-controller="Game" asp-action="GateRoom">Gate-Raum</a>
                                 <a class="nav-link @(Active("Game", "Sectors"))" asp-controller="Game" asp-action="Sectors">Sektoren</a>
