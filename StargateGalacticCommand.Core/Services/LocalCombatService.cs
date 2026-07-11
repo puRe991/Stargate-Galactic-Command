@@ -7,17 +7,20 @@ namespace StargateGalacticCommand.Core.Services
 {
     public class LocalCombatService
     {
-        public const int NewPlayerProtectionDays = 7;
+        // Bewaffnete Sektorangriffe sind ausschließlich auf Planeten mit diesem Status erlaubt.
+        // Auf "geteilt" (Startplaneten) und "neutral" bleibt nur friedliche Beanspruchung (LocalSectorService.StartClaim) möglich.
+        public const string ContestedPlanetStatus = "umkämpft";
         public const int SectorAttackCooldownHours = 6;
         public const int MissionTravelMinutes = 10;
         public const int MaxRounds = 6;
 
-        public bool IsProtectedNewPlayer(User user, DateTime nowUtc) => user != null && user.CreatedAtUtc > nowUtc.AddDays(-NewPlayerProtectionDays);
-
-        public void ValidateProtection(User attacker, User defender, int attackerScore, int defenderScore, DateTime nowUtc)
+        // Einzige Quelle für Anfänger-/Startplaneten-Schutz: die persistierte PlayerProtectionStatus,
+        // dieselbe die auch SpaceCombatService prüft. Vorher gab es hier eine zweite, abweichende
+        // 7-Tage-Regel auf Basis von User.CreatedAtUtc, die nie mit dem Weltraumkampf-Schutz übereinstimmte.
+        public void ValidateProtection(User defender, PlayerProtectionStatus defenderProtection, int attackerScore, int defenderScore, DateTime nowUtc)
         {
             if (defender == null) return;
-            if (IsProtectedNewPlayer(defender, nowUtc)) throw new InvalidOperationException("Anfänger unter 7 Tagen Schutzstatus dürfen nicht angegriffen werden.");
+            if (defenderProtection != null && defenderProtection.IsUnderBeginnerProtection(nowUtc)) throw new InvalidOperationException("Spieler unter Startplaneten-Schutz dürfen nicht angegriffen werden.");
             if (attackerScore > 0 && defenderScore > 0 && (attackerScore > defenderScore * 3 || defenderScore > attackerScore * 3)) throw new InvalidOperationException("Punktedifferenz-Schutz verhindert diesen lokalen Konflikt.");
         }
 
@@ -26,6 +29,7 @@ namespace StargateGalacticCommand.Core.Services
             if (attacker == null || attackerBase == null) throw new ArgumentNullException("attacker");
             if (sector == null) throw new ArgumentNullException("sector");
             if (sector.PlayerBase != null || sector.SectorType == SectorType.SettlementSector || sector.SectorType == SectorType.StargateZone) throw new InvalidOperationException("Hauptbasen und Stargate-Zonen sind durch die Lore-Regel geschützt.");
+            if (sector.Planet == null || !string.Equals(sector.Planet.Status, ContestedPlanetStatus, StringComparison.OrdinalIgnoreCase)) throw new InvalidOperationException("Bewaffnete Sektorangriffe sind nur auf umkämpften Planeten erlaubt; hier ist nur friedliche Beanspruchung möglich.");
             if (units == null || units.Total < 1) throw new InvalidOperationException("Mindestens eine Bodeneinheit muss eingesetzt werden.");
             if (sector.SectorControl != null && sector.SectorControl.UserId == attacker.Id) throw new InvalidOperationException("Eigene Sektoren können nur gehalten, nicht angegriffen werden.");
             if (sectorMissions != null && sectorMissions.Any(m => m.PlanetSectorId == sector.Id && !m.CompletedAtUtc.HasValue)) throw new InvalidOperationException("In diesem Sektor läuft bereits ein lokaler Konflikt.");

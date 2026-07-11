@@ -1,9 +1,11 @@
+using System;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
+using Microsoft.Extensions.Logging;
 using StargateGalacticCommand.Core.Services;
 using StargateGalacticCommand.Data;
 
@@ -59,8 +61,11 @@ namespace StargateGalacticCommand.Web
             services.AddScoped<GameServerService>();
         }
 
-        public void Configure(IApplicationBuilder app, IWebHostEnvironment env, GameDbContext dbContext, GateMissionService gateMissionService)
+        public const string DefaultAdminPassword = "change-me";
+
+        public void Configure(IApplicationBuilder app, IWebHostEnvironment env, GameDbContext dbContext, GateMissionService gateMissionService, ILogger<Startup> logger)
         {
+            CheckAdminPassword(env, logger);
             DatabaseInitializer.Initialize(dbContext, gateMissionService);
 
             if (env.IsDevelopment())
@@ -85,6 +90,26 @@ namespace StargateGalacticCommand.Web
                     name: "default",
                     pattern: "{controller=Home}/{action=Index}/{id?}");
             });
+        }
+
+        // The default Admin:Password from appsettings.json ("change-me") grants full
+        // admin access (create/pause/stop game servers) to anyone who reads the repo.
+        // Blocking startup outside Development turns a silently-forgotten override into
+        // an immediate, loud failure instead of an exploitable production deployment.
+        private void CheckAdminPassword(IWebHostEnvironment env, ILogger logger)
+        {
+            var password = Configuration["Admin:Password"];
+            if (password != DefaultAdminPassword) return;
+
+            if (env.IsDevelopment())
+            {
+                logger.LogWarning("Admin:Password ist noch auf den Standardwert '{Default}' gesetzt. Vor jedem produktiven Deployment per Umgebungsvariable Admin__Password überschreiben.", DefaultAdminPassword);
+                return;
+            }
+
+            throw new InvalidOperationException(
+                $"Admin:Password steht noch auf dem Standardwert '{DefaultAdminPassword}'. " +
+                "Setze die Umgebungsvariable Admin__Password auf ein sicheres Passwort, bevor die Anwendung außerhalb von Development gestartet wird.");
         }
     }
 }
