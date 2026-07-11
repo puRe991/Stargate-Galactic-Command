@@ -59,6 +59,8 @@ namespace StargateGalacticCommand.Web
             services.AddScoped<DiplomacyService>();
             services.AddScoped<QuestlineService>();
             services.AddScoped<GameServerService>();
+            services.AddScoped<SpecialResourceCatalogService>();
+            services.AddScoped<SpecialResourceService>();
         }
 
         public const string DefaultAdminPassword = "change-me";

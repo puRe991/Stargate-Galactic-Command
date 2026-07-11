@@ -82,6 +82,16 @@ namespace StargateGalacticCommand.Web.Models
         public CharacterSkills CharacterSkills { get; set; }
         public IList<AllianceDiplomacyStatus> DiplomacyStatuses { get; set; }
         public IList<QuestlineStepStatusViewModel> QuestlineStatuses { get; set; }
+        public IList<SpecialResourceHoldingViewModel> SpecialResourceHoldings { get; set; }
+    }
+
+    public class SpecialResourceHoldingViewModel
+    {
+        public SpecialResourceType Type { get; set; }
+        public SpecialResourceCategory Category { get; set; }
+        public string Name { get; set; }
+        public string Description { get; set; }
+        public int Quantity { get; set; }
     }
 
     public class QuestlineStepStatusViewModel

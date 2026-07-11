@@ -11,7 +11,9 @@ namespace StargateGalacticCommand.Core.Services
         private readonly FactionModifierService _factionModifiers;
         private readonly SeasonService _season;
         private readonly SkillTreeService _skillTree;
-        public GateMissionService(ResourceService resources, FactionModifierService factionModifiers = null, SeasonService season = null, SkillTreeService skillTree = null) { _resources = resources; _factionModifiers = factionModifiers ?? new FactionModifierService(); _season = season ?? new SeasonService(); _skillTree = skillTree ?? new SkillTreeService(); }
+        private readonly SpecialResourceCatalogService _specialResourceCatalog;
+        private readonly SpecialResourceService _specialResourceInventory;
+        public GateMissionService(ResourceService resources, FactionModifierService factionModifiers = null, SeasonService season = null, SkillTreeService skillTree = null, SpecialResourceCatalogService specialResourceCatalog = null, SpecialResourceService specialResourceInventory = null) { _resources = resources; _factionModifiers = factionModifiers ?? new FactionModifierService(); _season = season ?? new SeasonService(); _skillTree = skillTree ?? new SkillTreeService(); _specialResourceCatalog = specialResourceCatalog ?? new SpecialResourceCatalogService(); _specialResourceInventory = specialResourceInventory ?? new SpecialResourceService(); }
 
         public const double AnomalyChance = 0.02;
 
@@ -126,7 +128,7 @@ namespace StargateGalacticCommand.Core.Services
             report.Summary += " Ungewöhnlicher Fund: " + (anomalyType == GateAnomalyType.AncientRuin ? "eine antike Ruine mit Datenfragmenten" : "ein havariertes Asgard-Wrack") + ". Die Adresse gilt damit als vollständig erkundet; ein weiterer Fund an dieser Adresse ist ausgeschlossen.";
         }
 
-        private static void ApplyRewards(GateMission mission, PlayerBase playerBase, GateMissionReport report, double factor)
+        private void ApplyRewards(GateMission mission, PlayerBase playerBase, GateMissionReport report, double factor)
         {
             int carry = Math.Max(1, mission.MissionTeam.CarryCapacity);
             if (mission.MissionType == GateMissionType.SecureResources || mission.MissionType == GateMissionType.Explore)
@@ -150,8 +152,57 @@ namespace StargateGalacticCommand.Core.Services
                 report.IntelFound = 1; report.Outcome = GateMissionOutcome.IntelDiscovery;
             }
             playerBase.Resources.Naquadah += report.NaquadahFound; playerBase.Resources.Trinium += report.TriniumFound; playerBase.Resources.Supplies += report.SuppliesFound; playerBase.Resources.Intel += report.IntelFound;
+            ApplySpecialResourceReward(mission, playerBase, report, factor);
             report.Summary = "Gate-Mission abgeschlossen. Keine Schiffe oder Großflotten wurden durch das Gate bewegt; Transport beschränkte sich lorekonform auf Personen, kleine Ausrüstung und Missionsteams.";
             if (report.IsSeasonFocusBonus) report.Summary += " Diese Adresse liegt in der aktuellen Fokuswoche: Belohnungen sind erhöht.";
+        }
+
+        // Verknüpft jeden Missionstyp thematisch mit einer Sonderressourcen-Kategorie (siehe SpecialResourceCatalogService):
+        // Rohstofffunde bei Ressourcensicherung/Erkundung, Artefakte bei Artefaktsuche, Wissensarchive bei
+        // Diplomatie/Risikoanalyse, Sternentor-Adressen bei Adressanalyse, planetare Infrastruktur bei Koloniegründung.
+        // Die Auswahl innerhalb der Kategorie ist deterministisch (Adress-Risikostufe als Seed), damit dieselbe
+        // Zielwelt tendenziell ähnliche Funde liefert, ohne echten Zufall ins Missionsergebnis einzubringen.
+        private void ApplySpecialResourceReward(GateMission mission, PlayerBase playerBase, GateMissionReport report, double factor)
+        {
+            int seed = mission.GateAddress == null ? 0 : mission.GateAddress.RiskLevel;
+            SpecialResourceCategory category;
+            int amount;
+            switch (mission.MissionType)
+            {
+                case GateMissionType.SecureResources:
+                case GateMissionType.Explore:
+                    category = SpecialResourceCategory.RawMaterial;
+                    amount = (int)Math.Ceiling(Math.Max(1, mission.MissionTeam.CarryCapacity) * factor / 4.0);
+                    break;
+                case GateMissionType.SearchArtifact:
+                    if (factor < 1) return;
+                    category = SpecialResourceCategory.Artifact;
+                    amount = 1;
+                    break;
+                case GateMissionType.DiplomaticContact:
+                case GateMissionType.RiskAnalysis:
+                    category = SpecialResourceCategory.KnowledgeArchive;
+                    amount = 1;
+                    break;
+                case GateMissionType.AnalyzeAddress:
+                    var stargateAddresses = SpecialResourceType.StargateAddresses;
+                    report.SpecialResourceFound = stargateAddresses;
+                    report.SpecialResourceAmount = 1;
+                    _specialResourceInventory.Add(playerBase, stargateAddresses, 1);
+                    return;
+                case GateMissionType.FoundColony:
+                    var infrastructure = SpecialResourceType.PlanetaryInfrastructure;
+                    report.SpecialResourceFound = infrastructure;
+                    report.SpecialResourceAmount = 1;
+                    _specialResourceInventory.Add(playerBase, infrastructure, 1);
+                    return;
+                default:
+                    return;
+            }
+            var type = _specialResourceCatalog.PickFromCategory(category, seed);
+            report.SpecialResourceFound = type;
+            report.SpecialResourceAmount = amount;
+            _specialResourceInventory.Add(playerBase, type, amount);
         }
 
         public string ApplyFoundColonyResult(User user, GateAddress targetAddress, IList<Planet> planets, DateTime nowUtc)
