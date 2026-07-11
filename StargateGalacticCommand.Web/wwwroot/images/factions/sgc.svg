@@ -1,0 +1,14 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48">
+  <defs>
+    <radialGradient id="sgcFactionGlow" cx="50%" cy="50%" r="50%">
+      <stop offset="0%" stop-color="#60d8ff" stop-opacity=".5"/>
+      <stop offset="100%" stop-color="#60d8ff" stop-opacity="0"/>
+    </radialGradient>
+  </defs>
+  <circle cx="24" cy="24" r="23" fill="url(#sgcFactionGlow)"/>
+  <circle cx="24" cy="24" r="19" fill="none" stroke="#60d8ff" stroke-width="1.8"/>
+  <circle cx="24" cy="24" r="15.5" fill="none" stroke="rgba(96,216,255,.35)" stroke-width="1"/>
+  <path d="M24 10 27.3 20.2H38l-8.65 6.3L32.65 36.7 24 30.4 15.35 36.7 18.65 26.5 10 20.2h10.7Z"
+        fill="none" stroke="#60d8ff" stroke-width="1.6" stroke-linejoin="round"/>
+  <path d="M24 4.6 24 8.4" stroke="#60d8ff" stroke-width="1.6" stroke-linecap="round"/>
+</svg>

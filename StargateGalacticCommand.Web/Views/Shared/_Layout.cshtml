@@ -6,6 +6,15 @@
     var isAuthenticated = Context.Session.GetInt32("UserId").HasValue;
     var gameModel = Model as OverviewViewModel;
     var commanderName = gameModel?.User?.UserName ?? "Commander";
+    var factionShortName = gameModel?.User?.Faction?.ShortName;
+    string FactionIcon(string shortName) => shortName switch
+    {
+        "SGC" => "sgc",
+        "Jaffa" => "jaffa",
+        "Tok’ra" => "tokra",
+        "Lucian" => "lucian",
+        _ => null
+    };
 
     string Active(string targetController, string targetAction)
     {
@@ -83,7 +92,11 @@
                                 <a class="nav-link @(Active("Game", "Galaxy"))" asp-controller="Game" asp-action="Galaxy">Galaxie</a>
                                 <a class="nav-link @(Active("Game", "Mailbox"))" asp-controller="Game" asp-action="Mailbox">Postfach @if (gameModel != null && gameModel.UnreadMessageCount > 0) { <span class="nav-badge">@gameModel.UnreadMessageCount</span> }</a>
                             </div>
-                            <div class="nav-account"><span>@commanderName</span><a class="nav-link" asp-controller="Account" asp-action="Logout">Logout</a></div>
+                            <div class="nav-account">
+                                @{ var factionIcon = FactionIcon(factionShortName); }
+                                @if (factionIcon != null) { <img class="res-icon" src="~/images/factions/@(factionIcon).svg" alt="" width="22" height="22" title="@factionShortName" /> }
+                                <span>@commanderName</span><a class="nav-link" asp-controller="Account" asp-action="Logout">Logout</a>
+                            </div>
                         }
                         else
                         {
