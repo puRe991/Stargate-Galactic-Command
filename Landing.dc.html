@@ -1,0 +1,185 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Rajdhani:wght@500;600;700&family=Orbitron:wght@600;700;800&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+  <style>
+    html, body { margin: 0; padding: 0; }
+    @keyframes gatePulse { 0%, 100% { opacity: .55; transform: scale(1); } 50% { opacity: .95; transform: scale(1.04); } }
+    @keyframes ringSpin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+    @keyframes driftStars { from { background-position: 0 0, 0 0, 0 0; } to { background-position: 0 0, 0 0, 220px 220px; } }
+  </style>
+</helmet>
+
+<div style="position:relative; min-height:100vh; background-color:#05080d; background-image: radial-gradient(circle at 18% -8%, rgba(96,216,255,.24), transparent 38%), radial-gradient(circle at 88% 4%, rgba(101,255,200,.14), transparent 30%), url('starfield.svg'); background-repeat:no-repeat, no-repeat, repeat; background-size: auto, auto, 220px 220px; animation: driftStars 60s linear infinite; font-family: Inter, ui-sans-serif, system-ui, sans-serif; color:#e7f3ff; overflow-x:hidden;">
+
+  <div style="position:fixed; inset:0; pointer-events:none; background-image: linear-gradient(rgba(255,255,255,.025) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,.025) 1px, transparent 1px); background-size:44px 44px; mask-image: linear-gradient(to bottom, rgba(0,0,0,.7), transparent 70%);"></div>
+
+  <!-- Top bar -->
+  <header style="position:sticky; top:0; z-index:20; background:rgba(5,10,16,.86); backdrop-filter: blur(18px); border-bottom:1px solid rgba(103,190,224,.28);">
+    <div style="width:min(1280px, calc(100% - 3rem)); margin-inline:auto; display:flex; align-items:center; justify-content:space-between; gap:1rem; padding-block:.85rem;">
+      <div style="display:flex; align-items:center; gap:.75rem;">
+        <span style="display:grid; place-items:center; width:2.6rem; height:2.6rem; border-radius:50%; box-shadow: inset 0 0 16px rgba(96,216,255,.22), 0 0 20px rgba(101,255,200,.14);">
+          <img src="stargate-emblem.svg" alt="" width="42" height="42" />
+        </span>
+        <span style="display:flex; flex-direction:column; line-height:1.15;">
+          <strong style="font-family:'Rajdhani',sans-serif; letter-spacing:.05em; text-transform:uppercase; font-size:1.02rem;">Stargate Galactic Command</strong>
+          <small style="color:#90a9bc; font-size:.74rem; letter-spacing:.03em;">Deep Space Operations &middot; v0.1.0</small>
+        </span>
+      </div>
+      <nav style="display:flex; align-items:center; gap:1.6rem;">
+        <a href="#factions" style="color:#c9deee; text-decoration:none; font-size:.88rem; letter-spacing:.02em;">Fraktionen</a>
+        <a href="#systeme" style="color:#c9deee; text-decoration:none; font-size:.88rem; letter-spacing:.02em;">Systeme</a>
+        <a href="Dashboard.dc.html" style="color:#c9deee; text-decoration:none; font-size:.88rem; letter-spacing:.02em;">Kommandozentrale</a>
+        <a href="#start" style="display:inline-flex; align-items:center; padding:.55rem 1.1rem; border-radius:999px; background:linear-gradient(135deg, rgba(20,72,103,.95), rgba(14,92,76,.9)); border:1px solid rgba(103,238,209,.4); color:#e7f3ff; font-family:'Rajdhani',sans-serif; text-transform:uppercase; letter-spacing:.06em; font-size:.82rem; text-decoration:none;">Server ausw&auml;hlen</a>
+      </nav>
+    </div>
+  </header>
+
+  <!-- Hero -->
+  <section style="position:relative; width:min(1280px, calc(100% - 3rem)); margin-inline:auto; padding-block:5rem 4rem; display:grid; grid-template-columns: 1.1fr .9fr; gap:3rem; align-items:center;">
+    <div style="position:relative; z-index:1;">
+      <span style="display:inline-flex; align-items:center; gap:.5rem; padding:.35rem .85rem; border:1px solid rgba(101,255,200,.4); border-radius:999px; color:#65ffc8; font-family:'Rajdhani',sans-serif; text-transform:uppercase; letter-spacing:.1em; font-size:.74rem; margin-bottom:1.4rem;">
+        <span style="width:.4rem; height:.4rem; border-radius:50%; background:#65ffc8; box-shadow:0 0 8px #65ffc8;"></span>
+        Gate-Netzwerk aktiv &middot; 300+ Adressen kartiert
+      </span>
+      <h1 style="margin:0 0 1.1rem; font-family:'Orbitron', 'Rajdhani', sans-serif; font-weight:800; letter-spacing:.01em; font-size:clamp(2.4rem, 4vw, 3.6rem); line-height:1.08; color:#f2f9ff;">Kommandiere dein Sektor. Sichere die Galaxie.</h1>
+      <p style="margin:0 0 2rem; max-width:36rem; color:#b9cddd; font-size:1.08rem; line-height:1.65;">Ein dunkles, browserbasiertes Strategiespiel im OGame-Stil mit Stargate-Lore. Du verwaltest keinen ganzen Planeten &ndash; sondern einen geheimen Basissektor auf einer gemeinsam genutzten Welt, im Wettstreit mit anderen Fraktionen um Einfluss, Ressourcen und Kontrolle.</p>
+      <div style="display:flex; gap:1rem; flex-wrap:wrap;">
+        <a id="start" href="Dashboard.dc.html" style="display:inline-flex; align-items:center; gap:.5rem; padding:.9rem 1.6rem; border-radius:12px; background:linear-gradient(135deg, rgba(20,72,103,.95), rgba(14,92,76,.9)); border:1px solid rgba(103,238,209,.45); color:#e7f3ff; font-family:'Rajdhani',sans-serif; text-transform:uppercase; letter-spacing:.06em; font-size:.92rem; text-decoration:none; box-shadow:0 0 24px rgba(101,255,200,.16);">Server ausw&auml;hlen</a>
+        <a href="#lore" style="display:inline-flex; align-items:center; padding:.9rem 1.6rem; border-radius:12px; border:1px solid rgba(103,190,224,.36); color:#c9deee; font-size:.92rem; text-decoration:none;">Mehr zur Lore</a>
+      </div>
+
+      <div style="display:flex; gap:2.2rem; margin-top:3rem; flex-wrap:wrap;">
+        <sc-for list="{{ heroStats }}" as="stat" hint-placeholder-count="4">
+          <div>
+            <div style="font-family:'Orbitron',sans-serif; font-size:1.5rem; font-weight:700; color:#60d8ff;">{{ stat.value }}</div>
+            <div style="color:#90a9bc; font-size:.78rem; text-transform:uppercase; letter-spacing:.04em; margin-top:.2rem;">{{ stat.label }}</div>
+          </div>
+        </sc-for>
+      </div>
+    </div>
+
+    <div style="position:relative; display:grid; place-items:center; height:26rem;">
+      <div style="position:absolute; width:24rem; height:24rem; border-radius:50%; background:radial-gradient(circle, rgba(96,216,255,.16), transparent 70%); animation: gatePulse 5s ease-in-out infinite;"></div>
+      <div style="position:relative; width:20rem; height:20rem; animation: ringSpin 90s linear infinite;">
+        <img src="stargate-emblem.svg" alt="Stargate" width="320" height="320" style="width:100%; height:100%; opacity:.92;" />
+      </div>
+    </div>
+  </section>
+
+  <!-- Lore strip -->
+  <section id="lore" style="width:min(1280px, calc(100% - 3rem)); margin-inline:auto; padding-block:1rem 3rem;">
+    <div style="display:grid; grid-template-columns:repeat(3, 1fr); gap:1.1rem;">
+      <sc-for list="{{ loreGuardrails }}" as="item" hint-placeholder-count="3">
+        <div style="border:1px solid rgba(103,190,224,.24); border-radius:16px; padding:1.3rem 1.4rem; background:linear-gradient(180deg, rgba(15,28,42,.85), rgba(8,14,23,.85));">
+          <div style="width:2.2rem; height:2.2rem; border-radius:50%; border:1.5px solid #65ffc8; margin-bottom:.9rem;"></div>
+          <div style="font-family:'Rajdhani',sans-serif; text-transform:uppercase; letter-spacing:.03em; font-weight:600; color:#e7f3ff; margin-bottom:.4rem;">{{ item.title }}</div>
+          <div style="color:#90a9bc; font-size:.92rem; line-height:1.55;">{{ item.text }}</div>
+        </div>
+      </sc-for>
+    </div>
+  </section>
+
+  <!-- Factions -->
+  <section id="factions" style="width:min(1280px, calc(100% - 3rem)); margin-inline:auto; padding-block:2rem 4rem;">
+    <div style="text-align:center; max-width:38rem; margin:0 auto 2.6rem;">
+      <div style="color:#65ffc8; font-family:'Rajdhani',sans-serif; text-transform:uppercase; letter-spacing:.12em; font-size:.8rem; margin-bottom:.6rem;">W&auml;hle deine Loyalit&auml;t</div>
+      <h2 style="margin:0; font-family:'Orbitron',sans-serif; font-size:1.9rem; color:#f2f9ff;">Vier Fraktionen, vier Wege durchs Gate</h2>
+    </div>
+    <div style="display:grid; grid-template-columns:repeat(4, 1fr); gap:1.1rem;">
+      <sc-for list="{{ factions }}" as="f" hint-placeholder-count="4">
+        <div style="position:relative; border-radius:16px; padding:1.6rem 1.3rem; text-align:center; border:1px solid {{ f.borderColor }}; background:linear-gradient(180deg, rgba(15,28,42,.92), rgba(8,14,23,.92)); overflow:hidden;">
+          <div style="position:absolute; inset:0 0 auto; height:2px; background:{{ f.accentColor }};"></div>
+          <img src="{{ f.icon }}" alt="" width="56" height="56" style="margin-bottom:.9rem;" />
+          <div style="font-family:'Rajdhani',sans-serif; text-transform:uppercase; letter-spacing:.03em; font-weight:700; font-size:1.05rem; color:#f2f9ff; margin-bottom:.5rem;">{{ f.name }}</div>
+          <div style="color:#90a9bc; font-size:.86rem; line-height:1.55;">{{ f.description }}</div>
+          <div style="margin-top:.9rem; display:inline-flex; padding:.3rem .7rem; border-radius:999px; font-size:.72rem; text-transform:uppercase; letter-spacing:.04em; color:{{ f.accentColor }}; border:1px solid {{ f.borderColor }};">Spezialisierung: {{ f.specialty }}</div>
+        </div>
+      </sc-for>
+    </div>
+  </section>
+
+  <!-- Systems / features -->
+  <section id="systeme" style="width:min(1280px, calc(100% - 3rem)); margin-inline:auto; padding-block:1rem 4rem;">
+    <div style="text-align:center; max-width:38rem; margin:0 auto 2.6rem;">
+      <div style="color:#60d8ff; font-family:'Rajdhani',sans-serif; text-transform:uppercase; letter-spacing:.12em; font-size:.8rem; margin-bottom:.6rem;">Kernsysteme</div>
+      <h2 style="margin:0; font-family:'Orbitron',sans-serif; font-size:1.9rem; color:#f2f9ff;">Alles, was ein Kommandeur braucht</h2>
+    </div>
+    <div style="display:grid; grid-template-columns:repeat(3, 1fr); gap:1.1rem;">
+      <sc-for list="{{ features }}" as="feat" hint-placeholder-count="6">
+        <div style="border:1px solid rgba(103,190,224,.24); border-radius:16px; padding:1.4rem; background:linear-gradient(180deg, rgba(15,28,42,.85), rgba(8,14,23,.85));">
+          <div style="display:flex; align-items:center; gap:.8rem; margin-bottom:.8rem;">
+            <span style="display:grid; place-items:center; width:2.6rem; height:2.6rem; border-radius:10px; border:1px solid rgba(103,190,224,.3); background:rgba(96,216,255,.06);">
+              <img src="{{ feat.icon }}" alt="" width="20" height="20" />
+            </span>
+            <div style="font-family:'Rajdhani',sans-serif; text-transform:uppercase; letter-spacing:.03em; font-weight:600; color:#e7f3ff; font-size:1rem;">{{ feat.title }}</div>
+          </div>
+          <div style="color:#90a9bc; font-size:.9rem; line-height:1.55;">{{ feat.text }}</div>
+        </div>
+      </sc-for>
+    </div>
+  </section>
+
+  <!-- CTA -->
+  <section style="width:min(1280px, calc(100% - 3rem)); margin-inline:auto; padding-block:1rem 5rem;">
+    <div style="position:relative; border-radius:20px; padding:3rem 2.5rem; text-align:center; border:1px solid rgba(103,238,209,.35); background:linear-gradient(135deg, rgba(20,72,103,.5), rgba(14,92,76,.4)); overflow:hidden;">
+      <div style="position:absolute; inset:0 0 auto; height:2px; background:linear-gradient(90deg, transparent, #60d8ff, #65ffc8, transparent); opacity:.7;"></div>
+      <h2 style="margin:0 0 .8rem; font-family:'Orbitron',sans-serif; font-size:1.8rem; color:#f2f9ff;">Bereit anzudocken?</h2>
+      <p style="margin:0 0 1.6rem; color:#c4d4e1;">W&auml;hle einen Server, tritt einer Fraktion bei und beginne deinen Aufstieg zur Einflusskontrolle.</p>
+      <a href="Dashboard.dc.html" style="display:inline-flex; align-items:center; padding:.9rem 1.8rem; border-radius:12px; background:linear-gradient(135deg, rgba(20,72,103,.95), rgba(14,92,76,.9)); border:1px solid rgba(103,238,209,.45); color:#e7f3ff; font-family:'Rajdhani',sans-serif; text-transform:uppercase; letter-spacing:.06em; font-size:.92rem; text-decoration:none;">Server ausw&auml;hlen</a>
+    </div>
+  </section>
+
+  <footer style="border-top:1px solid rgba(103,190,224,.18); padding-block:2rem;">
+    <div style="width:min(1280px, calc(100% - 3rem)); margin-inline:auto; display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:1rem; color:#90a9bc; font-size:.82rem;">
+      <span>&copy; Stargate Galactic Command &middot; Version 0.1.0</span>
+      <span>Fanprojekt-Prototyp &middot; Nicht mit MGM/Stargate verbunden</span>
+    </div>
+  </footer>
+</div>
+
+</x-dc>
+<script type="text/x-dc" data-dc-script>
+class Component extends DCLogic {
+  renderVals() {
+    return {
+      heroStats: [
+        { value: '4', label: 'Fraktionen' },
+        { value: '300+', label: 'Gate-Adressen' },
+        { value: '6', label: 'Ressourcen' },
+        { value: '50', label: 'Technologien' },
+      ],
+      loreGuardrails: [
+        { title: 'Programm bleibt geheim', text: 'Das Stargate-Programm operiert im Verborgenen \u2013 die Menschheit ahnt nichts von den Sektorkonflikten jenseits des Gates.' },
+        { title: 'Erde, Atlantis, Dakara gesperrt', text: 'Heimatwelten bleiben aus dem Wettstreit ausgenommen. Gespielt wird auf neutralem, gemeinsam genutztem Terrain.' },
+        { title: 'Gro\u00dfflotten per Hyperraum', text: 'Stargates transportieren Teams und kleine Ausr\u00fcstung. Gro\u00dfe Schiffe reisen ausschlie\u00dflich per Hyperraum.' },
+      ],
+      factions: [
+        { name: "Tau'ri / SGC", icon: 'factions/sgc.svg', description: 'Menschliche Erdallianz mit technologischem Improvisationsgeist und breiter Missionserfahrung.', specialty: 'Artefakt suchen', accentColor: 'oklch(85% 0.14 220)', borderColor: 'oklch(85% 0.14 220 / .35)' },
+        { name: 'Freie Jaffa', icon: 'factions/jaffa.svg', description: 'Befreite Krieger, ehemals Wirte der Goa\'uld, gestählt in offener Feldschlacht.', specialty: 'Risikoanalyse', accentColor: 'oklch(85% 0.14 70)', borderColor: 'oklch(85% 0.14 70 / .35)' },
+        { name: "Tok'ra", icon: 'factions/tokra.svg', description: 'Symbiotische Widerstandsbewegung, Meister der Infiltration und verdeckten Aufkl\u00e4rung.', specialty: 'Adresse analysieren', accentColor: 'oklch(85% 0.14 300)', borderColor: 'oklch(85% 0.14 300 / .35)' },
+        { name: 'Lucian Alliance', icon: 'factions/lucian.svg', description: 'Loses Kartell aus Schmugglern und Warlords \u2013 skrupellos, ressourcenhungrig, bestens vernetzt.', specialty: 'Ressourcen sichern', accentColor: 'oklch(85% 0.14 25)', borderColor: 'oklch(85% 0.14 25 / .35)' },
+      ],
+      features: [
+        { title: 'Basis & Ressourcen', icon: 'resources/naquadah.svg', text: 'Gebäude, Bauwarteschlange und Produktion mit Fraktions- und Sektorboni.' },
+        { title: 'Forschung', icon: 'resources/intel.svg', text: '50 Technologien mit echter Wirkung auf Wirtschaft, Kampf und Missionen.' },
+        { title: 'Gate-Raum', icon: 'stargate-emblem.svg', text: 'PvE-Missionen durch prozedural generierte Gate-Adressen, wöchentliche Fokusziele.' },
+        { title: 'Flotten & Galaxie', icon: 'resources/trinium.svg', text: 'Schiffswerft, Weltraumkampf, Trümmerbergung und automatisierte Handelsrouten.' },
+        { title: 'Sektoren & Planeten', icon: 'resources/supplies.svg', text: 'Gemeinsame Planeten mit beanspruchbaren Sektoren, Kontrolle und Einflussranglisten.' },
+        { title: 'Diplomatie & Intel', icon: 'resources/personnel.svg', text: 'Allianzen, Kriegsziele, Spionage und Gegenspionage inklusive K\u00f6derdaten.' },
+      ],
+    };
+  }
+}
+
+</script>
+</body>
+</html>

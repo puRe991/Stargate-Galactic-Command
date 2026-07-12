@@ -1,0 +1,324 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Rajdhani:wght@500;600;700&family=Orbitron:wght@600;700;800&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+  <style>
+    html, body { margin: 0; padding: 0; }
+    @keyframes tickGlow { 0%, 100% { opacity: .85; } 50% { opacity: 1; } }
+  </style>
+</helmet>
+
+<div style="min-height:100vh; background-color:#05080d; background-image: radial-gradient(circle at 14% -10%, rgba(96,216,255,.2), transparent 38%), radial-gradient(circle at 90% 0%, rgba(101,255,200,.1), transparent 30%), url('starfield.svg'); background-repeat:no-repeat, no-repeat, repeat; background-size:auto, auto, 220px 220px; font-family:Inter, ui-sans-serif, system-ui, sans-serif; color:#e7f3ff; display:grid; grid-template-columns:15.5rem 1fr;">
+
+  <!-- Sidebar -->
+  <aside style="border-right:1px solid rgba(103,190,224,.2); background:rgba(6,11,18,.75); display:flex; flex-direction:column; padding:1.2rem 1rem; gap:1.4rem; position:sticky; top:0; height:100vh; overflow-y:auto;">
+    <a href="Landing.dc.html" style="display:flex; align-items:center; gap:.65rem; text-decoration:none; color:#e7f3ff; padding-bottom:1rem; border-bottom:1px solid rgba(103,190,224,.16);">
+      <span style="display:grid; place-items:center; width:2.3rem; height:2.3rem; border-radius:50%; box-shadow: inset 0 0 14px rgba(96,216,255,.22), 0 0 16px rgba(101,255,200,.14);">
+        <img src="stargate-emblem.svg" alt="" width="36" height="36" />
+      </span>
+      <span style="display:flex; flex-direction:column; line-height:1.15;">
+        <strong style="font-family:'Rajdhani',sans-serif; letter-spacing:.03em; text-transform:uppercase; font-size:.86rem;">Galactic Command</strong>
+        <small style="color:#90a9bc; font-size:.68rem;">v0.1.0</small>
+      </span>
+    </a>
+
+    <sc-for list="{{ navGroups }}" as="group" hint-placeholder-count="5">
+      <div>
+        <div style="color:#90a9bc; font-size:.68rem; text-transform:uppercase; letter-spacing:.08em; padding:.2rem .5rem .5rem;">{{ group.title }}</div>
+        <div style="display:flex; flex-direction:column; gap:.25rem;">
+          <sc-for list="{{ group.items }}" as="item" hint-placeholder-count="3">
+            <div style="display:flex; align-items:center; gap:.6rem; padding:.55rem .65rem; border-radius:10px; color:{{ item.active }}; background:{{ item.bg }}; font-size:.86rem; border:1px solid {{ item.border }};">
+              <span style="width:.4rem; height:.4rem; border-radius:50%; background:currentColor; flex:none; opacity:.85;"></span>
+              {{ item.label }}
+              <sc-if value="{{ item.badge }}" hint-placeholder-val="{{ false }}">
+                <span style="margin-left:auto; display:inline-flex; align-items:center; justify-content:center; min-width:1.15rem; height:1.15rem; padding:0 .3rem; border-radius:999px; background:#ff6b7a; color:#2a0a0e; font-size:.65rem; font-weight:700;">{{ item.badge }}</span>
+              </sc-if>
+            </div>
+          </sc-for>
+        </div>
+      </div>
+    </sc-for>
+  </aside>
+
+  <!-- Main -->
+  <div style="min-width:0;">
+    <header style="position:sticky; top:0; z-index:10; background:rgba(5,10,16,.86); backdrop-filter:blur(18px); border-bottom:1px solid rgba(103,190,224,.22);">
+      <div style="padding:1rem 1.6rem; display:flex; align-items:center; justify-content:space-between; gap:1rem; flex-wrap:wrap;">
+        <div>
+          <div style="color:#65ffc8; font-family:'Rajdhani',sans-serif; text-transform:uppercase; letter-spacing:.1em; font-size:.74rem; margin-bottom:.2rem;">Basissektor &middot; {{ player.sector }}</div>
+          <h1 style="margin:0; font-family:'Orbitron',sans-serif; font-size:1.4rem; color:#f2f9ff;">Kommandozentrale</h1>
+        </div>
+        <div style="display:flex; align-items:center; gap:.9rem;">
+          <img src="{{ player.factionIcon }}" alt="" width="26" height="26" title="{{ player.factionName }}" />
+          <div style="line-height:1.2;">
+            <div style="font-family:'Rajdhani',sans-serif; font-weight:600; font-size:.95rem;">{{ player.name }}</div>
+            <div style="color:#90a9bc; font-size:.74rem;">{{ player.factionName }}</div>
+          </div>
+          <a href="Landing.dc.html" style="padding:.5rem .9rem; border-radius:999px; border:1px solid rgba(103,190,224,.3); color:#c9deee; text-decoration:none; font-size:.82rem;">Logout</a>
+        </div>
+      </div>
+      <div style="border-top:1px solid rgba(103,190,224,.12); background:rgba(8,17,27,.7);">
+        <div style="display:grid; grid-template-columns:repeat(6, minmax(0,1fr)); gap:.6rem; padding:.7rem 1.6rem;">
+          <sc-for list="{{ resources }}" as="res" hint-placeholder-count="6">
+            <div style="display:flex; align-items:center; gap:.55rem; padding:.5rem .65rem; border:1px solid rgba(103,238,209,.22); border-radius:12px; background:rgba(5,12,18,.7);">
+              <img src="{{ res.icon }}" alt="" width="18" height="18" />
+              <div style="line-height:1.15;">
+                <div style="color:#90a9bc; font-size:.66rem; text-transform:uppercase;">{{ res.label }}</div>
+                <div style="color:#65ffc8; font-variant-numeric:tabular-nums; font-weight:600; font-size:.9rem;">{{ res.amount }}</div>
+              </div>
+              <div style="margin-left:auto; color:#90a9bc; font-size:.68rem; font-variant-numeric:tabular-nums;">+{{ res.perHour }}/h</div>
+            </div>
+          </sc-for>
+        </div>
+      </div>
+    </header>
+
+    <main style="padding:1.4rem 1.6rem 3rem; display:grid; gap:1rem;">
+
+      <!-- Row 1: status / world event / ascension -->
+      <div style="display:grid; grid-template-columns:repeat(3, 1fr); gap:1rem;">
+        <div style="position:relative; border:1px solid rgba(103,190,224,.28); border-radius:16px; padding:1.1rem 1.2rem; background:linear-gradient(180deg, rgba(15,28,42,.95), rgba(8,14,23,.95)); overflow:hidden;">
+          <div style="position:absolute; inset:0 0 auto; height:2px; background:linear-gradient(90deg, transparent, #60d8ff, #65ffc8, transparent); opacity:.7;"></div>
+          <div style="font-family:'Rajdhani',sans-serif; text-transform:uppercase; letter-spacing:.04em; color:#e7f3ff; font-weight:600; margin-bottom:.7rem;">Kommandostatus</div>
+          <div style="display:grid; gap:.45rem; font-size:.86rem;">
+            <div style="display:flex; justify-content:space-between; color:#90a9bc;"><span>Basis</span><span style="color:#e7f3ff;">{{ base.name }}</span></div>
+            <div style="display:flex; justify-content:space-between; color:#90a9bc;"><span>Planet</span><span style="color:#e7f3ff;">{{ base.planet }}</span></div>
+            <div style="display:flex; justify-content:space-between; color:#90a9bc;"><span>Galaxie</span><span style="color:#e7f3ff;">{{ base.galaxy }}</span></div>
+            <div style="display:flex; justify-content:space-between; color:#90a9bc;"><span>Stargate</span><span style="color:#65ffc8;">{{ base.gateStatus }}</span></div>
+            <div style="display:flex; justify-content:space-between; color:#90a9bc;"><span>Sektor</span><span style="color:#e7f3ff;">{{ base.sector }}</span></div>
+          </div>
+        </div>
+
+        <div style="position:relative; border:1px solid rgba(255,209,102,.3); border-radius:16px; padding:1.1rem 1.2rem; background:linear-gradient(180deg, rgba(15,28,42,.95), rgba(8,14,23,.95)); overflow:hidden;">
+          <div style="position:absolute; inset:0 0 auto; height:2px; background:linear-gradient(90deg, transparent, #ffd166, transparent); opacity:.7;"></div>
+          <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:.5rem;">
+            <div style="font-family:'Rajdhani',sans-serif; text-transform:uppercase; letter-spacing:.04em; color:#e7f3ff; font-weight:600;">Weltbedrohung</div>
+            <span style="animation: tickGlow 2s ease-in-out infinite; width:.5rem; height:.5rem; border-radius:50%; background:#ffd166;"></span>
+          </div>
+          <div style="font-size:.92rem; color:#f2f9ff; font-weight:600; margin-bottom:.3rem;">{{ worldEvent.name }}</div>
+          <div style="color:#90a9bc; font-size:.82rem; margin-bottom:.7rem; line-height:1.5;">{{ worldEvent.description }}</div>
+          <div style="height:.5rem; border-radius:999px; background:rgba(255,209,102,.14); overflow:hidden; margin-bottom:.4rem;">
+            <div style="height:100%; width:{{ worldEvent.progressPct }}; background:linear-gradient(90deg, #ffd166, #ff6b7a);"></div>
+          </div>
+          <div style="display:flex; justify-content:space-between; font-size:.74rem; color:#90a9bc;">
+            <span>{{ worldEvent.progressLabel }}</span>
+            <span>endet {{ worldEvent.endsIn }}</span>
+          </div>
+        </div>
+
+        <div style="position:relative; border:1px solid rgba(101,255,200,.3); border-radius:16px; padding:1.1rem 1.2rem; background:linear-gradient(180deg, rgba(15,28,42,.95), rgba(8,14,23,.95)); overflow:hidden;">
+          <div style="position:absolute; inset:0 0 auto; height:2px; background:linear-gradient(90deg, transparent, #65ffc8, transparent); opacity:.7;"></div>
+          <div style="font-family:'Rajdhani',sans-serif; text-transform:uppercase; letter-spacing:.04em; color:#e7f3ff; font-weight:600; margin-bottom:.5rem;">Erleuchtung</div>
+          <div style="display:flex; justify-content:space-between; font-size:.82rem; color:#90a9bc; margin-bottom:.3rem;">
+            <span>Basis-Score</span><span style="color:#e7f3ff;">{{ ascension.score }} / {{ ascension.goal }}</span>
+          </div>
+          <div style="height:.5rem; border-radius:999px; background:rgba(101,255,200,.14); overflow:hidden; margin-bottom:.7rem;">
+            <div style="height:100%; width:{{ ascension.progressPct }}; background:linear-gradient(90deg, #65ffc8, #60d8ff);"></div>
+          </div>
+          <div style="display:flex; justify-content:space-between; font-size:.82rem;">
+            <span style="color:#90a9bc;">Bisherige Erleuchtungen</span><span style="color:#e7f3ff;">{{ ascension.count }}</span>
+          </div>
+          <div style="display:flex; justify-content:space-between; font-size:.82rem; margin-top:.25rem;">
+            <span style="color:#90a9bc;">Produktionsbonus</span><span style="color:#65ffc8;">+{{ ascension.bonusPercent }}%</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Row 2: build queue / buildings -->
+      <div style="display:grid; grid-template-columns:1fr 1.2fr; gap:1rem;">
+        <div style="border:1px solid rgba(103,190,224,.28); border-radius:16px; padding:1.1rem 1.2rem; background:linear-gradient(180deg, rgba(15,28,42,.95), rgba(8,14,23,.95));">
+          <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:.8rem;">
+            <div style="font-family:'Rajdhani',sans-serif; text-transform:uppercase; letter-spacing:.04em; color:#e7f3ff; font-weight:600;">Bauwarteschlange</div>
+            <div style="color:#90a9bc; font-size:.78rem;">{{ buildQueue.length }} / 5</div>
+          </div>
+          <div style="display:flex; flex-direction:column; gap:.6rem;">
+            <sc-for list="{{ buildQueue.items }}" as="item" hint-placeholder-count="3">
+              <div style="display:flex; align-items:center; justify-content:space-between; padding:.6rem .7rem; border:1px solid rgba(103,190,224,.18); border-radius:10px; background:rgba(5,12,18,.55);">
+                <div>
+                  <div style="font-size:.86rem; color:#e7f3ff;">{{ item.name }} &rarr; Lv.{{ item.targetLevel }}</div>
+                  <div style="color:#90a9bc; font-size:.72rem;">Fertig um {{ item.completesAt }}</div>
+                </div>
+                <span style="display:inline-flex; padding:.25rem .6rem; border:1px solid rgba(255,209,102,.45); border-radius:999px; color:#ffd166; background:rgba(255,209,102,.08); font-family:'Rajdhani',sans-serif; font-weight:700; letter-spacing:.05em; font-size:.82rem;">{{ item.remaining }}</span>
+              </div>
+            </sc-for>
+          </div>
+        </div>
+
+        <div style="border:1px solid rgba(103,190,224,.28); border-radius:16px; padding:1.1rem 1.2rem; background:linear-gradient(180deg, rgba(15,28,42,.95), rgba(8,14,23,.95));">
+          <div style="font-family:'Rajdhani',sans-serif; text-transform:uppercase; letter-spacing:.04em; color:#e7f3ff; font-weight:600; margin-bottom:.8rem;">Geb&auml;ude</div>
+          <div style="display:flex; flex-direction:column; gap:.5rem;">
+            <sc-for list="{{ buildings }}" as="b" hint-placeholder-count="5">
+              <div style="display:flex; align-items:center; gap:.8rem; padding:.55rem .7rem; border:1px solid rgba(103,190,224,.16); border-radius:10px; background:rgba(5,12,18,.4);">
+                <div style="flex:1; min-width:0;">
+                  <div style="font-size:.86rem; color:#e7f3ff;">{{ b.name }}</div>
+                  <div style="color:#90a9bc; font-size:.72rem;">Level {{ b.level }} &middot; {{ b.cost }} &middot; {{ b.buildTime }}</div>
+                </div>
+                <button style="width:auto; padding:.45rem .8rem; border-radius:8px; border:1px solid rgba(103,238,209,.35); background:linear-gradient(135deg, rgba(20,72,103,.9), rgba(14,92,76,.8)); color:#e7f3ff; font-family:'Rajdhani',sans-serif; text-transform:uppercase; letter-spacing:.04em; font-size:.78rem; cursor:pointer;">Ausbauen</button>
+              </div>
+            </sc-for>
+          </div>
+        </div>
+      </div>
+
+      <!-- Row 3: sectors / reports -->
+      <div style="display:grid; grid-template-columns:1fr 1fr; gap:1rem;">
+        <div style="border:1px solid rgba(103,190,224,.28); border-radius:16px; padding:1.1rem 1.2rem; background:linear-gradient(180deg, rgba(15,28,42,.95), rgba(8,14,23,.95));">
+          <div style="font-family:'Rajdhani',sans-serif; text-transform:uppercase; letter-spacing:.04em; color:#e7f3ff; font-weight:600; margin-bottom:.8rem;">Sektoren auf {{ base.planet }}</div>
+          <div style="display:flex; flex-direction:column; gap:.5rem;">
+            <sc-for list="{{ sectors }}" as="s" hint-placeholder-count="4">
+              <div style="display:flex; align-items:center; justify-content:space-between; padding:.55rem .7rem; border:1px solid rgba(103,190,224,.16); border-radius:10px; background:rgba(5,12,18,.4); font-size:.85rem;">
+                <span style="color:#e7f3ff;">#{{ s.number }} &middot; {{ s.name }}</span>
+                <span style="color:#90a9bc;">{{ s.type }}</span>
+                <span style="color:{{ s.statusColor }};">{{ s.status }}</span>
+              </div>
+            </sc-for>
+          </div>
+        </div>
+
+        <div style="border:1px solid rgba(103,190,224,.28); border-radius:16px; padding:1.1rem 1.2rem; background:linear-gradient(180deg, rgba(15,28,42,.95), rgba(8,14,23,.95));">
+          <div style="font-family:'Rajdhani',sans-serif; text-transform:uppercase; letter-spacing:.04em; color:#e7f3ff; font-weight:600; margin-bottom:.8rem;">Aktuelle Berichte</div>
+          <div style="display:flex; flex-direction:column; gap:.55rem;">
+            <sc-for list="{{ reports }}" as="r" hint-placeholder-count="3">
+              <div style="padding:.6rem .7rem; border:1px solid rgba(103,190,224,.16); border-radius:10px; background:rgba(5,12,18,.4);">
+                <div style="display:flex; justify-content:space-between; margin-bottom:.2rem;">
+                  <span style="color:#e7f3ff; font-size:.86rem; font-weight:600;">{{ r.title }}</span>
+                  <span style="color:#90a9bc; font-size:.72rem;">{{ r.time }}</span>
+                </div>
+                <div style="color:#90a9bc; font-size:.8rem; line-height:1.45;">{{ r.text }}</div>
+              </div>
+            </sc-for>
+          </div>
+        </div>
+      </div>
+    </main>
+  </div>
+</div>
+
+</x-dc>
+<script type="text/x-dc" data-dc-script>
+class Component extends DCLogic {
+  renderVals() {
+    const activeBg = 'linear-gradient(135deg, rgba(96,216,255,.16), rgba(101,255,200,.1))';
+    const activeBorder = 'rgba(103,238,209,.55)';
+    const idleBorder = 'transparent';
+    const idleColor = '#c9deee';
+    const activeColor = '#e7f3ff';
+
+    const item = (label, active, badge) => ({
+      label,
+      active: active ? activeColor : idleColor,
+      bg: active ? activeBg : 'transparent',
+      border: active ? activeBorder : idleBorder,
+      badge: badge || false,
+    });
+
+    return {
+      navGroups: [
+        { title: 'Kommando', items: [
+          item('\u00dcbersicht', true),
+          item('Kontrakte', false),
+          item('Kodex', false),
+          item('Questline', false),
+        ] },
+        { title: 'Basis-Verwaltung', items: [
+          item('Basis', false),
+          item('Planet', false),
+          item('Ressourcen', false),
+          item('Forschung', false),
+          item('Gate-Raum', false),
+          item('Sektoren', false),
+        ] },
+        { title: 'Milit\u00e4r', items: [
+          item('Werft', false),
+          item('Flotte senden', false),
+          item('Flotten', false),
+          item('Orbit', false),
+        ] },
+        { title: 'Diplomatie & Intel', items: [
+          item('Markt', false),
+          item('Allianzen', false),
+          item('Geheimdienst', false),
+        ] },
+        { title: 'Gemeinschaft', items: [
+          item('Rangliste', false),
+          item('Galaxie', false),
+          item('Postfach', false, 3),
+          item('Server-Chat', false),
+        ] },
+      ],
+      player: {
+        name: 'Cmdr. Reyes',
+        factionName: "Tau'ri / SGC",
+        factionIcon: 'factions/sgc.svg',
+        sector: 'Sektor 14 \u2013 Kelownan-Grenze',
+      },
+      base: {
+        name: 'Außenposten Prometheus',
+        planet: 'Kelowna Minor',
+        galaxy: 'Galaxie 3',
+        gateStatus: 'aktiv',
+        sector: '14 \u2013 Kelownan-Grenze',
+      },
+      resources: [
+        { label: 'Naquadah', icon: 'resources/naquadah.svg', amount: '18.420', perHour: '640' },
+        { label: 'Trinium', icon: 'resources/trinium.svg', amount: '9.860', perHour: '310' },
+        { label: 'Supplies', icon: 'resources/supplies.svg', amount: '12.150', perHour: '420' },
+        { label: 'Energy', icon: 'resources/energy.svg', amount: '4.980', perHour: '180' },
+        { label: 'Personnel', icon: 'resources/personnel.svg', amount: '2.240', perHour: '95' },
+        { label: 'Intel', icon: 'resources/intel.svg', amount: '760', perHour: '28' },
+      ],
+      worldEvent: {
+        name: 'Replikatoren-Invasion',
+        description: 'Replikatorenschwärme dringen in gemeinsam genutzte Sektoren ein \u2013 gemeinsamer Verteidigungsbeitrag erforderlich.',
+        progressPct: '62%',
+        progressLabel: '18.600 / 30.000',
+        endsIn: '14h 22m',
+      },
+      ascension: {
+        score: '9.400',
+        goal: '15.000',
+        progressPct: '63%',
+        count: 2,
+        bonusPercent: 6,
+      },
+      buildQueue: {
+        length: 3,
+        items: [
+          { name: 'Naquadah-Raffinerie', targetLevel: 9, completesAt: '18:42 UTC', remaining: '02:14:08' },
+          { name: 'Trinium-Mine', targetLevel: 7, completesAt: '20:05 UTC', remaining: '03:37:51' },
+          { name: 'Forschungslabor', targetLevel: 5, completesAt: '21:30 UTC', remaining: '05:02:10' },
+        ],
+      },
+      buildings: [
+        { name: 'Naquadah-Raffinerie', level: 8, cost: 'NQ 4.200, TR 1.100, VG 600', buildTime: '02:10:00' },
+        { name: 'Trinium-Mine', level: 6, cost: 'NQ 2.800, TR 1.900, VG 400', buildTime: '01:45:00' },
+        { name: 'Versorgungsdepot', level: 5, cost: 'NQ 1.600, TR 700, VG 900', buildTime: '01:05:00' },
+        { name: 'Forschungslabor', level: 4, cost: 'NQ 3.100, TR 1.400, VG 500, Intel 60', buildTime: '02:40:00' },
+        { name: 'Kaserne', level: 3, cost: 'NQ 1.200, TR 500, VG 1.100', buildTime: '00:50:00' },
+      ],
+      sectors: [
+        { number: 12, name: 'Nordfeld', type: 'Siedlung', status: 'belegt', statusColor: '#65ffc8' },
+        { number: 13, name: 'Kristallader', type: 'Spezialsektor', status: 'belegt', statusColor: '#65ffc8' },
+        { number: 14, name: 'Kelownan-Grenze', type: 'Siedlung', status: 'kontrolliert', statusColor: '#60d8ff' },
+        { number: 15, name: 'Ruinenfeld', type: 'Spezialsektor', status: 'frei', statusColor: '#90a9bc' },
+      ],
+      reports: [
+        { title: 'Gate-Mission erfolgreich', time: 'vor 12 Min', text: 'Adresse P3X-774 analysiert \u2013 Anomalie-Fund: antike Ruine (+240 Intel).' },
+        { title: 'Flotte zur\u00fcckgekehrt', time: 'vor 1 Std', text: 'Bergungsflotte hat Tr\u00fcmmerfeld bei Sektor 13 vollst\u00e4ndig abgebaut.' },
+        { title: 'Sektor-Einfluss sinkt', time: 'vor 3 Std', text: 'Sektor 14 verliert ohne best\u00e4tigte Pr\u00e4senz an Einfluss \u2013 Countdown l\u00e4uft.' },
+      ],
+    };
+  }
+}
+
+</script>
+</body>
+</html>
