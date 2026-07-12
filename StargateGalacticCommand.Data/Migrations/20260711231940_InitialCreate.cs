@@ -925,7 +925,6 @@ namespace StargateGalacticCommand.Data.Migrations
                     Id = table.Column<int>(type: "INTEGER", nullable: false)
                         .Annotation("Sqlite:Autoincrement", true),
                     LocalCombatMissionId = table.Column<int>(type: "INTEGER", nullable: false),
-                    LocalCombatMissionId1 = table.Column<int>(type: "INTEGER", nullable: false),
                     BaseGuards = table.Column<int>(type: "INTEGER", nullable: false),
                     DefenseRings = table.Column<int>(type: "INTEGER", nullable: false),
                     SensorAlarms = table.Column<int>(type: "INTEGER", nullable: false),
@@ -940,12 +939,6 @@ namespace StargateGalacticCommand.Data.Migrations
                         principalTable: "LocalCombatMissions",
                         principalColumn: "Id",
                         onDelete: ReferentialAction.Cascade);
-                    table.ForeignKey(
-                        name: "FK_DefenseUnits_LocalCombatMissions_LocalCombatMissionId1",
-                        column: x => x.LocalCombatMissionId1,
-                        principalTable: "LocalCombatMissions",
-                        principalColumn: "Id",
-                        onDelete: ReferentialAction.Cascade);
                 });
 
             migrationBuilder.CreateTable(
@@ -955,7 +948,6 @@ namespace StargateGalacticCommand.Data.Migrations
                     Id = table.Column<int>(type: "INTEGER", nullable: false)
                         .Annotation("Sqlite:Autoincrement", true),
                     LocalCombatMissionId = table.Column<int>(type: "INTEGER", nullable: false),
-                    LocalCombatMissionId1 = table.Column<int>(type: "INTEGER", nullable: false),
                     SgSecurityTeams = table.Column<int>(type: "INTEGER", nullable: false),
                     Marines = table.Column<int>(type: "INTEGER", nullable: false),
                     JaffaWarriors = table.Column<int>(type: "INTEGER", nullable: false),
@@ -971,12 +963,6 @@ namespace StargateGalacticCommand.Data.Migrations
                     table.ForeignKey(
                         name: "FK_GroundUnits_LocalCombatMissions_LocalCombatMissionId",
                         column: x => x.LocalCombatMissionId,
-                        principalTable: "LocalCombatMissions",
-                        principalColumn: "Id",
-                        onDelete: ReferentialAction.Cascade);
-                    table.ForeignKey(
-                        name: "FK_GroundUnits_LocalCombatMissions_LocalCombatMissionId1",
-                        column: x => x.LocalCombatMissionId1,
                         principalTable: "LocalCombatMissions",
                         principalColumn: "Id",
                         onDelete: ReferentialAction.Cascade);
@@ -1769,11 +1755,6 @@ namespace StargateGalacticCommand.Data.Migrations
                 unique: true);
 
             migrationBuilder.CreateIndex(
-                name: "IX_DefenseUnits_LocalCombatMissionId1",
-                table: "DefenseUnits",
-                column: "LocalCombatMissionId1");
-
-            migrationBuilder.CreateIndex(
                 name: "IX_EspionageMissions_SourceBaseId",
                 table: "EspionageMissions",
                 column: "SourceBaseId");
@@ -1867,11 +1848,6 @@ namespace StargateGalacticCommand.Data.Migrations
                 table: "GroundUnits",
                 column: "LocalCombatMissionId",
                 unique: true);
-
-            migrationBuilder.CreateIndex(
-                name: "IX_GroundUnits_LocalCombatMissionId1",
-                table: "GroundUnits",
-                column: "LocalCombatMissionId1");
 
             migrationBuilder.CreateIndex(
                 name: "IX_IntelligenceReports_EspionageMissionId",

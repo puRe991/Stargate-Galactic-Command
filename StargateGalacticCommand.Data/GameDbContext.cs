@@ -154,8 +154,8 @@ namespace StargateGalacticCommand.Data
             modelBuilder.Entity<LocalCombatMission>().HasOne(m => m.AttackerUser).WithMany().HasForeignKey(m => m.AttackerUserId).OnDelete(DeleteBehavior.Restrict);
             modelBuilder.Entity<LocalCombatMission>().HasOne(m => m.DefenderUser).WithMany().HasForeignKey(m => m.DefenderUserId).OnDelete(DeleteBehavior.Restrict);
             modelBuilder.Entity<LocalCombatMission>().HasOne(m => m.PlanetSector).WithMany().HasForeignKey(m => m.PlanetSectorId).OnDelete(DeleteBehavior.Restrict);
-            modelBuilder.Entity<LocalCombatMission>().HasOne(m => m.AttackingUnits).WithOne().HasForeignKey<GroundUnits>(u => u.LocalCombatMissionId).OnDelete(DeleteBehavior.Cascade);
-            modelBuilder.Entity<LocalCombatMission>().HasOne(m => m.DefendingUnits).WithOne().HasForeignKey<DefenseUnits>(u => u.LocalCombatMissionId).OnDelete(DeleteBehavior.Cascade);
+            modelBuilder.Entity<LocalCombatMission>().HasOne(m => m.AttackingUnits).WithOne(u => u.LocalCombatMission).HasForeignKey<GroundUnits>(u => u.LocalCombatMissionId).OnDelete(DeleteBehavior.Cascade);
+            modelBuilder.Entity<LocalCombatMission>().HasOne(m => m.DefendingUnits).WithOne(u => u.LocalCombatMission).HasForeignKey<DefenseUnits>(u => u.LocalCombatMissionId).OnDelete(DeleteBehavior.Cascade);
             modelBuilder.Entity<LocalCombatRound>().HasOne(r => r.LocalCombatMission).WithMany(m => m.Rounds).HasForeignKey(r => r.LocalCombatMissionId).OnDelete(DeleteBehavior.Cascade);
             modelBuilder.Entity<SectorBattleReport>().HasOne(r => r.User).WithMany().HasForeignKey(r => r.UserId).OnDelete(DeleteBehavior.Cascade);
             modelBuilder.Entity<SectorBattleReport>().HasOne(r => r.LocalCombatMission).WithMany().HasForeignKey(r => r.LocalCombatMissionId).OnDelete(DeleteBehavior.Cascade);

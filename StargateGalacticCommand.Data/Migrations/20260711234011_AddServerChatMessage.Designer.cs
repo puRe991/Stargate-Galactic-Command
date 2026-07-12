@@ -509,9 +509,6 @@ namespace StargateGalacticCommand.Data.Migrations
                     b.Property<int>("LocalCombatMissionId")
                         .HasColumnType("INTEGER");
 
-                    b.Property<int>("LocalCombatMissionId1")
-                        .HasColumnType("INTEGER");
-
                     b.Property<int>("LocalMilitia")
                         .HasColumnType("INTEGER");
 
@@ -522,8 +519,6 @@ namespace StargateGalacticCommand.Data.Migrations
 
                     b.HasIndex("LocalCombatMissionId")
                         .IsUnique();
-
-                    b.HasIndex("LocalCombatMissionId1");
 
                     b.ToTable("DefenseUnits");
                 });
@@ -903,9 +898,6 @@ namespace StargateGalacticCommand.Data.Migrations
                     b.Property<int>("LocalCombatMissionId")
                         .HasColumnType("INTEGER");
 
-                    b.Property<int>("LocalCombatMissionId1")
-                        .HasColumnType("INTEGER");
-
                     b.Property<int>("Marines")
                         .HasColumnType("INTEGER");
 
@@ -925,8 +917,6 @@ namespace StargateGalacticCommand.Data.Migrations
 
                     b.HasIndex("LocalCombatMissionId")
                         .IsUnique();
-
-                    b.HasIndex("LocalCombatMissionId1");
 
                     b.ToTable("GroundUnits");
                 });
@@ -2491,15 +2481,9 @@ namespace StargateGalacticCommand.Data.Migrations
 
             modelBuilder.Entity("StargateGalacticCommand.Core.Models.DefenseUnits", b =>
                 {
-                    b.HasOne("StargateGalacticCommand.Core.Models.LocalCombatMission", null)
+                    b.HasOne("StargateGalacticCommand.Core.Models.LocalCombatMission", "LocalCombatMission")
                         .WithOne("DefendingUnits")
                         .HasForeignKey("StargateGalacticCommand.Core.Models.DefenseUnits", "LocalCombatMissionId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.HasOne("StargateGalacticCommand.Core.Models.LocalCombatMission", "LocalCombatMission")
-                        .WithMany()
-                        .HasForeignKey("LocalCombatMissionId1")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
@@ -2642,15 +2626,9 @@ namespace StargateGalacticCommand.Data.Migrations
 
             modelBuilder.Entity("StargateGalacticCommand.Core.Models.GroundUnits", b =>
                 {
-                    b.HasOne("StargateGalacticCommand.Core.Models.LocalCombatMission", null)
+                    b.HasOne("StargateGalacticCommand.Core.Models.LocalCombatMission", "LocalCombatMission")
                         .WithOne("AttackingUnits")
                         .HasForeignKey("StargateGalacticCommand.Core.Models.GroundUnits", "LocalCombatMissionId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.HasOne("StargateGalacticCommand.Core.Models.LocalCombatMission", "LocalCombatMission")
-                        .WithMany()
-                        .HasForeignKey("LocalCombatMissionId1")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
