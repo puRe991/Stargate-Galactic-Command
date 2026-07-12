@@ -5,58 +5,158 @@
 @functions {
     string Cost(BuildCost c) => $"NQ {c.Naquadah}, TR {c.Trinium}, VG {c.Supplies}" + (c.Intel > 0 ? $", Intel {c.Intel}" : "");
     string Duration(int seconds) => TimeSpan.FromSeconds(seconds).ToString(@"hh\:mm\:ss");
+    string Pct(int current, int goal) => goal <= 0 ? "0%" : $"{Math.Min(100, current * 100 / goal)}%";
 }
 @if (TempData["Message"] != null) { <div class="notice success">@TempData["Message"]</div> }
 @if (TempData["Error"] != null) { <div class="notice error">@TempData["Error"]</div> }
-<section class="panel"><h1>@ViewData["Title"]</h1><table><tr><th>Spieler</th><td>@Model.User.UserName</td></tr><tr><th>Fraktion</th><td>@Model.User.Faction.Name</td></tr><tr><th>Basis</th><td>@Model.Base.Name</td></tr><tr><th>Planet</th><td>@Model.Planet.Name (@Model.Planet.Galaxy, @Model.Planet.Type, Stargate @(Model.Planet.StargateActive ? "aktiv" : "inaktiv"), @Model.Planet.Status)</td></tr><tr><th>Sektor</th><td>@Model.Base.PlanetSector.Number - @Model.Base.PlanetSector.Name</td></tr></table></section>
-<section class="panel">
-    <h2>Weltbedrohung</h2>
-    @if (Model.ActiveWorldEvent == null)
-    {
-        <p>Aktuell ist keine serverweite Bedrohung aktiv.</p>
-    }
-    else
-    {
-        <p><strong>@Model.ActiveWorldEventName</strong> – @Model.ActiveWorldEventDescription</p>
-        <table>
-            <tr><th>Fortschritt (alle Spieler)</th><td>@Model.ActiveWorldEvent.CurrentProgress / @Model.ActiveWorldEvent.GoalProgress</td></tr>
-            <tr><th>Zeitfenster endet</th><td>@Model.ActiveWorldEvent.EndsAtUtc.ToString("u")</td></tr>
-            <tr><th>Eigener Beitrag</th><td>@Model.MyWorldEventContribution</td></tr>
-        </table>
-        @if (Model.CanContributeToWorldEvent)
+
+<div class="grid-3">
+    <div class="panel">
+        <div class="card-head"><h2>Kommandostatus</h2></div>
+        <div class="kv-list">
+            <div class="kv-row"><span>Basis</span><span>@Model.Base.Name</span></div>
+            <div class="kv-row"><span>Planet</span><span>@Model.Planet.Name</span></div>
+            <div class="kv-row"><span>Galaxie</span><span>@Model.Planet.Galaxy</span></div>
+            <div class="kv-row"><span>Stargate</span><span>@(Model.Planet.StargateActive ? "aktiv" : "inaktiv")</span></div>
+            <div class="kv-row"><span>Sektor</span><span>@Model.Base.PlanetSector.Number - @Model.Base.PlanetSector.Name</span></div>
+            <div class="kv-row"><span>Fraktion</span><span>@Model.User.Faction.Name</span></div>
+        </div>
+    </div>
+
+    <div class="panel">
+        <div class="card-head"><h2>Weltbedrohung</h2>@if (Model.ActiveWorldEvent != null) { <span class="pulse-dot"></span> }</div>
+        @if (Model.ActiveWorldEvent == null)
         {
-            <form asp-controller="Game" asp-action="ContributeToWorldEvent" method="post">
-                <button type="submit">Verteidigungsbeitrag leisten (@WorldEventService.ContributionCost.Supplies VG, @WorldEventService.ContributionCost.Personnel Personal)</button>
+            <p>Aktuell ist keine serverweite Bedrohung aktiv.</p>
+        }
+        else
+        {
+            <p><strong>@Model.ActiveWorldEventName</strong></p>
+            <p class="hint">@Model.ActiveWorldEventDescription</p>
+            <div class="progress-track"><div class="progress-fill threat" style="width:@(Pct(Model.ActiveWorldEvent.CurrentProgress, Model.ActiveWorldEvent.GoalProgress))"></div></div>
+            <div class="progress-meta"><span>@Model.ActiveWorldEvent.CurrentProgress / @Model.ActiveWorldEvent.GoalProgress</span><span>endet @Model.ActiveWorldEvent.EndsAtUtc.ToString("u")</span></div>
+            <p class="hint" style="margin-top:.6rem;">Eigener Beitrag: @Model.MyWorldEventContribution</p>
+            @if (Model.CanContributeToWorldEvent)
+            {
+                <form asp-controller="Game" asp-action="ContributeToWorldEvent" method="post">
+                    <button type="submit">Verteidigungsbeitrag leisten (@WorldEventService.ContributionCost.Supplies VG, @WorldEventService.ContributionCost.Personnel Personal)</button>
+                </form>
+            }
+            else
+            {
+                <p class="hint">@Model.WorldEventBlockedReason</p>
+            }
+        }
+    </div>
+
+    <div class="panel">
+        <div class="card-head"><h2>Erleuchtung</h2></div>
+        <p class="hint">Ein freiwilliger Neuanfang: Gebäude, Forschung, Schiffe und Ressourcen werden auf den Ausgangsstand zurückgesetzt, dafür bleibt ein permanenter Produktionsbonus erhalten.</p>
+        <div class="kv-row" style="margin-bottom:.3rem;"><span>Basis-Score</span><span>@Model.CurrentBaseScore / @AscensionService.MinScoreToAscend</span></div>
+        <div class="progress-track"><div class="progress-fill ascend" style="width:@(Pct(Model.CurrentBaseScore, AscensionService.MinScoreToAscend))"></div></div>
+        <div class="kv-list" style="margin-top:.6rem;">
+            <div class="kv-row"><span>Bisherige Erleuchtungen</span><span>@Model.AscensionCount</span></div>
+            <div class="kv-row"><span>Produktionsbonus</span><span>+@Model.AscensionBonusPercent.ToString("0") %</span></div>
+        </div>
+        @if (Model.CanAscendNow)
+        {
+            <form asp-controller="Game" asp-action="Ascend" method="post" onsubmit="return confirm('Basis, Forschung und Schiffe wirklich zurücksetzen?');" style="margin-top:.6rem;">
+                <button type="submit">Erleuchtung vollziehen</button>
             </form>
         }
         else
         {
-            <p class="hint">@Model.WorldEventBlockedReason</p>
+            <p class="hint">@Model.AscensionBlockedReason</p>
         }
-    }
-</section>
-<section class="panel">
-    <h2>Erleuchtung</h2>
-    <p>Ein freiwilliger Neuanfang: Gebäude, Forschung, Schiffe und Ressourcen werden auf den Ausgangsstand zurückgesetzt, dafür bleibt ein permanenter Produktionsbonus erhalten. Berichte, Kodex-Fortschritt, Kontrakte und Allianzmitgliedschaft bleiben unangetastet.</p>
-    <table>
-        <tr><th>Erleuchtungen bisher</th><td>@Model.AscensionCount</td></tr>
-        <tr><th>Aktueller Produktionsbonus</th><td>+@Model.AscensionBonusPercent.ToString("0") %</td></tr>
-        <tr><th>Basis-Score</th><td>@Model.CurrentBaseScore / @AscensionService.MinScoreToAscend</td></tr>
-    </table>
-    @if (Model.CanAscendNow)
-    {
-        <form asp-controller="Game" asp-action="Ascend" method="post" onsubmit="return confirm('Basis, Forschung und Schiffe wirklich zurücksetzen?');">
-            <button type="submit">Erleuchtung vollziehen</button>
-        </form>
-    }
-    else
-    {
-        <p class="hint">@Model.AscensionBlockedReason</p>
-    }
-</section>
-<section class="panel"><h2>Ressourcen</h2><table><thead><tr><th>Ressource</th><th>Bestand</th><th>Produktion/Stunde</th></tr></thead><tbody><tr><td>Naquadah</td><td>@Model.Base.Resources.Naquadah</td><td>@Model.Hourly.Naquadah</td></tr><tr><td>Trinium</td><td>@Model.Base.Resources.Trinium</td><td>@Model.Hourly.Trinium</td></tr><tr><td>Versorgungsgüter</td><td>@Model.Base.Resources.Supplies</td><td>@Model.Hourly.Supplies</td></tr><tr><td>Energie</td><td>@Model.Base.Resources.Energy</td><td>@Model.Hourly.Energy</td></tr><tr><td>Personal</td><td>@Model.Base.Resources.Personnel</td><td>@Model.Hourly.Personnel</td></tr><tr><td>Intel</td><td>@Model.Base.Resources.Intel</td><td>@Model.Hourly.Intel</td></tr></tbody></table></section>
-<section class="panel"><h2>Bauwarteschlange (@Model.BuildQueue.Count/@BuildQueueService.MaxQueueLength)</h2>@if (!Model.BuildQueue.Any()) { <p>Keine aktiven Bauaufträge.</p> } else { <table><thead><tr><th>#</th><th>Gebäude</th><th>Ziellevel</th><th>Fertigstellung</th><th>Restzeit</th></tr></thead><tbody>@{ int position = 0; } @foreach (var item in Model.BuildQueue) { position++; var left = item.CompletesAtUtc - Model.NowUtc; if (left < TimeSpan.Zero) { left = TimeSpan.Zero; } <tr><td>@position</td><td>@Model.Buildings.Single(b => b.Type == item.BuildingType).Name</td><td>@item.TargetLevel</td><td>@item.CompletesAtUtc.ToString("u")</td><td><span class="build-timer" data-completes="@item.CompletesAtUtc.ToString("O")">@left.ToString(@"hh\:mm\:ss")</span></td></tr> }</tbody></table> }</section>
-<section class="panel"><h2>Gebäude</h2><table><thead><tr><th>Gebäude</th><th>Level</th><th>Kosten</th><th>Bauzeit</th><th>Aktion</th></tr></thead><tbody>@foreach(var b in Model.Buildings){<tr><td>@b.Name</td><td>@b.Level</td><td>@Cost(b.Cost)</td><td>@Duration(b.BuildSeconds)</td><td><form asp-controller="Game" asp-action="StartBuild" method="post"><input type="hidden" name="buildingType" value="@b.Type" /><button type="submit" disabled="@(b.QueueBusy || !b.CanAfford)">Ausbauen</button>@if (b.QueueBusy) { <span class="hint"> Warteschlange voll</span> } else if (!b.CanAfford) { <span class="hint"> Zu wenig Ressourcen</span> }</form></td></tr>}</tbody></table></section>
-<section class="panel"><h2>Sektoren</h2><table><thead><tr><th>#</th><th>Name</th><th>Typ</th><th>Status</th></tr></thead><tbody>@foreach(var s in Model.Sectors){<tr><td>@s.Number</td><td>@s.Name</td><td>@(s.IsSettlementSector ? "Siedlung" : "Spezialsektor")</td><td>@(s.PlayerBase == null ? "frei" : "belegt")</td></tr>}</tbody></table></section>
-<section class="panel"><h2>Berichte</h2><table><thead><tr><th>Zeit</th><th>Titel</th><th>Text</th></tr></thead><tbody>@foreach(var r in Model.Reports){<tr><td>@r.CreatedAtUtc.ToString("u")</td><td>@r.Title</td><td>@r.Body</td></tr>}</tbody></table></section>
+    </div>
+</div>
+
+<div class="panel">
+    <h2>Ressourcen</h2>
+    <div class="grid-3">
+        <div class="kv-row"><span>Naquadah</span><span>@Model.Base.Resources.Naquadah <small>(+@Model.Hourly.Naquadah/h)</small></span></div>
+        <div class="kv-row"><span>Trinium</span><span>@Model.Base.Resources.Trinium <small>(+@Model.Hourly.Trinium/h)</small></span></div>
+        <div class="kv-row"><span>Versorgungsgüter</span><span>@Model.Base.Resources.Supplies <small>(+@Model.Hourly.Supplies/h)</small></span></div>
+        <div class="kv-row"><span>Energie</span><span>@Model.Base.Resources.Energy <small>(+@Model.Hourly.Energy/h)</small></span></div>
+        <div class="kv-row"><span>Personal</span><span>@Model.Base.Resources.Personnel <small>(+@Model.Hourly.Personnel/h)</small></span></div>
+        <div class="kv-row"><span>Intel</span><span>@Model.Base.Resources.Intel <small>(+@Model.Hourly.Intel/h)</small></span></div>
+    </div>
+</div>
+
+<div class="grid-2">
+    <div class="panel">
+        <div class="card-head"><h2>Bauwarteschlange</h2><span class="hint">@Model.BuildQueue.Count / @BuildQueueService.MaxQueueLength</span></div>
+        @if (!Model.BuildQueue.Any())
+        {
+            <p>Keine aktiven Bauaufträge.</p>
+        }
+        else
+        {
+            <div class="item-list">
+                @foreach (var item in Model.BuildQueue)
+                {
+                    var left = item.CompletesAtUtc - Model.NowUtc;
+                    if (left < TimeSpan.Zero) { left = TimeSpan.Zero; }
+                    <div class="item-row">
+                        <div>
+                            <div class="item-title">@Model.Buildings.Single(b => b.Type == item.BuildingType).Name &rarr; Lv.@item.TargetLevel</div>
+                            <div class="item-meta">Fertig um @item.CompletesAtUtc.ToString("u")</div>
+                        </div>
+                        <span class="build-timer" data-completes="@item.CompletesAtUtc.ToString("O")">@left.ToString(@"hh\:mm\:ss")</span>
+                    </div>
+                }
+            </div>
+        }
+    </div>
+
+    <div class="panel">
+        <div class="card-head"><h2>Gebäude</h2></div>
+        <div class="item-list">
+            @foreach (var b in Model.Buildings)
+            {
+                <div class="item-row">
+                    <div>
+                        <div class="item-title">@b.Name &middot; Level @b.Level</div>
+                        <div class="item-meta">@Cost(b.Cost) &middot; @Duration(b.BuildSeconds)</div>
+                    </div>
+                    <form asp-controller="Game" asp-action="StartBuild" method="post">
+                        <input type="hidden" name="buildingType" value="@b.Type" />
+                        <button type="submit" disabled="@(b.QueueBusy || !b.CanAfford)">Ausbauen</button>
+                        @if (b.QueueBusy) { <span class="hint">Warteschlange voll</span> } else if (!b.CanAfford) { <span class="hint">Zu wenig Ressourcen</span> }
+                    </form>
+                </div>
+            }
+        </div>
+    </div>
+</div>
+
+<div class="grid-2">
+    <div class="panel">
+        <div class="card-head"><h2>Sektoren</h2></div>
+        <div class="item-list">
+            @foreach (var s in Model.Sectors)
+            {
+                <div class="item-row">
+                    <span>#@s.Number &middot; @s.Name</span>
+                    <span class="hint">@(s.IsSettlementSector ? "Siedlung" : "Spezialsektor")</span>
+                    <span>@(s.PlayerBase == null ? "frei" : "belegt")</span>
+                </div>
+            }
+        </div>
+    </div>
+
+    <div class="panel">
+        <div class="card-head"><h2>Berichte</h2></div>
+        <div class="item-list">
+            @foreach (var r in Model.Reports)
+            {
+                <div class="item-row" style="align-items:flex-start; flex-direction:column; gap:.2rem;">
+                    <div class="item-title" style="display:flex; justify-content:space-between; width:100%;"><span>@r.Title</span><span class="item-meta">@r.CreatedAtUtc.ToString("u")</span></div>
+                    <div class="hint">@r.Body</div>
+                </div>
+            }
+        </div>
+    </div>
+</div>
+
 <script>document.querySelectorAll('.build-timer').forEach(function(e){function tick(){var ms=new Date(e.dataset.completes)-new Date();if(ms<0)ms=0;var s=Math.floor(ms/1000),h=Math.floor(s/3600);s%=3600;var m=Math.floor(s/60);s%=60;e.textContent=String(h).padStart(2,'0')+':'+String(m).padStart(2,'0')+':'+String(s).padStart(2,'0');}tick();setInterval(tick,1000);});</script>
