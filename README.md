@@ -29,6 +29,7 @@ Version 0.0.9 macht gemeinsame Planeten spielmechanisch aktiv:
 - Gebäude, Forschung, Gate-Raum und PvE-Gate-Missionen aus den Vorversionen
 - Prozedural generierte Galaxie mit 300+ erforschbaren Gate-Adressen (`GalaxyGeneratorService`); zufällige Entdeckung neuer Adressen sowohl über Gate-Missionen ("Adresse analysieren") als auch über Erkundungsflüge von Schiffen ohne festes Ziel ("Fernaufklärung")
 - Server-Verwaltung: mehrere unabhängige Spielwelten (`GameServer`), jede mit eigener prozedural generierter Galaxie und eigenen Accounts. Spieler wählen unter „Server auswählen“ (`/Server/Select`) eine Welt, bevor sie sich einloggen oder registrieren. Ein separater Admin-Bereich (`/Admin/Login`) erlaubt dem Betreiber, Server zu erstellen, zu starten, zu pausieren (keine neuen Registrierungen) und zu stoppen (Welt verschwindet aus der Auswahl, aktive Sitzungen werden beendet)
+- NSC-Belebung (`NpcSpawnService`): Sobald mindestens ein Spieler auf einem Planeten sesshaft ist, besetzt ein statischer NSC einen der übrigen leeren Siedlungssektoren (max. ein Drittel der Siedlungssektoren je Planet), damit gemeinsame Planeten nicht dauerhaft halbleer wirken. NSC-Basen sind wie bisher von Galaxieliste, Rangliste, Postfach und Login ausgeschlossen und daher aktuell rein kosmetisch, solange es keine PvP-Regeln gegen Basen gibt
 
 ## Server-Verwaltung für den Betrieb
 
