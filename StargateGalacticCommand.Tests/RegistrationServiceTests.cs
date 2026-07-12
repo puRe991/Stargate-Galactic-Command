@@ -152,6 +152,41 @@ namespace StargateGalacticCommand.Tests
         }
 
         [Fact]
+        public void Initialize_QuarantinesPartialSchemaWithoutMigrationHistoryInsteadOfCrashing()
+        {
+            var dbPath = System.IO.Path.Combine(System.IO.Path.GetTempPath(), "sgc-partial-test-" + Guid.NewGuid() + ".db");
+            try
+            {
+                // Simulate a database left behind by a run that was interrupted mid-migration:
+                // some tables exist (just "Factions" here), but not the full current schema,
+                // and there is no __EFMigrationsHistory table/row either.
+                using (var connection = new SqliteConnection("Data Source=" + dbPath))
+                {
+                    connection.Open();
+                    using var command = connection.CreateCommand();
+                    command.CommandText = "CREATE TABLE \"Factions\" (\"Id\" INTEGER NOT NULL CONSTRAINT \"PK_Factions\" PRIMARY KEY AUTOINCREMENT, \"Name\" TEXT NOT NULL, \"ShortName\" TEXT NOT NULL)";
+                    command.ExecuteNonQuery();
+                }
+
+                var options = new DbContextOptionsBuilder<GameDbContext>().UseSqlite("Data Source=" + dbPath).Options;
+                using (var db = new GameDbContext(options))
+                {
+                    DatabaseInitializer.Initialize(db, new GateMissionService(new ResourceService()));
+                    Assert.Equal(4, db.Factions.Count());
+                    Assert.Equal(1, db.GameServers.Count());
+                }
+
+                Assert.True(System.IO.Directory.GetFiles(System.IO.Path.GetTempPath(), System.IO.Path.GetFileName(dbPath) + ".broken-*").Length > 0);
+            }
+            finally
+            {
+                System.IO.File.Delete(dbPath);
+                foreach (var leftover in System.IO.Directory.GetFiles(System.IO.Path.GetTempPath(), System.IO.Path.GetFileName(dbPath) + ".broken-*"))
+                    System.IO.File.Delete(leftover);
+            }
+        }
+
+        [Fact]
         public void Initialize_EnablesWriteAheadLoggingOnFileBasedDatabase()
         {
             var dbPath = System.IO.Path.Combine(System.IO.Path.GetTempPath(), "sgc-wal-test-" + Guid.NewGuid() + ".db");
