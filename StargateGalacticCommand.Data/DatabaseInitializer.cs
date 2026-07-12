@@ -1,5 +1,6 @@
 using System;
 using System.Linq;
+using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
 using StargateGalacticCommand.Core.Services;
 using StargateGalacticCommand.Core.Models;
@@ -54,9 +55,27 @@ namespace StargateGalacticCommand.Data
             // recommend for adopting migrations on an existing database.
             if (HasPreMigrationSchema(context)) BaselineExistingDatabase(context);
 
-            context.Database.Migrate();
+            try
+            {
+                context.Database.Migrate();
+            }
+            catch (SqliteException ex) when (ex.Message.Contains("already exists"))
+            {
+                // The proactive check above only baselines when the *entire* current
+                // schema is already present. A database that has some but not all
+                // tables (e.g. left behind by a run that was killed mid-migration)
+                // fails Migrate() here instead. There is no safe way to guess which
+                // migrations already ran against a schema like that, so move the file
+                // aside and let Migrate() build a clean one; the original is kept next
+                // to it in case anything in it needs to be recovered by hand.
+                if (!QuarantineAndReset(context)) throw;
+                context.Database.Migrate();
+            }
         }
 
+        // True when every table the current EF model expects is already present, which
+        // means this file was fully created outside of migrations (old EnsureCreated()
+        // fallback or a restored backup) rather than genuinely mid-migration.
         private static bool HasPreMigrationSchema(GameDbContext context)
         {
             var connection = context.Database.GetDbConnection();
@@ -67,12 +86,42 @@ namespace StargateGalacticCommand.Data
             try
             {
                 if (TableExists(connection, "__EFMigrationsHistory")) return false;
-                return TableExists(connection, "Users");
+                var tableNames = context.Model.GetEntityTypes()
+                    .Select(e => e.GetTableName())
+                    .Where(name => name != null)
+                    .Distinct();
+                return tableNames.All(name => TableExists(connection, name!));
             }
             finally
             {
                 if (!wasOpen) connection.Close();
             }
+        }
+
+        // Renames a file-based SQLite database out of the way so Migrate() can create a
+        // fresh one from scratch. Returns false (nothing done) for in-memory connections,
+        // where there is no file to move and this situation should not occur outside tests.
+        private static bool QuarantineAndReset(GameDbContext context)
+        {
+            var connection = context.Database.GetDbConnection();
+            var dataSource = connection.DataSource;
+            if (string.IsNullOrEmpty(dataSource) || dataSource == ":memory:") return false;
+            if (!System.IO.File.Exists(dataSource)) return false;
+
+            connection.Close();
+            // Microsoft.Data.Sqlite pools native sqlite3 handles per connection string by
+            // default, so without this the next Open() can hand back a handle still tied
+            // to the file we just moved instead of opening a fresh one at the same path.
+            if (connection is SqliteConnection sqliteConnection) SqliteConnection.ClearPool(sqliteConnection);
+
+            var quarantinePath = dataSource + ".broken-" + DateTime.UtcNow.ToString("yyyyMMddHHmmss");
+            System.IO.File.Move(dataSource, quarantinePath);
+            foreach (var suffix in new[] { "-wal", "-shm", "-journal" })
+            {
+                var sidecar = dataSource + suffix;
+                if (System.IO.File.Exists(sidecar)) System.IO.File.Move(sidecar, quarantinePath + suffix);
+            }
+            return true;
         }
 
         // SQLite's default rollback-journal mode locks the whole database file for the
