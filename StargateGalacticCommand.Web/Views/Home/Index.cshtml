@@ -1,3 +1,118 @@
 @{ ViewData["Title"] = "Startseite"; }
 @if (TempData["Error"] != null) { <p class="error">@TempData["Error"]</p> }
-<section class="hero"><h1>Stargate Galactic Command</h1><p>Dunkles, tabellarisches OGame-Style Browsergame: Du führst eine Basis in einem Sektor eines gemeinsam genutzten Planeten auf einem von mehreren unabhängigen Servern.</p><p><a class="button" href="/Server/Select">Server auswählen</a></p></section>
+
+<div class="hero-flex">
+    <div>
+        <span class="hero-badge"><span class="dot"></span>Gate-Netzwerk aktiv &middot; 300+ Adressen kartiert</span>
+        <h1>Kommandiere dein Sektor. Sichere die Galaxie.</h1>
+        <p class="lead">Ein dunkles, browserbasiertes Strategiespiel im OGame-Stil mit Stargate-Lore. Du verwaltest keinen ganzen Planeten &ndash; sondern einen geheimen Basissektor auf einer gemeinsam genutzten Welt, im Wettstreit mit anderen Fraktionen um Einfluss, Ressourcen und Kontrolle.</p>
+        <div class="hero-actions">
+            <a class="button" href="/Server/Select">Server auswählen</a>
+            <a class="button" style="background:transparent;" href="#lore">Mehr zur Lore</a>
+        </div>
+        <div class="hero-stats">
+            <div><div class="stat-value">4</div><div class="stat-label">Fraktionen</div></div>
+            <div><div class="stat-value">300+</div><div class="stat-label">Gate-Adressen</div></div>
+            <div><div class="stat-value">6</div><div class="stat-label">Ressourcen</div></div>
+            <div><div class="stat-value">50</div><div class="stat-label">Technologien</div></div>
+        </div>
+    </div>
+    <div class="gate-visual">
+        <span class="glow"></span>
+        <span class="ring"><img src="~/images/stargate-emblem.svg" alt="Stargate" width="272" height="272" /></span>
+    </div>
+</div>
+
+<div id="lore">
+    <div class="grid-3">
+        <div class="panel">
+            <h3>Programm bleibt geheim</h3>
+            <p>Das Stargate-Programm operiert im Verborgenen &ndash; die Menschheit ahnt nichts von den Sektorkonflikten jenseits des Gates.</p>
+        </div>
+        <div class="panel">
+            <h3>Erde, Atlantis, Dakara gesperrt</h3>
+            <p>Heimatwelten bleiben aus dem Wettstreit ausgenommen. Gespielt wird auf neutralem, gemeinsam genutztem Terrain.</p>
+        </div>
+        <div class="panel">
+            <h3>Großflotten per Hyperraum</h3>
+            <p>Stargates transportieren Teams und kleine Ausrüstung. Große Schiffe reisen ausschließlich per Hyperraum.</p>
+        </div>
+    </div>
+</div>
+
+<div id="factions">
+    <div class="section-heading">
+        <div class="eyebrow">Wähle deine Loyalität</div>
+        <h2>Vier Fraktionen, vier Wege durchs Gate</h2>
+    </div>
+    <div class="grid-4">
+        <div class="panel faction-tile">
+            <img src="~/images/factions/sgc.svg" alt="" width="56" height="56" />
+            <h3>Tau'ri / SGC</h3>
+            <p>Menschliche Erdallianz mit technologischem Improvisationsgeist und breiter Missionserfahrung.</p>
+            <span class="faction-specialty">Spezialisierung: Artefakt suchen</span>
+        </div>
+        <div class="panel faction-tile">
+            <img src="~/images/factions/jaffa.svg" alt="" width="56" height="56" />
+            <h3>Freie Jaffa</h3>
+            <p>Befreite Krieger, ehemals Wirte der Goa'uld, gestählt in offener Feldschlacht.</p>
+            <span class="faction-specialty">Spezialisierung: Risikoanalyse</span>
+        </div>
+        <div class="panel faction-tile">
+            <img src="~/images/factions/tokra.svg" alt="" width="56" height="56" />
+            <h3>Tok'ra</h3>
+            <p>Symbiotische Widerstandsbewegung, Meister der Infiltration und verdeckten Aufklärung.</p>
+            <span class="faction-specialty">Spezialisierung: Adresse analysieren</span>
+        </div>
+        <div class="panel faction-tile">
+            <img src="~/images/factions/lucian.svg" alt="" width="56" height="56" />
+            <h3>Lucian Alliance</h3>
+            <p>Loses Kartell aus Schmugglern und Warlords &ndash; skrupellos, ressourcenhungrig, bestens vernetzt.</p>
+            <span class="faction-specialty">Spezialisierung: Ressourcen sichern</span>
+        </div>
+    </div>
+</div>
+
+<div id="systeme">
+    <div class="section-heading">
+        <div class="eyebrow">Kernsysteme</div>
+        <h2>Alles, was ein Kommandeur braucht</h2>
+    </div>
+    <div class="grid-3">
+        <div class="panel feature-card">
+            <div class="feature-head"><span class="feature-icon"><img src="~/images/resources/naquadah.svg" alt="" width="20" height="20" /></span><h3>Basis & Ressourcen</h3></div>
+            <p>Gebäude, Bauwarteschlange und Produktion mit Fraktions- und Sektorboni.</p>
+        </div>
+        <div class="panel feature-card">
+            <div class="feature-head"><span class="feature-icon"><img src="~/images/resources/intel.svg" alt="" width="20" height="20" /></span><h3>Forschung</h3></div>
+            <p>50 Technologien mit echter Wirkung auf Wirtschaft, Kampf und Missionen.</p>
+        </div>
+        <div class="panel feature-card">
+            <div class="feature-head"><span class="feature-icon"><img src="~/images/stargate-emblem.svg" alt="" width="20" height="20" /></span><h3>Gate-Raum</h3></div>
+            <p>PvE-Missionen durch prozedural generierte Gate-Adressen, wöchentliche Fokusziele.</p>
+        </div>
+        <div class="panel feature-card">
+            <div class="feature-head"><span class="feature-icon"><img src="~/images/resources/trinium.svg" alt="" width="20" height="20" /></span><h3>Flotten & Galaxie</h3></div>
+            <p>Schiffswerft, Weltraumkampf, Trümmerbergung und automatisierte Handelsrouten.</p>
+        </div>
+        <div class="panel feature-card">
+            <div class="feature-head"><span class="feature-icon"><img src="~/images/resources/supplies.svg" alt="" width="20" height="20" /></span><h3>Sektoren & Planeten</h3></div>
+            <p>Gemeinsame Planeten mit beanspruchbaren Sektoren, Kontrolle und Einflussranglisten.</p>
+        </div>
+        <div class="panel feature-card">
+            <div class="feature-head"><span class="feature-icon"><img src="~/images/resources/personnel.svg" alt="" width="20" height="20" /></span><h3>Diplomatie & Intel</h3></div>
+            <p>Allianzen, Kriegsziele, Spionage und Gegenspionage inklusive Köderdaten.</p>
+        </div>
+    </div>
+</div>
+
+<div class="panel cta-panel">
+    <h2>Bereit anzudocken?</h2>
+    <p>Wähle einen Server, tritt einer Fraktion bei und beginne deinen Aufstieg zur Einflusskontrolle.</p>
+    <a class="button" href="/Server/Select">Server auswählen</a>
+</div>
+
+<footer class="site-footer">
+    <span>&copy; Stargate Galactic Command &middot; Version 0.1.0</span>
+    <span>Fanprojekt-Prototyp &middot; Nicht mit MGM/Stargate verbunden</span>
+</footer>
