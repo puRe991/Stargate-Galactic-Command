@@ -26,9 +26,27 @@
 }
 @if (TempData["Message"] != null) { <div class="notice success">@TempData["Message"]</div> }
 @if (TempData["Error"] != null) { <div class="notice error">@TempData["Error"]</div> }
+<section class="panel stargate-panel">
+    <div class="stargate-animation" id="stargateAnimation">
+        <div class="event-horizon"></div>
+        <svg class="gate-ring" viewBox="0 0 200 200" role="img" aria-label="Stargate-Wählsequenz">
+            <circle class="ring-outer" cx="100" cy="100" r="90" />
+            <circle class="ring-inner" cx="100" cy="100" r="76" />
+            <g class="chevrons">
+                @for (int k = 0; k < 9; k++)
+                {
+                    <polygon class="chevron" data-chevron="@(k + 1)" points="88,8 112,8 104,28 96,28" transform="rotate(@(k * 40) 100 100)" />
+                }
+            </g>
+        </svg>
+    </div>
+</section>
 <section class="panel"><h1>Gate-Raum</h1><p>Stargates transportieren ausschließlich Personen, kleine Ausrüstung und Missionsteams. Keine Schiffe, keine Großflotten, kein PvP durch das Gate.</p><table><tr><th>Gate-Kontrollraum</th><td>Level @Model.Base.BuildingLevels.GateControlRoom</td></tr><tr><th>Gate-Adressierung</th><td>Level @Model.User.ResearchLevels.GateAddressing</td></tr><tr><th>@Model.SeasonLabel</th><td>Missionen zu ☀-markierten Adressen bringen diese Woche 50% mehr Ressourcen/Intel.</td></tr></table></section>
 <section class="panel"><h2>Bekannte Adressen</h2><table><thead><tr><th>Adresse</th><th>Welt</th><th>Beschreibung</th><th>Risiko</th></tr></thead><tbody>@foreach(var k in Model.KnownGateAddresses){<tr><td>@k.GateAddress.Code@(Model.SeasonFocusAddressIds.Contains(k.GateAddressId) ? " ☀" : "")</td><td>@k.GateAddress.WorldName</td><td>@k.GateAddress.Description</td><td>@k.GateAddress.RiskLevel</td></tr>}</tbody></table></section>
 <section class="panel"><h2>Neue Mission starten</h2><p>Fraktionsspezialisierung erhöht die Erfolgschance bei der markierten Missionsart (★). Adressen der aktuellen Fokuswoche (☀) bringen erhöhte Belohnungen.</p><form asp-controller="Game" asp-action="StartGateMission" method="post"><label>Adresse <select name="gateAddressId">@foreach(var k in Model.KnownGateAddresses){<option value="@k.GateAddressId">@k.GateAddress.Code@(Model.SeasonFocusAddressIds.Contains(k.GateAddressId) ? " ☀" : "") - @k.GateAddress.Description</option>}</select></label><label>Team <select name="missionTeamId">@foreach(var t in Model.MissionTeams){<option value="@t.Id" disabled="@(!t.IsAvailable)">@t.Name @(t.IsAvailable ? "" : "(im Einsatz)")</option>}</select></label><label>Mission <select name="missionType">@foreach(var t in Enum.GetValues(typeof(GateMissionType)).Cast<GateMissionType>()){<option value="@t">@MissionName(t)@(IsFactionSpecialty(t) ? " ★" : "")</option>}</select></label><button type="submit" disabled="@(Model.Base.BuildingLevels.GateControlRoom < 1 || Model.User.ResearchLevels.GateAddressing < 1 || !Model.MissionTeams.Any(t => t.IsAvailable) || !Model.KnownGateAddresses.Any())">Mission starten</button></form></section>
 <section class="panel"><h2>Laufende Gate-Missionen</h2>@if(!Model.ActiveGateMissions.Any()){<p>Keine laufenden Gate-Missionen.</p>}else{<table><thead><tr><th>Adresse</th><th>Team</th><th>Mission</th><th>Fertigstellung</th><th>Aktion</th></tr></thead><tbody>@foreach(var m in Model.ActiveGateMissions){<tr><td>@m.GateAddress.Code</td><td>@m.MissionTeam.Name</td><td>@MissionName(m.MissionType)</td><td>@m.CompletesAtUtc.ToString("u")</td><td><form asp-controller="Game" asp-action="CompleteGateMission" method="post"><input type="hidden" name="gateMissionId" value="@m.Id" /><button type="submit" disabled="@(Model.NowUtc < m.CompletesAtUtc)">Bericht abrufen</button></form></td></tr>}</tbody></table>}</section>
 <section class="panel"><h2>Teamübersicht</h2><table><thead><tr><th>Team</th><th>Stärke</th><th>Wissenschaft</th><th>Diplomatie</th><th>Tarnung</th><th>Traglast</th><th>Risiko</th><th>Status</th></tr></thead><tbody>@foreach(var t in Model.MissionTeams){<tr><td>@t.Name</td><td>@t.Strength</td><td>@t.Science</td><td>@t.Diplomacy</td><td>@t.Stealth</td><td>@t.CarryCapacity</td><td>@t.Risk</td><td>@(t.IsAvailable ? "bereit" : "im Einsatz")</td></tr>}</tbody></table></section>
 <section class="panel"><h2>Missionsergebnisse/Berichte</h2><table><thead><tr><th>Zeit</th><th>Ergebnis</th><th>Funde</th><th>Zusammenfassung</th></tr></thead><tbody>@foreach(var r in Model.GateMissionReports){<tr><td>@r.CreatedAtUtc.ToString("u")</td><td>@r.Outcome@(r.AnomalyType.HasValue ? " ✧" : "")@(r.IsSeasonFocusBonus ? " ☀" : "")</td><td>NQ @r.NaquadahFound, TR @r.TriniumFound, VG @r.SuppliesFound, Intel @r.IntelFound, Artefaktspur @(r.ArtifactLeadFound ? "ja" : "nein")@(r.SpecialResourceFound.HasValue ? ", " + SpecialResourceCatalog.Get(r.SpecialResourceFound.Value).Name + " x" + r.SpecialResourceAmount : "")</td><td>@r.Summary</td></tr>}</tbody></table></section>
+@section Scripts {
+    <script src="~/js/stargate-dial.js" asp-append-version="true"></script>
+}
