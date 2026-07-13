@@ -180,6 +180,21 @@ pre { white-space: pre-wrap; color: #d6e7f5; }
 .item-row form { display: flex; align-items: center; gap: .5rem; margin: 0; }
 .item-row button { padding: .45rem .8rem; font-size: .78rem; }
 
+/* Nächste Schritte */
+.next-steps .item-row { align-items: flex-start; }
+.step-num { display: inline-grid; place-items: center; width: 1.4rem; height: 1.4rem; margin-right: .6rem; border-radius: 50%; background: rgba(101,255,200,.14); border: 1px solid rgba(101,255,200,.4); color: var(--accent-2); font-size: .76rem; font-weight: 700; flex: none; }
+.step-link { flex: none; padding: .45rem .8rem; font-size: .78rem; border-radius: 8px; border: 1px solid rgba(103,190,224,.4); color: var(--text); text-decoration: none; white-space: nowrap; }
+.step-link:hover { border-color: var(--accent-2); color: var(--accent-2); }
+
+/* Gate-Missionsberichte */
+.outcome-badge { font-size: .68rem; padding: .1rem .5rem; border-radius: 999px; border: 1px solid; margin-left: .3rem; text-transform: uppercase; letter-spacing: .03em; }
+.outcome-good .outcome-badge { background: rgba(105,240,174,.14); border-color: rgba(105,240,174,.4); color: #9dffce; }
+.outcome-mixed .outcome-badge { background: rgba(255,196,105,.14); border-color: rgba(255,196,105,.4); color: #ffe2ad; }
+.outcome-bad .outcome-badge { background: rgba(255,107,122,.14); border-color: rgba(255,107,122,.44); color: #ffd9de; }
+.report-loot { display: flex; gap: .6rem; flex-wrap: wrap; color: var(--accent-2); }
+.report-row.report-new { animation: reportReveal 1.2s ease; border-color: var(--accent-2); box-shadow: 0 0 22px rgba(101,255,200,.35); }
+@keyframes reportReveal { 0% { transform: translateY(-10px); opacity: 0; } 100% { transform: translateY(0); opacity: 1; } }
+
 /* Stargate dial animation (Gate-Raum) */
 .stargate-panel { display: grid; place-items: center; padding: 1.8rem 1rem; }
 .stargate-animation { position: relative; width: 15rem; height: 15rem; max-width: 100%; }
@@ -196,7 +211,7 @@ pre { white-space: pre-wrap; color: #d6e7f5; }
 @keyframes kawoosh { 0% { opacity: 0; transform: scale(.25); } 40% { opacity: 1; transform: scale(1.55); } 68% { opacity: 1; transform: scale(.88); } 100% { opacity: 1; transform: scale(1); } }
 @keyframes shimmer { to { background-position: 220% 55%; } }
 @media (prefers-reduced-motion: reduce) {
-    .chevron.lit, .event-horizon.burst, .event-horizon.active { animation: none; }
+    .chevron.lit, .event-horizon.burst, .event-horizon.active, .report-row.report-new { animation: none; }
 }
 
 @media (min-width: 880px) { .nav-shell summary { display: none; } .nav-shell[open], .nav-shell { display: block; } }
