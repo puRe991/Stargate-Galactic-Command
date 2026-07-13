@@ -64,5 +64,3 @@
         }
     </div>
 </div>
-
-<script>document.querySelectorAll('.build-timer').forEach(function(e){function tick(){var ms=new Date(e.dataset.completes)-new Date();if(ms<0)ms=0;var s=Math.floor(ms/1000),h=Math.floor(s/3600);s%=3600;var m=Math.floor(s/60);s%=60;e.textContent=String(h).padStart(2,'0')+':'+String(m).padStart(2,'0')+':'+String(s).padStart(2,'0');}tick();setInterval(tick,1000);});</script>

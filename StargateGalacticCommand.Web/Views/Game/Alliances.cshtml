@@ -1,5 +1,6 @@
 @model StargateGalacticCommand.Web.Models.OverviewViewModel
 @using StargateGalacticCommand.Core.Models
+@using StargateGalacticCommand.Core.Services
 @{ ViewData["Title"] = "Allianzen"; }
 <h1>Allianzen</h1>
 @if (TempData["Error"] != null) { <div class="alert">@TempData["Error"]</div> }
@@ -88,7 +89,17 @@ else
             <tr>
                 <td>[@other.Tag] @other.Name</td>
                 <td>@(d.Status == AllianceDiplomacyStatusType.Proposed ? "Vorschlag" : d.Status == AllianceDiplomacyStatusType.Pact ? "Pakt" : "Krieg")</td>
-                <td>@d.SinceUtc.ToString("u")</td>
+                <td>
+                    @d.SinceUtc.ToString("u")
+                    @if (d.Status == AllianceDiplomacyStatusType.War && d.BrokenByAllianceId == Model.OwnAlliance.Id && d.LastBrokenAtUtc.HasValue)
+                    {
+                        var cooldownEndsUtc = d.LastBrokenAtUtc.Value.AddDays(DiplomacyService.PactBreakCooldownDays);
+                        if (cooldownEndsUtc > Model.NowUtc)
+                        {
+                            <br /><small class="hint">Paktvorschlag wieder möglich in <span class="cooldown-timer" data-completes="@cooldownEndsUtc.ToString("O")" data-ready-text="jetzt"></span></small>
+                        }
+                    }
+                </td>
                 <td>
                     @if (Model.CanManageWarGoal && d.Status == AllianceDiplomacyStatusType.Proposed && d.ProposedByAllianceId != Model.OwnAlliance.Id)
                     {

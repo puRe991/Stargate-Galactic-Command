@@ -32,17 +32,20 @@
             <p><strong>@Model.ActiveWorldEventName</strong></p>
             <p class="hint">@Model.ActiveWorldEventDescription</p>
             <div class="progress-track"><div class="progress-fill threat" style="width:@(Pct(Model.ActiveWorldEvent.CurrentProgress, Model.ActiveWorldEvent.GoalProgress))"></div></div>
-            <div class="progress-meta"><span>@Model.ActiveWorldEvent.CurrentProgress / @Model.ActiveWorldEvent.GoalProgress</span><span>endet @Model.ActiveWorldEvent.EndsAtUtc.ToString("u")</span></div>
+            <div class="progress-meta"><span>@Model.ActiveWorldEvent.CurrentProgress / @Model.ActiveWorldEvent.GoalProgress</span><span>endet in <span class="mission-timer" data-completes="@Model.ActiveWorldEvent.EndsAtUtc.ToString("O")" data-ready-text="beendet"></span></span></div>
             <p class="hint" style="margin-top:.6rem;">Eigener Beitrag: @Model.MyWorldEventContribution</p>
-            @if (Model.CanContributeToWorldEvent)
+            <form asp-controller="Game" asp-action="ContributeToWorldEvent" method="post">
+                <button id="world-event-contribute" type="submit" disabled="@(!Model.CanContributeToWorldEvent)">Verteidigungsbeitrag leisten (@WorldEventService.ContributionCost.Supplies VG, @WorldEventService.ContributionCost.Personnel Personal)</button>
+            </form>
+            @if (!Model.CanContributeToWorldEvent)
             {
-                <form asp-controller="Game" asp-action="ContributeToWorldEvent" method="post">
-                    <button type="submit">Verteidigungsbeitrag leisten (@WorldEventService.ContributionCost.Supplies VG, @WorldEventService.ContributionCost.Personnel Personal)</button>
-                </form>
-            }
-            else
-            {
-                <p class="hint">@Model.WorldEventBlockedReason</p>
+                <p class="hint">
+                    @Model.WorldEventBlockedReason
+                    @if (Model.WorldEventNextContributionAtUtc.HasValue)
+                    {
+                        <span class="cooldown-timer" data-completes="@Model.WorldEventNextContributionAtUtc.Value.ToString("O")" data-enable-selector="#world-event-contribute" data-ready-text="bereit"></span>
+                    }
+                </p>
             }
         }
     </div>
@@ -113,5 +116,3 @@
         <p class="hint" style="margin-top:.8rem;"><a asp-controller="Game" asp-action="Reports">Berichte lesen &rarr;</a></p>
     </div>
 </div>
-
-<script>document.querySelectorAll('.build-timer').forEach(function(e){function tick(){var ms=new Date(e.dataset.completes)-new Date();if(ms<0)ms=0;var s=Math.floor(ms/1000),h=Math.floor(s/3600);s%=3600;var m=Math.floor(s/60);s%=60;e.textContent=String(h).padStart(2,'0')+':'+String(m).padStart(2,'0')+':'+String(s).padStart(2,'0');}tick();setInterval(tick,1000);});</script>
