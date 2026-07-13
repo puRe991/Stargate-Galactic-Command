@@ -39,7 +39,7 @@ public class CharacterSelectState extends ListMenuState {
 
     private void enterWorld(CharacterProfile profile) {
         session.activeCharacter = profile;
-        getStateManager().attach(new MissionState(session));
+        getStateManager().attach(new SgcHubState(session));
         setEnabled(false);
     }
 

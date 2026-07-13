@@ -19,6 +19,7 @@ public class Sgw3dPrototype extends SimpleApplication implements ActionListener 
 
     private int screenshotAtFrame = -1;
     private boolean autoStartMission = false;
+    private boolean autoStartSgc = false;
     private int frameCount = 0;
     private ScreenshotAppState screenshotAppState;
 
@@ -42,6 +43,10 @@ public class Sgw3dPrototype extends SimpleApplication implements ActionListener 
             if (arg.equals("--screenshot-mission-and-exit")) {
                 app.screenshotAtFrame = 20;
                 app.autoStartMission = true;
+            }
+            if (arg.equals("--screenshot-sgc-and-exit")) {
+                app.screenshotAtFrame = 20;
+                app.autoStartSgc = true;
             }
         }
         app.start();
@@ -71,11 +76,11 @@ public class Sgw3dPrototype extends SimpleApplication implements ActionListener 
         inputManager.addListener(this, "TakeScreenshot");
 
         GameSession session = new GameSession();
-        if (autoStartMission) {
+        if (autoStartMission || autoStartSgc) {
             session.selectedServer = "CI-Testwelt";
             session.activeCharacter = new CharacterProfile("CI-Test",
                     CharacterProfile.Faction.TAURI, CharacterProfile.Role.MILITAER);
-            stateManager.attach(new MissionState(session));
+            stateManager.attach(autoStartSgc ? new SgcHubState(session) : new MissionState(session));
         } else {
             stateManager.attach(new MainMenuState(session));
         }
