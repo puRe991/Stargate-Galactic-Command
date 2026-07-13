@@ -76,6 +76,7 @@ namespace StargateGalacticCommand.Web.Models
         public int MyWorldEventContribution { get; set; }
         public bool CanContributeToWorldEvent { get; set; }
         public string WorldEventBlockedReason { get; set; }
+        public DateTime? WorldEventNextContributionAtUtc { get; set; }
         public DecoyProfile OwnDecoyProfile { get; set; }
         public IList<TradeRoute> TradeRoutes { get; set; }
         public string SeasonLabel { get; set; }

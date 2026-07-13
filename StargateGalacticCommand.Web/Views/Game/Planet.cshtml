@@ -49,7 +49,24 @@
                     <td>@s.Number</td>
                     <td>@s.Name</td>
                     <td>@s.SectorType</td>
-                    <td>@(s.PlayerBase != null ? "Basis" : s.SectorControl != null ? "kontrolliert" : claim != null ? "Beanspruchung läuft bis " + claim.CompletesAtUtc.ToString("u") : "neutral")</td>
+                    <td>
+                        @if (s.PlayerBase != null)
+                        {
+                            <text>Basis</text>
+                        }
+                        else if (s.SectorControl != null)
+                        {
+                            <text>kontrolliert</text>
+                        }
+                        else if (claim != null)
+                        {
+                            <text>Beanspruchung läuft bis @claim.CompletesAtUtc.ToString("u") <span class="cooldown-timer" data-completes="@claim.CompletesAtUtc.ToString("O")" data-ready-text="fertig"></span></text>
+                        }
+                        else
+                        {
+                            <text>neutral</text>
+                        }
+                    </td>
                     <td>@DecayStatus(s)</td>
                     <td>@(s.PlayerBase != null || s.SectorType == SectorType.StargateZone || s.SectorType == SectorType.SettlementSector ? "geschützt" : s.SectorControl == null ? "niedrig" : "mittel")</td>
                     <td>
@@ -60,12 +77,16 @@
                                 <button type="submit">Sichern</button>
                             </form>
                         }
-                        else if (claim != null && claim.UserId == Model.User.Id && claim.CompletesAtUtc <= Model.NowUtc)
+                        else if (claim != null && claim.UserId == Model.User.Id)
                         {
                             <form asp-action="CompleteSectorClaim" method="post">
                                 <input type="hidden" name="claimId" value="@claim.Id" />
-                                <button type="submit">Abschließen</button>
+                                <button id="claim-@claim.Id" type="submit" disabled="@(claim.CompletesAtUtc > Model.NowUtc)">Abschließen</button>
                             </form>
+                            @if (claim.CompletesAtUtc > Model.NowUtc)
+                            {
+                                <span class="cooldown-timer" data-completes="@claim.CompletesAtUtc.ToString("O")" data-enable-selector="#claim-@claim.Id" data-ready-text="bereit"></span>
+                            }
                         }
                         else if (s.SectorControl != null && s.SectorControl.UserId == Model.User.Id)
                         {
@@ -76,6 +97,9 @@
                         }
                         else if (s.PlayerBase == null && s.SectorType != SectorType.SettlementSector && s.SectorType != SectorType.StargateZone && (s.SectorControl == null || s.SectorControl.UserId != Model.User.Id))
                         {
+                            var lastAttack = Model.SectorBattleReports.Where(r => r.PlanetSectorId == s.Id).OrderByDescending(r => r.CreatedAtUtc).FirstOrDefault();
+                            DateTime? cooldownEndsUtc = lastAttack == null ? (DateTime?)null : lastAttack.CreatedAtUtc.AddHours(LocalCombatService.SectorAttackCooldownHours);
+                            bool onCooldown = cooldownEndsUtc.HasValue && cooldownEndsUtc.Value > Model.NowUtc;
                             <form asp-action="StartLocalCombat" method="post">
                                 <input type="hidden" name="sectorId" value="@s.Id" />
                                 <select name="objective">
@@ -92,8 +116,12 @@
                                 <input type="number" name="saboteurs" min="0" value="0" title="Saboteur" />
                                 <input type="number" name="mercenaries" min="0" value="0" title="Söldner" />
                                 <input type="number" name="smugglerSquads" min="0" value="0" title="Schmugglertrupp" />
-                                <button type="submit">Angreifen</button>
+                                <button id="attack-@s.Id" type="submit" disabled="@onCooldown">Angreifen</button>
                             </form>
+                            @if (onCooldown)
+                            {
+                                <span class="cooldown-timer" data-completes="@cooldownEndsUtc.Value.ToString("O")" data-enable-selector="#attack-@s.Id" data-ready-text="bereit"></span>
+                            }
                         }
                         else
                         {
@@ -148,7 +176,28 @@
     <table><thead><tr><th>Sektor</th><th>Ziel</th><th>Ankunft</th><th>Aktion</th></tr></thead><tbody>
     @foreach (var c in Model.ActiveLocalCombats)
     {
-        <tr><td>@c.PlanetSector.Number - @c.PlanetSector.Name</td><td>@c.Objective</td><td>@c.ResolvesAtUtc.ToString("u")</td><td>@if (c.AttackerUserId == Model.User.Id && c.ResolvesAtUtc <= Model.NowUtc) { <form asp-action="CompleteLocalCombat" method="post"><input type="hidden" name="missionId" value="@c.Id" /><button type="submit">Kampf berechnen</button></form> } else { <span>läuft</span> }</td></tr>
+        <tr>
+            <td>@c.PlanetSector.Number - @c.PlanetSector.Name</td>
+            <td>@c.Objective</td>
+            <td>@c.ResolvesAtUtc.ToString("u") <span class="mission-timer" data-completes="@c.ResolvesAtUtc.ToString("O")" data-ready-text="angekommen"></span></td>
+            <td>
+                @if (c.AttackerUserId == Model.User.Id)
+                {
+                    <form asp-action="CompleteLocalCombat" method="post">
+                        <input type="hidden" name="missionId" value="@c.Id" />
+                        <button id="combat-@c.Id" type="submit" disabled="@(c.ResolvesAtUtc > Model.NowUtc)">Kampf berechnen</button>
+                    </form>
+                    @if (c.ResolvesAtUtc > Model.NowUtc)
+                    {
+                        <span class="cooldown-timer" data-completes="@c.ResolvesAtUtc.ToString("O")" data-enable-selector="#combat-@c.Id" data-ready-text="bereit"></span>
+                    }
+                }
+                else
+                {
+                    <span>läuft</span>
+                }
+            </td>
+        </tr>
     }
     </tbody></table>
 </section>
