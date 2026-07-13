@@ -799,12 +799,13 @@ namespace StargateGalacticCommand.Web.Controllers
             int userId = CurrentUserId();
             var playerBase = LoadCurrentBase(userId);
             var now = DateTime.UtcNow;
+            GateMissionReport report = null;
             try
             {
                 var mission = _db.GateMissions.Include(m => m.MissionTeam).Include(m => m.GateAddress).ThenInclude(a => a.Planet).ThenInclude(p => p.Sectors).ThenInclude(s => s.PlayerBase).Single(m => m.Id == gateMissionId && m.UserId == userId);
                 var existingSkills = _db.CharacterSkills.SingleOrDefault(s => s.UserId == userId);
                 var skills = _skillTree.GetOrCreate(existingSkills, playerBase.User);
-                var report = _gateMissions.CompleteMission(mission, playerBase, _db.GateAddresses.Where(a => a.ServerId == playerBase.User.ServerId).ToList(), now, skills: skills, researchLevels: playerBase.User?.ResearchLevels);
+                report = _gateMissions.CompleteMission(mission, playerBase, _db.GateAddresses.Where(a => a.ServerId == playerBase.User.ServerId).ToList(), now, skills: skills, researchLevels: playerBase.User?.ResearchLevels);
                 if (existingSkills == null) _db.CharacterSkills.Add(skills);
                 _db.GateMissionReports.Add(report);
                 if (mission.MissionType == GateMissionType.FoundColony && report.Outcome != GateMissionOutcome.WoundedOrLosses)
@@ -833,6 +834,7 @@ namespace StargateGalacticCommand.Web.Controllers
                 TempData["Error"] = ex.Message;
             }
             _db.SaveChanges();
+            if (report != null) { TempData["CompletedReportId"] = report.Id; }
             return RedirectToAction("GateRoom");
         }
 

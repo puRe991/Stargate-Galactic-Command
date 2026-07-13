@@ -4,9 +4,50 @@
 @using StargateGalacticCommand.Core.Services
 @functions {
     string Pct(int current, int goal) => goal <= 0 ? "0%" : $"{Math.Min(100, current * 100 / goal)}%";
+
+    IList<(string Text, string Controller, string Action)> NextSteps()
+    {
+        var steps = new List<(string, string, string)>();
+        if (Model.Buildings.Count(b => b.Level > 0) == 0)
+            steps.Add(("Baue dein erstes Gebäude aus, um mit dem Ausbau deiner Basis zu beginnen.", "Game", "Base"));
+        if (Model.Base.BuildingLevels.GateControlRoom < 1)
+            steps.Add(("Errichte den Gate-Kontrollraum, um Missionen durchs Stargate starten zu können.", "Game", "Base"));
+        if (Model.User.ResearchLevels.GateAddressing < 1)
+            steps.Add(("Erforsche Gate-Adressierung, um Gate-Adressen für Missionen zu erschließen.", "Game", "Research"));
+        if (Model.GateMissionReports.Count == 0 && Model.KnownGateAddresses.Any() && Model.MissionTeams.Any(t => t.IsAvailable))
+            steps.Add(("Schicke ein Team auf die erste Gate-Mission und hol dir den ersten Bericht.", "Game", "GateRoom"));
+        if (Enum.GetValues(typeof(ShipType)).Cast<ShipType>().Sum(t => Model.Base.Ships.GetCount(t)) == 0)
+            steps.Add(("Baue dein erstes Schiff in der Schiffswerft für Erkundung und Handel.", "Game", "Shipyard"));
+        if (Model.OwnAlliance == null)
+            steps.Add(("Tritt einer Allianz bei oder gründe eine für gemeinsame Kriegsziele.", "Game", "Alliances"));
+        if (!Model.BuildQueue.Any() && Model.Buildings.Any(b => b.Level > 0))
+            steps.Add(("Deine Bauwarteschlange ist leer – plane den nächsten Ausbauschritt.", "Game", "Base"));
+        var nextQuest = Model.QuestlineStatuses?.FirstOrDefault(q => q.IsUnlocked && !q.IsComplete);
+        if (nextQuest != null)
+            steps.Add(($"Fraktionsauftrag: {nextQuest.Title} – {nextQuest.Narrative}", "Game", "Questlines"));
+        return steps.Take(3).ToList();
+    }
 }
 @if (TempData["Message"] != null) { <div class="notice success">@TempData["Message"]</div> }
 @if (TempData["Error"] != null) { <div class="notice error">@TempData["Error"]</div> }
+
+@{ var nextSteps = NextSteps(); }
+@if (nextSteps.Any())
+{
+    <div class="panel next-steps">
+        <div class="card-head"><h2>Nächste Schritte</h2></div>
+        <div class="item-list">
+            @for (int i = 0; i < nextSteps.Count; i++)
+            {
+                var step = nextSteps[i];
+                <div class="item-row">
+                    <div><span class="step-num">@(i + 1)</span><span class="item-title">@step.Text</span></div>
+                    <a class="step-link" asp-controller="@step.Controller" asp-action="@step.Action">Los &rarr;</a>
+                </div>
+            }
+        </div>
+    </div>
+}
 
 <div class="grid-3">
     <div class="panel">

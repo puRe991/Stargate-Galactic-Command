@@ -23,9 +23,30 @@
         if (f == "Lucian") return t == GateMissionType.SecureResources;
         return false;
     }
+    string OutcomeLabel(GateMissionOutcome o) {
+        switch (o) {
+            case GateMissionOutcome.Success: return "Erfolg";
+            case GateMissionOutcome.PartialSuccess: return "Teilerfolg";
+            case GateMissionOutcome.Failure: return "Fehlschlag";
+            case GateMissionOutcome.WoundedOrLosses: return "Verluste";
+            case GateMissionOutcome.ResourceDiscovery: return "Ressourcenfund";
+            case GateMissionOutcome.IntelDiscovery: return "Intel-Fund";
+            case GateMissionOutcome.ArtifactLead: return "Artefaktspur";
+            default: return o.ToString();
+        }
+    }
+    string OutcomeClass(GateMissionOutcome o) {
+        switch (o) {
+            case GateMissionOutcome.Failure:
+            case GateMissionOutcome.WoundedOrLosses: return "outcome-bad";
+            case GateMissionOutcome.PartialSuccess: return "outcome-mixed";
+            default: return "outcome-good";
+        }
+    }
 }
 @if (TempData["Message"] != null) { <div class="notice success">@TempData["Message"]</div> }
 @if (TempData["Error"] != null) { <div class="notice error">@TempData["Error"]</div> }
+@{ var justCompletedId = TempData["CompletedReportId"] as int?; }
 <section class="panel stargate-panel">
     <div class="stargate-animation" id="stargateAnimation">
         <div class="event-horizon"></div>
@@ -46,7 +67,43 @@
 <section class="panel"><h2>Neue Mission starten</h2><p>Fraktionsspezialisierung erhöht die Erfolgschance bei der markierten Missionsart (★). Adressen der aktuellen Fokuswoche (☀) bringen erhöhte Belohnungen.</p><form asp-controller="Game" asp-action="StartGateMission" method="post"><label>Adresse <select name="gateAddressId">@foreach(var k in Model.KnownGateAddresses){<option value="@k.GateAddressId">@k.GateAddress.Code@(Model.SeasonFocusAddressIds.Contains(k.GateAddressId) ? " ☀" : "") - @k.GateAddress.Description</option>}</select></label><label>Team <select name="missionTeamId">@foreach(var t in Model.MissionTeams){<option value="@t.Id" disabled="@(!t.IsAvailable)">@t.Name @(t.IsAvailable ? "" : "(im Einsatz)")</option>}</select></label><label>Mission <select name="missionType">@foreach(var t in Enum.GetValues(typeof(GateMissionType)).Cast<GateMissionType>()){<option value="@t">@MissionName(t)@(IsFactionSpecialty(t) ? " ★" : "")</option>}</select></label><button type="submit" disabled="@(Model.Base.BuildingLevels.GateControlRoom < 1 || Model.User.ResearchLevels.GateAddressing < 1 || !Model.MissionTeams.Any(t => t.IsAvailable) || !Model.KnownGateAddresses.Any())">Mission starten</button></form></section>
 <section class="panel"><h2>Laufende Gate-Missionen</h2>@if(!Model.ActiveGateMissions.Any()){<p>Keine laufenden Gate-Missionen.</p>}else{<table><thead><tr><th>Adresse</th><th>Team</th><th>Mission</th><th>Fertigstellung</th><th>Aktion</th></tr></thead><tbody>@foreach(var m in Model.ActiveGateMissions){<tr><td>@m.GateAddress.Code</td><td>@m.MissionTeam.Name</td><td>@MissionName(m.MissionType)</td><td>@m.CompletesAtUtc.ToString("u") <span class="mission-timer" data-completes="@m.CompletesAtUtc.ToString("O")" data-enable-selector="#gm-@m.Id" data-ready-text="bereit"></span></td><td><form asp-controller="Game" asp-action="CompleteGateMission" method="post"><input type="hidden" name="gateMissionId" value="@m.Id" /><button id="gm-@m.Id" type="submit" disabled="@(Model.NowUtc < m.CompletesAtUtc)">Bericht abrufen</button></form></td></tr>}</tbody></table>}</section>
 <section class="panel"><h2>Teamübersicht</h2><table><thead><tr><th>Team</th><th>Stärke</th><th>Wissenschaft</th><th>Diplomatie</th><th>Tarnung</th><th>Traglast</th><th>Risiko</th><th>Status</th></tr></thead><tbody>@foreach(var t in Model.MissionTeams){<tr><td>@t.Name</td><td>@t.Strength</td><td>@t.Science</td><td>@t.Diplomacy</td><td>@t.Stealth</td><td>@t.CarryCapacity</td><td>@t.Risk</td><td>@(t.IsAvailable ? "bereit" : "im Einsatz")</td></tr>}</tbody></table></section>
-<section class="panel"><h2>Missionsergebnisse/Berichte</h2><table><thead><tr><th>Zeit</th><th>Ergebnis</th><th>Funde</th><th>Zusammenfassung</th></tr></thead><tbody>@foreach(var r in Model.GateMissionReports){<tr><td>@r.CreatedAtUtc.ToString("u")</td><td>@r.Outcome@(r.AnomalyType.HasValue ? " ✧" : "")@(r.IsSeasonFocusBonus ? " ☀" : "")</td><td>NQ @r.NaquadahFound, TR @r.TriniumFound, VG @r.SuppliesFound, Intel @r.IntelFound, Artefaktspur @(r.ArtifactLeadFound ? "ja" : "nein")@(r.SpecialResourceFound.HasValue ? ", " + SpecialResourceCatalog.Get(r.SpecialResourceFound.Value).Name + " x" + r.SpecialResourceAmount : "")</td><td>@r.Summary</td></tr>}</tbody></table></section>
+<section class="panel">
+    <div class="card-head"><h2>Missionsergebnisse/Berichte</h2></div>
+    @if (!Model.GateMissionReports.Any())
+    {
+        <p class="hint">Noch keine Berichte. Starte oben deine erste Gate-Mission.</p>
+    }
+    else
+    {
+        <div class="item-list">
+            @foreach (var r in Model.GateMissionReports.Take(25))
+            {
+                bool isNew = justCompletedId.HasValue && r.Id == justCompletedId.Value;
+                <div class="item-row report-row @OutcomeClass(r.Outcome) @(isNew ? "report-new" : "")">
+                    <div>
+                        <div class="item-title">
+                            @r.GateMission.GateAddress.Code — @MissionName(r.GateMission.MissionType)
+                            <span class="outcome-badge">@OutcomeLabel(r.Outcome)</span>
+                            @(r.AnomalyType.HasValue ? " ✧" : "")@(r.IsSeasonFocusBonus ? " ☀" : "")
+                        </div>
+                        <div class="item-meta">@r.CreatedAtUtc.ToString("u") — @r.Summary</div>
+                        @if (r.NaquadahFound > 0 || r.TriniumFound > 0 || r.SuppliesFound > 0 || r.IntelFound > 0 || r.ArtifactLeadFound || r.SpecialResourceFound.HasValue)
+                        {
+                            <div class="item-meta report-loot">
+                                @if (r.NaquadahFound > 0) { <span>NQ +@r.NaquadahFound</span> }
+                                @if (r.TriniumFound > 0) { <span>TR +@r.TriniumFound</span> }
+                                @if (r.SuppliesFound > 0) { <span>VG +@r.SuppliesFound</span> }
+                                @if (r.IntelFound > 0) { <span>Intel +@r.IntelFound</span> }
+                                @if (r.ArtifactLeadFound) { <span>Artefaktspur</span> }
+                                @if (r.SpecialResourceFound.HasValue) { <span>@SpecialResourceCatalog.Get(r.SpecialResourceFound.Value).Name x@r.SpecialResourceAmount</span> }
+                            </div>
+                        }
+                    </div>
+                </div>
+            }
+        </div>
+    }
+</section>
 @section Scripts {
     <script src="~/js/stargate-dial.js" asp-append-version="true"></script>
 }
