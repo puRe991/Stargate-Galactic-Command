@@ -78,13 +78,14 @@ public class Sgw3dPrototype extends SimpleApplication implements ActionListener 
         cam.setLocation(new Vector3f(0, 5, 12));
         cam.lookAt(new Vector3f(0, 1.5f, 0), Vector3f.UNIT_Y);
 
-        if (screenshotAtFrame > 0) {
-            screenshotAppState = new ScreenshotAppState();
-            screenshotAppState.setFilePath(System.getProperty("user.dir") + "/");
-            screenshotAppState.setFileName("sgw3d-vertical-slice");
-            screenshotAppState.setIsNumbered(false);
-            stateManager.attach(screenshotAppState);
-        }
+        // Always available: press F2 to save a numbered screenshot (sgw3d-liveNNNN.png)
+        // into the working directory, e.g. to verify WASD movement from an external
+        // key-injection tool (xdotool) against the real InputManager binding.
+        screenshotAppState = new ScreenshotAppState();
+        screenshotAppState.setFilePath(System.getProperty("user.dir") + "/");
+        screenshotAppState.setFileName("sgw3d-live");
+        screenshotAppState.setIsNumbered(true);
+        stateManager.attach(screenshotAppState);
     }
 
     private void buildLighting() {
@@ -200,7 +201,8 @@ public class Sgw3dPrototype extends SimpleApplication implements ActionListener 
         inputManager.addMapping("MoveBack", new KeyTrigger(KeyInput.KEY_S));
         inputManager.addMapping("MoveLeft", new KeyTrigger(KeyInput.KEY_A));
         inputManager.addMapping("MoveRight", new KeyTrigger(KeyInput.KEY_D));
-        inputManager.addListener(this, "MoveForward", "MoveBack", "MoveLeft", "MoveRight");
+        inputManager.addMapping("TakeScreenshot", new KeyTrigger(KeyInput.KEY_F12));
+        inputManager.addListener(this, "MoveForward", "MoveBack", "MoveLeft", "MoveRight", "TakeScreenshot");
     }
 
     @Override
@@ -210,6 +212,9 @@ public class Sgw3dPrototype extends SimpleApplication implements ActionListener 
             case "MoveBack": down = isPressed; break;
             case "MoveLeft": left = isPressed; break;
             case "MoveRight": right = isPressed; break;
+            case "TakeScreenshot":
+                if (isPressed && screenshotAppState != null) { screenshotAppState.takeScreenshot(); }
+                break;
             default: break;
         }
     }
