@@ -3,8 +3,6 @@
 @using StargateGalacticCommand.Core.Models
 @using StargateGalacticCommand.Core.Services
 @functions {
-    string Cost(BuildCost c) => $"NQ {c.Naquadah}, TR {c.Trinium}, VG {c.Supplies}" + (c.Intel > 0 ? $", Intel {c.Intel}" : "");
-    string Duration(int seconds) => TimeSpan.FromSeconds(seconds).ToString(@"hh\:mm\:ss");
     string Pct(int current, int goal) => goal <= 0 ? "0%" : $"{Math.Min(100, current * 100 / goal)}%";
 }
 @if (TempData["Message"] != null) { <div class="notice success">@TempData["Message"]</div> }
@@ -72,90 +70,47 @@
 </div>
 
 <div class="panel">
-    <h2>Ressourcen</h2>
-    <div class="grid-3">
-        <div class="kv-row"><span>Naquadah</span><span>@Model.Base.Resources.Naquadah <small>(+@Model.Hourly.Naquadah/h)</small></span></div>
-        <div class="kv-row"><span>Trinium</span><span>@Model.Base.Resources.Trinium <small>(+@Model.Hourly.Trinium/h)</small></span></div>
-        <div class="kv-row"><span>Versorgungsgüter</span><span>@Model.Base.Resources.Supplies <small>(+@Model.Hourly.Supplies/h)</small></span></div>
-        <div class="kv-row"><span>Energie</span><span>@Model.Base.Resources.Energy <small>(+@Model.Hourly.Energy/h)</small></span></div>
-        <div class="kv-row"><span>Personal</span><span>@Model.Base.Resources.Personnel <small>(+@Model.Hourly.Personnel/h)</small></span></div>
-        <div class="kv-row"><span>Intel</span><span>@Model.Base.Resources.Intel <small>(+@Model.Hourly.Intel/h)</small></span></div>
-    </div>
-</div>
-
-<div class="grid-2">
-    <div class="panel">
-        <div class="card-head"><h2>Bauwarteschlange</h2><span class="hint">@Model.BuildQueue.Count / @BuildQueueService.MaxQueueLength</span></div>
-        @if (!Model.BuildQueue.Any())
-        {
-            <p>Keine aktiven Bauaufträge.</p>
-        }
-        else
-        {
-            <div class="item-list">
-                @foreach (var item in Model.BuildQueue)
-                {
-                    var left = item.CompletesAtUtc - Model.NowUtc;
-                    if (left < TimeSpan.Zero) { left = TimeSpan.Zero; }
-                    <div class="item-row">
-                        <div>
-                            <div class="item-title">@Model.Buildings.Single(b => b.Type == item.BuildingType).Name &rarr; Lv.@item.TargetLevel</div>
-                            <div class="item-meta">Fertig um @item.CompletesAtUtc.ToString("u")</div>
-                        </div>
-                        <span class="build-timer" data-completes="@item.CompletesAtUtc.ToString("O")">@left.ToString(@"hh\:mm\:ss")</span>
-                    </div>
-                }
-            </div>
-        }
-    </div>
-
-    <div class="panel">
-        <div class="card-head"><h2>Gebäude</h2></div>
+    <div class="card-head"><h2>Bauwarteschlange</h2><span class="hint">@Model.BuildQueue.Count / @BuildQueueService.MaxQueueLength</span></div>
+    @if (!Model.BuildQueue.Any())
+    {
+        <p class="hint">Keine aktiven Bauaufträge. <a asp-controller="Game" asp-action="Base">Basis ausbauen &rarr;</a></p>
+    }
+    else
+    {
         <div class="item-list">
-            @foreach (var b in Model.Buildings)
+            @foreach (var item in Model.BuildQueue)
             {
+                var left = item.CompletesAtUtc - Model.NowUtc;
+                if (left < TimeSpan.Zero) { left = TimeSpan.Zero; }
                 <div class="item-row">
                     <div>
-                        <div class="item-title">@b.Name &middot; Level @b.Level</div>
-                        <div class="item-meta">@Cost(b.Cost) &middot; @Duration(b.BuildSeconds)</div>
+                        <div class="item-title">@Model.Buildings.Single(b => b.Type == item.BuildingType).Name &rarr; Lv.@item.TargetLevel</div>
+                        <div class="item-meta">Fertig um @item.CompletesAtUtc.ToString("u")</div>
                     </div>
-                    <form asp-controller="Game" asp-action="StartBuild" method="post">
-                        <input type="hidden" name="buildingType" value="@b.Type" />
-                        <button type="submit" disabled="@(b.QueueBusy || !b.CanAfford)">Ausbauen</button>
-                        @if (b.QueueBusy) { <span class="hint">Warteschlange voll</span> } else if (!b.CanAfford) { <span class="hint">Zu wenig Ressourcen</span> }
-                    </form>
+                    <span class="build-timer" data-completes="@item.CompletesAtUtc.ToString("O")">@left.ToString(@"hh\:mm\:ss")</span>
                 </div>
             }
         </div>
-    </div>
+    }
 </div>
 
-<div class="grid-2">
+<div class="grid-3">
     <div class="panel">
-        <div class="card-head"><h2>Sektoren</h2></div>
-        <div class="item-list">
-            @foreach (var s in Model.Sectors)
-            {
-                <div class="item-row">
-                    <span>#@s.Number &middot; @s.Name</span>
-                    <span class="hint">@(s.IsSettlementSector ? "Siedlung" : "Spezialsektor")</span>
-                    <span>@(s.PlayerBase == null ? "frei" : "belegt")</span>
-                </div>
-            }
-        </div>
+        <div class="card-head"><h2>Basis</h2></div>
+        <div class="hero-stats"><div><div class="stat-value">@Model.Buildings.Count(b => b.Level > 0)</div><div class="stat-label">ausgebaute Gebäude</div></div></div>
+        <p class="hint" style="margin-top:.8rem;"><a asp-controller="Game" asp-action="Base">Basis verwalten &rarr;</a></p>
     </div>
 
     <div class="panel">
-        <div class="card-head"><h2>Berichte</h2></div>
-        <div class="item-list">
-            @foreach (var r in Model.Reports)
-            {
-                <div class="item-row" style="align-items:flex-start; flex-direction:column; gap:.2rem;">
-                    <div class="item-title" style="display:flex; justify-content:space-between; width:100%;"><span>@r.Title</span><span class="item-meta">@r.CreatedAtUtc.ToString("u")</span></div>
-                    <div class="hint">@r.Body</div>
-                </div>
-            }
-        </div>
+        <div class="card-head"><h2>Sektoren</h2></div>
+        <div class="hero-stats"><div><div class="stat-value">@Model.Sectors.Count(s => s.PlayerBase == null)</div><div class="stat-label">frei von @Model.Sectors.Count</div></div></div>
+        <p class="hint" style="margin-top:.8rem;"><a asp-controller="Game" asp-action="Sectors">Sektoren ansehen &rarr;</a></p>
+    </div>
+
+    <div class="panel">
+        <div class="card-head"><h2>Berichte</h2>@if (Model.UnreadReportCount > 0) { <span class="pulse-dot"></span> }</div>
+        <div class="hero-stats"><div><div class="stat-value">@Model.UnreadReportCount</div><div class="stat-label">ungelesen von @Model.Reports.Count</div></div></div>
+        <p class="hint" style="margin-top:.8rem;"><a asp-controller="Game" asp-action="Reports">Berichte lesen &rarr;</a></p>
     </div>
 </div>
 

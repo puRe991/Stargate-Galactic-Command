@@ -1,7 +1,27 @@
 @model OverviewViewModel
-@{ ViewData["Title"] = "Übersicht"; }
-<section class="panel"><h1>@ViewData["Title"]</h1><table><tr><th>Spieler</th><td>@Model.User.UserName</td></tr><tr><th>Fraktion</th><td>@Model.User.Faction.Name</td></tr><tr><th>Basis</th><td>@Model.Base.Name</td></tr><tr><th>Planet</th><td>@Model.Planet.Name (@Model.Planet.Galaxy, @Model.Planet.Type, Stargate @(Model.Planet.StargateActive ? "aktiv" : "inaktiv"), @Model.Planet.Status)</td></tr><tr><th>Sektor</th><td>@Model.Base.PlanetSector.Number - @Model.Base.PlanetSector.Name</td></tr></table></section>
-<section class="panel"><h2>Ressourcen</h2><table><thead><tr><th>Ressource</th><th>Bestand</th><th>Produktion/Stunde</th></tr></thead><tbody><tr><td>Naquadah</td><td>@Model.Base.Resources.Naquadah</td><td>@Model.Hourly.Naquadah</td></tr><tr><td>Trinium</td><td>@Model.Base.Resources.Trinium</td><td>@Model.Hourly.Trinium</td></tr><tr><td>Versorgungsgüter</td><td>@Model.Base.Resources.Supplies</td><td>@Model.Hourly.Supplies</td></tr><tr><td>Energie</td><td>@Model.Base.Resources.Energy</td><td>@Model.Hourly.Energy</td></tr><tr><td>Personal</td><td>@Model.Base.Resources.Personnel</td><td>@Model.Hourly.Personnel</td></tr><tr><td>Intel</td><td>@Model.Base.Resources.Intel</td><td>@Model.Hourly.Intel</td></tr></tbody></table></section>
-<section class="panel"><h2>Gebäude</h2><table><tr><th>Kommandozentrum</th><td>@Model.Base.BuildingLevels.CommandCenter</td></tr><tr><th>Naquadah-Raffinerie</th><td>@Model.Base.BuildingLevels.NaquadahRefinery</td></tr><tr><th>Trinium-Mine</th><td>@Model.Base.BuildingLevels.TriniumMine</td></tr><tr><th>Versorgungslager</th><td>@Model.Base.BuildingLevels.SupplyDepot</td></tr><tr><th>Energiegenerator</th><td>@Model.Base.BuildingLevels.EnergyGenerator</td></tr><tr><th>Forschungslabor</th><td>@Model.Base.BuildingLevels.ResearchLab</td></tr><tr><th>Gate-Kontrollraum</th><td>@Model.Base.BuildingLevels.GateControlRoom</td></tr><tr><th>Sensorstation</th><td>@Model.Base.BuildingLevels.SensorStation</td></tr></table></section>
-<section class="panel"><h2>Sektoren</h2><table><thead><tr><th>#</th><th>Name</th><th>Typ</th><th>Status</th></tr></thead><tbody>@foreach(var s in Model.Sectors){<tr><td>@s.Number</td><td>@s.Name</td><td>@(s.IsSettlementSector ? "Siedlung" : "Spezialsektor")</td><td>@(s.PlayerBase == null ? "frei" : "belegt")</td></tr>}</tbody></table></section>
-<section class="panel"><h2>Berichte</h2><table><thead><tr><th>Zeit</th><th>Titel</th><th>Text</th></tr></thead><tbody>@foreach(var r in Model.Reports){<tr><td>@r.CreatedAtUtc.ToString("u")</td><td>@r.Title</td><td>@r.Body</td></tr>}</tbody></table></section>
+@{ ViewData["Title"] = "Berichte"; }
+@if (TempData["Message"] != null) { <div class="notice success">@TempData["Message"]</div> }
+@if (TempData["Error"] != null) { <div class="notice error">@TempData["Error"]</div> }
+
+<div class="panel">
+    <div class="card-head">
+        <h2>Berichte</h2>
+        <span class="hint">@Model.Reports.Count gesamt</span>
+    </div>
+    @if (!Model.Reports.Any())
+    {
+        <p class="hint">Keine Berichte vorhanden.</p>
+    }
+    else
+    {
+        <div class="item-list">
+            @foreach (var r in Model.Reports)
+            {
+                <div class="item-row" style="align-items:flex-start; flex-direction:column; gap:.2rem;">
+                    <div class="item-title" style="display:flex; justify-content:space-between; width:100%;"><span>@r.Title</span><span class="item-meta">@r.CreatedAtUtc.ToString("u")</span></div>
+                    <div class="hint">@r.Body</div>
+                </div>
+            }
+        </div>
+    }
+</div>
